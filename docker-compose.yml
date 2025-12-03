@@ -1,0 +1,91 @@
+version: '3.8'
+
+services:
+  # Base de datos PostgreSQL
+  postgres:
+    image: postgres:15-alpine
+    container_name: fyntra-postgres
+    environment:
+      POSTGRES_DB: fyntra
+      POSTGRES_USER: fyntra_user
+      POSTGRES_PASSWORD: fyntra_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    networks:
+      - fyntra-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fyntra_user -d fyntra"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend FastAPI
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: fyntra-backend
+    environment:
+      - DATABASE_URL=postgresql://fyntra_user:fyntra_password@postgres:5432/fyntra
+      - SECRET_KEY=your-secret-key-change-in-production
+      - ALGORITHM=HS256
+      - ACCESS_TOKEN_EXPIRE_MINUTES=30
+      - CORS_ORIGINS=http://localhost:4200,http://localhost:80
+    volumes:
+      - ./backend:/app
+      - backend_uploads:/app/uploads
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - fyntra-network
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+  # Frontend Angular
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: fyntra-frontend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "4200:4200"
+    depends_on:
+      - backend
+    networks:
+      - fyntra-network
+    environment:
+      - API_URL=http://backend:8000
+    command: npm start
+
+  # Nginx como reverse proxy
+  nginx:
+    image: nginx:alpine
+    container_name: fyntra-nginx
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/conf.d:/etc/nginx/conf.d
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - fyntra-network
+
+volumes:
+  postgres_data:
+  backend_uploads:
+
+networks:
+  fyntra-network:
+    driver: bridge
+
