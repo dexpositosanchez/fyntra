@@ -30,12 +30,30 @@ body {
   transition: all 0.3s ease;
 
   &.btn-primary {
-    background-color: #667eea;
+    background-color: #20b2aa;
     color: white;
 
     &:hover {
-      background-color: #5568d3;
+      background-color: #00ced1;
     }
   }
 }
+
+/* Clases de utilidad para prioridades */
+.prioridad-urgente {
+  color: #d32f2f;
+}
+
+.prioridad-alta {
+  color: #f57c00;
+}
+
+.prioridad-media {
+  color: #fbc02d;
+}
+
+.prioridad-baja {
+  color: #388e3c;
+}
+
 

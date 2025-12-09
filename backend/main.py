@@ -1,6 +1,12 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from app.core.config import settings
+from app.api import auth, incidencias, vehiculos, comunidades, conductores
+from app.database import engine, Base
+
+# Crear tablas en la base de datos
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="Fyntra API",
@@ -8,14 +14,21 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Configurar CORS
+# Configurar CORS - Permitir llamadas desde Android y web
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:4200", "http://localhost:80", "http://localhost"],
+    allow_origins=settings.CORS_ORIGINS + ["*"],  # Permitir todas las origenes para desarrollo (cambiar en producción)
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Incluir routers
+app.include_router(auth.router, prefix="/api")
+app.include_router(incidencias.router, prefix="/api")
+app.include_router(vehiculos.router, prefix="/api")
+app.include_router(comunidades.router, prefix="/api")
+app.include_router(conductores.router, prefix="/api")
 
 @app.get("/")
 async def root():

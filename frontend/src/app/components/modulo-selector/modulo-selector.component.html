@@ -1,0 +1,43 @@
+<div class="modulo-selector-container">
+  <header class="selector-header">
+    <div class="logo-section">
+      <img src="/assets/images/Imagotipo.png" alt="Fyntra" class="logo-image" />
+    </div>
+    <button class="logout-button" (click)="logout()" title="Cerrar sesión">
+      <span class="logout-icon">🚪</span>
+      <span class="logout-text">Salir</span>
+    </button>
+  </header>
+
+  <main class="selector-main">
+    <div class="welcome-section">
+      <h1>Bienvenido, {{ usuario?.nombre }}</h1>
+      <p>Selecciona el módulo al que deseas acceder</p>
+    </div>
+
+    <div class="modulos-grid">
+      <div class="modulo-card" (click)="seleccionarModulo('fincas')">
+        <div class="modulo-icon">🏢</div>
+        <h2>Administración de Fincas</h2>
+        <p>Gestión de comunidades, propietarios e incidencias</p>
+        <div class="modulo-features">
+          <span class="feature">Comunidades</span>
+          <span class="feature">Incidencias</span>
+          <span class="feature">Propietarios</span>
+        </div>
+      </div>
+
+      <div class="modulo-card" (click)="seleccionarModulo('transportes')">
+        <div class="modulo-icon">🚚</div>
+        <h2>ERP de Transportes</h2>
+        <p>Gestión de flota, rutas y pedidos</p>
+        <div class="modulo-features">
+          <span class="feature">Vehículos</span>
+          <span class="feature">Rutas</span>
+          <span class="feature">Pedidos</span>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+

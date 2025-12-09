@@ -1,0 +1,242 @@
+import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Router, NavigationEnd } from '@angular/router';
+import { Subscription } from 'rxjs';
+import { filter } from 'rxjs/operators';
+import { ApiService } from '../../services/api.service';
+import { AuthService } from '../../services/auth.service';
+
+@Component({
+  selector: 'app-conductores',
+  templateUrl: './conductores.component.html',
+  styleUrls: ['./conductores.component.scss']
+})
+export class ConductoresComponent implements OnInit, OnDestroy {
+  conductores: any[] = [];
+  mostrarFormulario: boolean = false;
+  editandoConductor: boolean = false;
+  conductorIdEditando: number | null = null;
+  conductorForm: any = {
+    nombre: '',
+    apellidos: '',
+    dni: '',
+    telefono: '',
+    email: '',
+    licencia: '',
+    fecha_caducidad_licencia: '',
+    activo: true
+  };
+  loading: boolean = false;
+  error: string = '';
+  currentRoute: string = '';
+  mostrarSoloAlertas: boolean = false;
+  mostrarMenuUsuario: boolean = false;
+  usuario: any = null;
+  private routerSubscription?: Subscription;
+
+  constructor(
+    private apiService: ApiService,
+    private authService: AuthService,
+    private router: Router
+  ) {}
+
+  ngOnInit(): void {
+    this.currentRoute = this.router.url;
+    this.usuario = this.authService.getUsuario();
+    this.actualizarVista();
+    
+    // Suscribirse a cambios de ruta
+    this.routerSubscription = this.router.events
+      .pipe(filter(event => event instanceof NavigationEnd))
+      .subscribe((event: any) => {
+        this.currentRoute = event.url;
+        this.actualizarVista();
+      });
+  }
+
+  actualizarVista(): void {
+    // Ocultar formulario si cambiamos de ruta
+    if (!this.currentRoute.includes('/conductores')) {
+      this.mostrarFormulario = false;
+    }
+    
+    // Solo cargar conductores si estamos en la ruta de conductores
+    if (this.currentRoute.includes('/conductores') && this.conductores.length === 0) {
+      this.cargarConductores();
+    }
+  }
+
+  ngOnDestroy(): void {
+    if (this.routerSubscription) {
+      this.routerSubscription.unsubscribe();
+    }
+  }
+
+  cargarConductores(): void {
+    this.loading = true;
+    this.error = '';
+    const params: any = {};
+    if (this.mostrarSoloAlertas) {
+      params.licencias_proximas_caducar = true;
+    }
+    
+    this.apiService.getConductores(params).subscribe({
+      next: (data) => {
+        this.conductores = data;
+        this.loading = false;
+      },
+      error: (err) => {
+        if (err.status === 401) {
+          this.authService.logout();
+        } else {
+          this.error = err.error?.detail || 'Error al cargar conductores';
+        }
+        this.loading = false;
+      }
+    });
+  }
+
+  toggleAlertas(): void {
+    this.mostrarSoloAlertas = !this.mostrarSoloAlertas;
+    this.cargarConductores();
+  }
+
+  mostrarForm(): void {
+    this.editandoConductor = false;
+    this.conductorIdEditando = null;
+    this.mostrarFormulario = true;
+    this.conductorForm = {
+      nombre: '',
+      apellidos: '',
+      dni: '',
+      telefono: '',
+      email: '',
+      licencia: '',
+      fecha_caducidad_licencia: '',
+      activo: true
+    };
+  }
+
+  editarConductor(conductor: any): void {
+    this.editandoConductor = true;
+    this.conductorIdEditando = conductor.id;
+    this.mostrarFormulario = true;
+    
+    // Formatear fecha para el input date (YYYY-MM-DD)
+    let fechaFormateada = '';
+    if (conductor.fecha_caducidad_licencia) {
+      const fecha = new Date(conductor.fecha_caducidad_licencia);
+      fechaFormateada = fecha.toISOString().split('T')[0];
+    }
+    
+    // Asegurar que activo sea un boolean
+    let activoValue = true;
+    if (conductor.activo !== undefined && conductor.activo !== null) {
+      activoValue = conductor.activo === true || conductor.activo === 'true' || conductor.activo === 1;
+    }
+    
+    this.conductorForm = {
+      nombre: conductor.nombre || '',
+      apellidos: conductor.apellidos || '',
+      dni: conductor.dni || '',
+      telefono: conductor.telefono || '',
+      email: conductor.email || '',
+      licencia: conductor.licencia || '',
+      fecha_caducidad_licencia: fechaFormateada,
+      activo: activoValue
+    };
+  }
+
+  cancelarForm(): void {
+    this.mostrarFormulario = false;
+    this.editandoConductor = false;
+    this.conductorIdEditando = null;
+  }
+
+  onSubmit(): void {
+    if (!this.conductorForm.nombre || !this.conductorForm.licencia || !this.conductorForm.fecha_caducidad_licencia) {
+      this.error = 'El nombre, licencia y fecha de caducidad son obligatorios';
+      return;
+    }
+
+    this.loading = true;
+    
+    if (this.editandoConductor && this.conductorIdEditando) {
+      // Actualizar conductor existente
+      this.apiService.updateConductor(this.conductorIdEditando, this.conductorForm).subscribe({
+        next: () => {
+          this.cargarConductores();
+          this.mostrarFormulario = false;
+          this.editandoConductor = false;
+          this.conductorIdEditando = null;
+          this.loading = false;
+          this.error = '';
+        },
+        error: (err) => {
+          this.error = err.error?.detail || 'Error al actualizar conductor';
+          this.loading = false;
+        }
+      });
+    } else {
+      // Crear nuevo conductor
+      this.apiService.createConductor(this.conductorForm).subscribe({
+        next: () => {
+          this.cargarConductores();
+          this.mostrarFormulario = false;
+          this.loading = false;
+          this.error = '';
+        },
+        error: (err) => {
+          this.error = err.error?.detail || 'Error al crear conductor';
+          this.loading = false;
+        }
+      });
+    }
+  }
+
+  getEstadoClass(activo: boolean): string {
+    return activo ? 'activo' : 'inactivo';
+  }
+
+  getEstadoTexto(activo: boolean): string {
+    return activo ? 'Activo' : 'Inactivo';
+  }
+
+  getAlertaClass(diasRestantes: number): string {
+    if (diasRestantes < 0) return 'caducada';
+    if (diasRestantes <= 30) return 'alerta';
+    return 'ok';
+  }
+
+  getAlertaTexto(diasRestantes: number): string {
+    if (diasRestantes < 0) return 'Caducada';
+    if (diasRestantes <= 30) return `${diasRestantes} días`;
+    return 'Válida';
+  }
+
+  toggleMenuUsuario(): void {
+    this.mostrarMenuUsuario = !this.mostrarMenuUsuario;
+  }
+
+  estaEnModuloTransportes(): boolean {
+    return this.currentRoute.includes('/vehiculos') || 
+           this.currentRoute.includes('/conductores') || 
+           this.currentRoute.includes('/rutas') || 
+           this.currentRoute.includes('/pedidos');
+  }
+
+  cambiarAModuloFincas(): void {
+    this.mostrarMenuUsuario = false;
+    this.router.navigate(['/incidencias']);
+  }
+
+  cambiarAModuloTransportes(): void {
+    this.mostrarMenuUsuario = false;
+    this.router.navigate(['/vehiculos']);
+  }
+
+  logout(): void {
+    this.mostrarMenuUsuario = false;
+    this.authService.logout();
+  }
+}
+

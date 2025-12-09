@@ -50,6 +50,9 @@ migrate: ## Aplicar migraciones de base de datos
 migrate-create: ## Crear nueva migración (uso: make migrate-create MESSAGE="descripción")
 	docker-compose exec backend alembic revision --autogenerate -m "$(MESSAGE)"
 
+init-data: ## Crear datos iniciales de prueba
+	docker-compose exec backend sh -c "PYTHONPATH=/app python /app/scripts/init_data.py"
+
 test-backend: ## Ejecutar tests del backend
 	docker-compose exec backend pytest
 

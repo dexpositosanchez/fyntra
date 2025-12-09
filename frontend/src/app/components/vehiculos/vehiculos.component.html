@@ -1,0 +1,205 @@
+<div class="vehiculos-container">
+  <header class="app-header">
+    <div class="header-left">
+      <div class="logo-section">
+        <img src="/assets/images/Isotipo.png" alt="Fyntra" class="logo-isotipo" />
+      </div>
+      <nav class="main-nav">
+        <a routerLink="/conductores" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">CONDUCTORES</a>
+        <a routerLink="/vehiculos" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">VEHÍCULOS</a>
+        <a routerLink="/rutas" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">RUTAS</a>
+        <a routerLink="/pedidos" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">PEDIDOS</a>
+      </nav>
+    </div>
+    <div class="user-section">
+      <div class="user-menu-container">
+        <button class="user-menu-button" (click)="toggleMenuUsuario()" title="Menú de usuario">
+          <span class="user-icon">👤</span>
+          <span class="user-name">{{ usuario?.nombre || 'Usuario' }}</span>
+          <span class="dropdown-arrow">{{ mostrarMenuUsuario ? '▲' : '▼' }}</span>
+        </button>
+        <div class="user-menu-dropdown" *ngIf="mostrarMenuUsuario">
+          <button class="menu-item" *ngIf="estaEnModuloTransportes()" (click)="cambiarAModuloFincas()">
+            <span class="menu-icon">🏢</span>
+            <span>Módulo Fincas</span>
+          </button>
+          <button class="menu-item" *ngIf="!estaEnModuloTransportes()" (click)="cambiarAModuloTransportes()">
+            <span class="menu-icon">🚚</span>
+            <span>Módulo Transportes</span>
+          </button>
+          <div class="menu-divider" *ngIf="estaEnModuloTransportes() || !estaEnModuloTransportes()"></div>
+          <button class="menu-item logout-item" (click)="logout()">
+            <span class="menu-icon">🚪</span>
+            <span>Salir</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="main-content">
+    <!-- Sección de Vehículos -->
+    <div *ngIf="currentRoute.includes('/vehiculos')">
+      <div class="form-container" *ngIf="mostrarFormulario">
+        <h2 class="form-title">{{ editandoVehiculo ? 'EDITAR VEHÍCULO' : 'ALTA DE VEHÍCULO' }}</h2>
+        
+        <form (ngSubmit)="onSubmit()" class="vehiculo-form">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Nombre</label>
+              <input
+                type="text"
+                [(ngModel)]="vehiculoForm.nombre"
+                name="nombre"
+                placeholder="Ej: Furgoneta Principal"
+                class="form-input"
+                required
+              />
+            </div>
+            <div class="form-group">
+              <label>Matrícula</label>
+              <input
+                type="text"
+                [(ngModel)]="vehiculoForm.matricula"
+                name="matricula"
+                placeholder="Ej: ABC-1234"
+                class="form-input"
+                required
+              />
+            </div>
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label>Marca</label>
+              <input
+                type="text"
+                [(ngModel)]="vehiculoForm.marca"
+                name="marca"
+                placeholder="Ejemplo"
+                class="form-input"
+                required
+              />
+            </div>
+            <div class="form-group">
+              <label>Modelo</label>
+              <input
+                type="text"
+                [(ngModel)]="vehiculoForm.modelo"
+                name="modelo"
+                placeholder="Ejemplo"
+                class="form-input"
+                required
+              />
+            </div>
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label>Año</label>
+              <input
+                type="number"
+                [(ngModel)]="vehiculoForm.ano"
+                name="ano"
+                placeholder="Ejemplo"
+                class="form-input"
+                min="1900"
+                max="2100"
+              />
+            </div>
+            <div class="form-group">
+              <label>Capacidad (kg)</label>
+              <input
+                type="number"
+                [(ngModel)]="vehiculoForm.capacidad"
+                name="capacidad"
+                placeholder="Ejemplo"
+                class="form-input"
+                min="0"
+                step="0.01"
+              />
+            </div>
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label>Tipo de Combustible</label>
+              <select
+                [(ngModel)]="vehiculoForm.tipo_combustible"
+                name="tipo_combustible"
+                class="form-input"
+              >
+                <option value="">Seleccionar...</option>
+                <option *ngFor="let tipo of tiposCombustible" [value]="tipo.value">
+                  {{ tipo.label }}
+                </option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Estado</label>
+              <div class="radio-group">
+                <label class="radio-label" *ngFor="let estado of estados">
+                  <input
+                    type="radio"
+                    name="estado"
+                    [value]="estado.value"
+                    [(ngModel)]="vehiculoForm.estado"
+                    [ngModelOptions]="{standalone: true}"
+                    [checked]="estado.value === vehiculoForm.estado"
+                  />
+                  {{ estado.label }}
+                </label>
+              </div>
+            </div>
+          </div>
+          
+          <div *ngIf="error" class="error-message">{{ error }}</div>
+          
+          <div class="form-actions">
+            <button type="button" class="cancel-button" (click)="cancelarForm()">Cancelar</button>
+            <button type="submit" class="submit-button" [disabled]="loading">
+              {{ loading ? 'Guardando...' : (editandoVehiculo ? 'GUARDAR CAMBIOS' : 'DAR DE ALTA') }}
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <div class="list-container" *ngIf="!mostrarFormulario">
+        <div class="list-header">
+          <h2>Vehículos</h2>
+          <button class="add-button" (click)="mostrarForm()">+ Nuevo Vehículo</button>
+        </div>
+        
+        <div *ngIf="loading" class="loading">Cargando...</div>
+        <div *ngIf="error" class="error">{{ error }}</div>
+        
+        <div class="vehiculos-grid" *ngIf="!loading && !error">
+          <div class="vehiculo-card" *ngFor="let vehiculo of vehiculos" (click)="editarVehiculo(vehiculo)">
+            <h3>{{ vehiculo.nombre || vehiculo.matricula }}</h3>
+            <p><strong>Matrícula:</strong> {{ vehiculo.matricula }}</p>
+            <p><strong>Marca:</strong> {{ vehiculo.marca }}</p>
+            <p><strong>Modelo:</strong> {{ vehiculo.modelo }}</p>
+            <p *ngIf="vehiculo['año']"><strong>Año:</strong> {{ vehiculo['año'] }}</p>
+            <p *ngIf="vehiculo.capacidad"><strong>Capacidad:</strong> {{ vehiculo.capacidad }} kg</p>
+            <p *ngIf="vehiculo.tipo_combustible"><strong>Combustible:</strong> {{ vehiculo.tipo_combustible | titlecase }}</p>
+            <span [class]="'status-badge ' + getEstadoClass(vehiculo.estado)">
+              {{ getEstadoTexto(vehiculo.estado) }}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Secciones placeholder para otras rutas -->
+    <div *ngIf="currentRoute.includes('/rutas')" class="table-container">
+      <h2 class="table-title">RUTAS</h2>
+      <p class="placeholder-text">Gestión de rutas - Próximamente</p>
+    </div>
+
+    <div *ngIf="currentRoute.includes('/pedidos')" class="table-container">
+      <h2 class="table-title">PEDIDOS</h2>
+      <p class="placeholder-text">Gestión de pedidos - Próximamente</p>
+    </div>
+  </main>
+</div>
+

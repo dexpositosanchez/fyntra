@@ -1,0 +1,117 @@
+.login-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-image: url('../../../assets/images/Fondo_Login.jpeg');
+  background-size: cover;
+  background-position: center;
+  position: relative;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(8px);
+  }
+}
+
+.login-card {
+  position: relative;
+  z-index: 1;
+  background: #f5f5f5;
+  border-radius: 12px;
+  padding: 50px 40px;
+  width: 100%;
+  max-width: 480px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.logo-container {
+  text-align: center;
+  margin-bottom: 45px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.logo-image {
+  max-width: 200px;
+  height: auto;
+  object-fit: contain;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 25px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-group label {
+  font-size: 14px;
+  color: #333;
+  font-weight: 500;
+}
+
+.form-input {
+  padding: 12px 0;
+  border: none;
+  border-bottom: 2px solid #20b2aa;
+  background: transparent;
+  font-size: 16px;
+  outline: none;
+  transition: border-color 0.3s;
+  
+  &:focus {
+    border-bottom-color: #00ced1;
+  }
+  
+  &::placeholder {
+    color: #999;
+  }
+}
+
+.error-message {
+  color: #d32f2f;
+  font-size: 14px;
+  padding: 10px;
+  background: #ffebee;
+  border-radius: 4px;
+  text-align: center;
+}
+
+.submit-button {
+  background: linear-gradient(135deg, #20b2aa 0%, #00ced1 100%);
+  color: white;
+  border: none;
+  padding: 14px 24px;
+  font-size: 16px;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transition: transform 0.2s, box-shadow 0.2s;
+  margin-top: 10px;
+  
+  &:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(32, 178, 170, 0.4);
+  }
+  
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+

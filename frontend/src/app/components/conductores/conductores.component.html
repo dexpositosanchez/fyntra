@@ -1,0 +1,226 @@
+<div class="conductores-container">
+  <header class="app-header">
+    <div class="header-left">
+      <div class="logo-section">
+        <img src="/assets/images/Isotipo.png" alt="Fyntra" class="logo-isotipo" />
+      </div>
+      <nav class="main-nav">
+        <a routerLink="/conductores" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">CONDUCTORES</a>
+        <a routerLink="/vehiculos" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">VEHÍCULOS</a>
+        <a routerLink="/rutas" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">RUTAS</a>
+        <a routerLink="/pedidos" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">PEDIDOS</a>
+      </nav>
+    </div>
+    <div class="user-section">
+      <div class="user-menu-container">
+        <button class="user-menu-button" (click)="toggleMenuUsuario()" title="Menú de usuario">
+          <span class="user-icon">👤</span>
+          <span class="user-name">{{ usuario?.nombre || 'Usuario' }}</span>
+          <span class="dropdown-arrow">{{ mostrarMenuUsuario ? '▲' : '▼' }}</span>
+        </button>
+        <div class="user-menu-dropdown" *ngIf="mostrarMenuUsuario">
+          <button class="menu-item" *ngIf="estaEnModuloTransportes()" (click)="cambiarAModuloFincas()">
+            <span class="menu-icon">🏢</span>
+            <span>Módulo Fincas</span>
+          </button>
+          <button class="menu-item" *ngIf="!estaEnModuloTransportes()" (click)="cambiarAModuloTransportes()">
+            <span class="menu-icon">🚚</span>
+            <span>Módulo Transportes</span>
+          </button>
+          <div class="menu-divider" *ngIf="estaEnModuloTransportes() || !estaEnModuloTransportes()"></div>
+          <button class="menu-item logout-item" (click)="logout()">
+            <span class="menu-icon">🚪</span>
+            <span>Salir</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="main-content">
+    <!-- Sección de Conductores -->
+    <div *ngIf="currentRoute.includes('/conductores')">
+      <div class="form-container" *ngIf="mostrarFormulario">
+        <h2 class="form-title">{{ editandoConductor ? 'EDITAR CONDUCTOR' : 'ALTA DE CONDUCTOR' }}</h2>
+        
+        <form (ngSubmit)="onSubmit()" class="conductor-form">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Nombre</label>
+              <input
+                type="text"
+                [(ngModel)]="conductorForm.nombre"
+                name="nombre"
+                placeholder="Ej: Juan"
+                class="form-input"
+                required
+              />
+            </div>
+            <div class="form-group">
+              <label>Apellidos</label>
+              <input
+                type="text"
+                [(ngModel)]="conductorForm.apellidos"
+                name="apellidos"
+                placeholder="Ej: García López"
+                class="form-input"
+              />
+            </div>
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label>DNI</label>
+              <input
+                type="text"
+                [(ngModel)]="conductorForm.dni"
+                name="dni"
+                placeholder="Ej: 12345678A"
+                class="form-input"
+              />
+            </div>
+            <div class="form-group">
+              <label>Teléfono</label>
+              <input
+                type="text"
+                [(ngModel)]="conductorForm.telefono"
+                name="telefono"
+                placeholder="Ej: 600123456"
+                class="form-input"
+              />
+            </div>
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label>Email</label>
+              <input
+                type="email"
+                [(ngModel)]="conductorForm.email"
+                name="email"
+                placeholder="Ej: juan@fyntra.com"
+                class="form-input"
+              />
+            </div>
+            <div class="form-group">
+              <label>Licencia</label>
+              <input
+                type="text"
+                [(ngModel)]="conductorForm.licencia"
+                name="licencia"
+                placeholder="Ej: B1234567"
+                class="form-input"
+                required
+              />
+            </div>
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label>Fecha Caducidad Licencia</label>
+              <input
+                type="date"
+                [(ngModel)]="conductorForm.fecha_caducidad_licencia"
+                name="fecha_caducidad_licencia"
+                class="form-input"
+                required
+              />
+            </div>
+            <div class="form-group">
+              <label>Estado</label>
+              <div class="radio-group">
+                <label class="radio-label">
+                  <input
+                    type="radio"
+                    name="activo"
+                    [value]="true"
+                    [(ngModel)]="conductorForm.activo"
+                    [ngModelOptions]="{standalone: true}"
+                  />
+                  Activo
+                </label>
+                <label class="radio-label">
+                  <input
+                    type="radio"
+                    name="activo"
+                    [value]="false"
+                    [(ngModel)]="conductorForm.activo"
+                    [ngModelOptions]="{standalone: true}"
+                  />
+                  Inactivo
+                </label>
+              </div>
+            </div>
+          </div>
+          
+          <div *ngIf="error" class="error-message">{{ error }}</div>
+          
+          <div class="form-actions">
+            <button type="button" class="cancel-button" (click)="cancelarForm()">Cancelar</button>
+            <button type="submit" class="submit-button" [disabled]="loading">
+              {{ loading ? 'Guardando...' : (editandoConductor ? 'GUARDAR CAMBIOS' : 'DAR DE ALTA') }}
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <div class="list-container" *ngIf="!mostrarFormulario">
+        <div class="list-header">
+          <h2>Conductores</h2>
+          <div class="header-actions">
+            <button 
+              class="filter-button" 
+              [class.active]="mostrarSoloAlertas"
+              (click)="toggleAlertas()"
+              title="Mostrar solo licencias próximas a caducar"
+            >
+              {{ mostrarSoloAlertas ? '📢 Ver Todos' : '⚠️ Ver Alertas' }}
+            </button>
+            <button class="add-button" (click)="mostrarForm()">+ Nuevo Conductor</button>
+          </div>
+        </div>
+        
+        <div *ngIf="loading" class="loading">Cargando...</div>
+        <div *ngIf="error" class="error">{{ error }}</div>
+        
+        <div class="conductores-grid" *ngIf="!loading && !error">
+          <div class="conductor-card" *ngFor="let conductor of conductores" (click)="editarConductor(conductor)">
+            <div class="card-header">
+              <h3>{{ conductor.nombre }} {{ conductor.apellidos }}</h3>
+              <span [class]="'status-badge ' + getEstadoClass(conductor.activo)">
+                {{ getEstadoTexto(conductor.activo) }}
+              </span>
+            </div>
+            <p *ngIf="conductor.dni"><strong>DNI:</strong> {{ conductor.dni }}</p>
+            <p *ngIf="conductor.telefono"><strong>Teléfono:</strong> {{ conductor.telefono }}</p>
+            <p *ngIf="conductor.email"><strong>Email:</strong> {{ conductor.email }}</p>
+            <p><strong>Licencia:</strong> {{ conductor.licencia }}</p>
+            <p><strong>Caducidad:</strong> {{ conductor.fecha_caducidad_licencia | date:'dd/MM/yyyy' }}</p>
+            <div class="licencia-info">
+              <span [class]="'alerta-badge ' + getAlertaClass(conductor.dias_restantes_licencia || 0)">
+                {{ getAlertaTexto(conductor.dias_restantes_licencia || 0) }}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Secciones placeholder para otras rutas -->
+    <div *ngIf="currentRoute.includes('/vehiculos')" class="table-container">
+      <h2 class="table-title">VEHÍCULOS</h2>
+      <p class="placeholder-text">Gestión de vehículos - Próximamente</p>
+    </div>
+
+    <div *ngIf="currentRoute.includes('/rutas')" class="table-container">
+      <h2 class="table-title">RUTAS</h2>
+      <p class="placeholder-text">Gestión de rutas - Próximamente</p>
+    </div>
+
+    <div *ngIf="currentRoute.includes('/pedidos')" class="table-container">
+      <h2 class="table-title">PEDIDOS</h2>
+      <p class="placeholder-text">Gestión de pedidos - Próximamente</p>
+    </div>
+  </main>
+</div>
+
