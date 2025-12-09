@@ -10,6 +10,7 @@ import { ModuloSelectorComponent } from './components/modulo-selector/modulo-sel
 import { IncidenciasComponent } from './components/incidencias/incidencias.component';
 import { VehiculosComponent } from './components/vehiculos/vehiculos.component';
 import { ConductoresComponent } from './components/conductores/conductores.component';
+import { PedidosComponent } from './components/pedidos/pedidos.component';
 import { AppRoutingModule } from './app-routing.module';
 
 @NgModule({
@@ -19,7 +20,8 @@ import { AppRoutingModule } from './app-routing.module';
     ModuloSelectorComponent,
     IncidenciasComponent,
     VehiculosComponent,
-    ConductoresComponent
+    ConductoresComponent,
+    PedidosComponent
   ],
   imports: [
     BrowserModule,

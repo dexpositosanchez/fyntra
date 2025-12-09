@@ -146,5 +146,37 @@ export class ApiService {
       headers: this.getHeaders()
     });
   }
+
+  // Pedidos
+  getPedidos(params?: any): Observable<any> {
+    return this.http.get(`${this.apiUrl}/pedidos/`, {
+      headers: this.getHeaders(),
+      params
+    });
+  }
+
+  getPedido(id: number): Observable<any> {
+    return this.http.get(`${this.apiUrl}/pedidos/${id}`, {
+      headers: this.getHeaders()
+    });
+  }
+
+  createPedido(data: any): Observable<any> {
+    return this.http.post(`${this.apiUrl}/pedidos`, data, {
+      headers: this.getHeaders()
+    });
+  }
+
+  updatePedido(id: number, data: any): Observable<any> {
+    return this.http.put(`${this.apiUrl}/pedidos/${id}`, data, {
+      headers: this.getHeaders()
+    });
+  }
+
+  deletePedido(id: number): Observable<any> {
+    return this.http.delete(`${this.apiUrl}/pedidos/${id}`, {
+      headers: this.getHeaders()
+    });
+  }
 }
 

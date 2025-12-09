@@ -10,6 +10,7 @@ from app.models.propietario import Propietario
 from app.models.proveedor import Proveedor
 from app.models.vehiculo import Vehiculo, EstadoVehiculo, TipoCombustible
 from app.models.conductor import Conductor
+from app.models.pedido import Pedido, EstadoPedido
 from app.core.security import get_password_hash
 
 def init_db():
@@ -145,6 +146,65 @@ def create_initial_data():
             existing = db.query(Conductor).filter(Conductor.licencia == conductor.licencia).first()
             if not existing:
                 db.add(conductor)
+        
+        # Crear pedidos de prueba
+        from datetime import date, timedelta
+        pedidos = [
+            Pedido(
+                origen="Calle Mayor 123, Madrid",
+                destino="Avenida de la Paz 45, Barcelona",
+                cliente="Empresa Logística SL",
+                volumen=15.5,
+                peso=850.0,
+                tipo_mercancia="Electrodomésticos",
+                fecha_entrega_deseada=date.today() + timedelta(days=3),
+                estado=EstadoPedido.PENDIENTE
+            ),
+            Pedido(
+                origen="Polígono Industrial Norte, Valencia",
+                destino="Calle Comercio 78, Sevilla",
+                cliente="Distribuidora Andaluza",
+                volumen=8.2,
+                peso=450.0,
+                tipo_mercancia="Material de oficina",
+                fecha_entrega_deseada=date.today() + timedelta(days=5),
+                estado=EstadoPedido.EN_RUTA
+            ),
+            Pedido(
+                origen="Calle Industria 12, Bilbao",
+                destino="Avenida del Mar 34, Málaga",
+                cliente="Importaciones Mediterráneas",
+                volumen=22.0,
+                peso=1200.0,
+                tipo_mercancia="Muebles",
+                fecha_entrega_deseada=date.today() - timedelta(days=2),
+                estado=EstadoPedido.ENTREGADO
+            ),
+            Pedido(
+                origen="Polígono Sur, Zaragoza",
+                destino="Calle Principal 56, Murcia",
+                cliente="Comercial del Sureste",
+                volumen=5.5,
+                peso=320.0,
+                tipo_mercancia="Textiles",
+                fecha_entrega_deseada=date.today() + timedelta(days=1),
+                estado=EstadoPedido.INCIDENCIA
+            ),
+            Pedido(
+                origen="Calle Transporte 90, Valladolid",
+                destino="Avenida Central 12, Córdoba",
+                cliente="Almacenes del Sur",
+                volumen=18.0,
+                peso=950.0,
+                tipo_mercancia="Alimentación",
+                fecha_entrega_deseada=date.today() + timedelta(days=7),
+                estado=EstadoPedido.CANCELADO
+            ),
+        ]
+        
+        for pedido in pedidos:
+            # No hay campo único para verificar duplicados, así que simplemente añadimos
+            db.add(pedido)
         
         db.commit()
         print("✅ Datos iniciales creados correctamente")
