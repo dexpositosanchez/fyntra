@@ -4,6 +4,7 @@ import { Subscription } from 'rxjs';
 import { filter } from 'rxjs/operators';
 import { ApiService } from '../../services/api.service';
 import { AuthService } from '../../services/auth.service';
+import { HttpErrorResponse } from '@angular/common/http';
 
 @Component({
   selector: 'app-vehiculos',
@@ -171,9 +172,12 @@ export class VehiculosComponent implements OnInit, OnDestroy {
           this.loading = false;
           this.error = '';
         },
-        error: (err) => {
-          this.error = err.error?.detail || 'Error al actualizar vehículo';
+        error: (err: HttpErrorResponse) => {
+          this.error = err.error?.detail || err.error?.message || err.message || 'Error al actualizar vehículo';
           this.loading = false;
+          if (err.status === 401) {
+            this.authService.logout();
+          }
         }
       });
     } else {
@@ -185,9 +189,12 @@ export class VehiculosComponent implements OnInit, OnDestroy {
           this.loading = false;
           this.error = '';
         },
-        error: (err) => {
-          this.error = err.error?.detail || 'Error al crear vehículo';
+        error: (err: HttpErrorResponse) => {
+          this.error = err.error?.detail || err.error?.message || err.message || 'Error al crear vehículo';
           this.loading = false;
+          if (err.status === 401) {
+            this.authService.logout();
+          }
         }
       });
     }

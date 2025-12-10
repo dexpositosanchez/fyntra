@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from app.core.config import settings
-from app.api import auth, incidencias, vehiculos, comunidades, conductores, pedidos
+from app.api import auth, incidencias, vehiculos, comunidades, conductores, pedidos, rutas
 from app.database import engine, Base
 
 # Crear tablas en la base de datos
@@ -30,6 +30,7 @@ app.include_router(vehiculos.router, prefix="/api")
 app.include_router(comunidades.router, prefix="/api")
 app.include_router(conductores.router, prefix="/api")
 app.include_router(pedidos.router, prefix="/api")
+app.include_router(rutas.router, prefix="/api")
 
 @app.get("/")
 async def root():

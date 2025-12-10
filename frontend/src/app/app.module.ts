@@ -11,6 +11,7 @@ import { IncidenciasComponent } from './components/incidencias/incidencias.compo
 import { VehiculosComponent } from './components/vehiculos/vehiculos.component';
 import { ConductoresComponent } from './components/conductores/conductores.component';
 import { PedidosComponent } from './components/pedidos/pedidos.component';
+import { RutasComponent } from './components/rutas/rutas.component';
 import { AppRoutingModule } from './app-routing.module';
 
 @NgModule({
@@ -21,7 +22,8 @@ import { AppRoutingModule } from './app-routing.module';
     IncidenciasComponent,
     VehiculosComponent,
     ConductoresComponent,
-    PedidosComponent
+    PedidosComponent,
+    RutasComponent
   ],
   imports: [
     BrowserModule,

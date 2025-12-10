@@ -178,5 +178,43 @@ export class ApiService {
       headers: this.getHeaders()
     });
   }
-}
+
+  // Rutas
+  getRutas(params?: any): Observable<any> {
+    return this.http.get(`${this.apiUrl}/rutas/`, {
+      headers: this.getHeaders(),
+      params
+    });
+  }
+
+  getRuta(id: number): Observable<any> {
+    return this.http.get(`${this.apiUrl}/rutas/${id}`, {
+      headers: this.getHeaders()
+    });
+  }
+
+  createRuta(data: any): Observable<any> {
+    return this.http.post(`${this.apiUrl}/rutas`, data, {
+      headers: this.getHeaders()
+    });
+  }
+
+  updateRuta(id: number, data: any): Observable<any> {
+    return this.http.put(`${this.apiUrl}/rutas/${id}`, data, {
+      headers: this.getHeaders()
+    });
+  }
+
+          deleteRuta(id: number): Observable<any> {
+            return this.http.delete(`${this.apiUrl}/rutas/${id}`, {
+              headers: this.getHeaders()
+            });
+          }
+
+          updateParadaRuta(rutaId: number, paradaId: number, data: any): Observable<any> {
+            return this.http.put(`${this.apiUrl}/rutas/${rutaId}/paradas/${paradaId}`, data, {
+              headers: this.getHeaders()
+            });
+          }
+        }
 
