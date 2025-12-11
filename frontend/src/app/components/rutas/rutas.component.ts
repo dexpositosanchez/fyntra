@@ -26,6 +26,7 @@ export class RutasComponent implements OnInit, OnDestroy {
     observaciones: '',
     pedidos_ids: []
   };
+  paradasPreview: any[] = [];
   pedidosDisponibles: any[] = [];
   pedidosSeleccionados: any[] = [];
   pedidoSeleccionado: number | null = null;
@@ -102,6 +103,30 @@ export class RutasComponent implements OnInit, OnDestroy {
     });
   }
 
+  eliminarRuta(rutaId: number, event: Event): void {
+    event.stopPropagation(); // Evitar que se active el click en la tarjeta
+    if (!confirm('¿Estás seguro de que deseas eliminar esta ruta? Los pedidos volverán a estado pendiente.')) {
+      return;
+    }
+    
+    this.loading = true;
+    this.apiService.deleteRuta(rutaId).subscribe({
+      next: () => {
+        this.cargarRutas();
+        this.cargarPedidos(); // Recargar pedidos para actualizar disponibilidad
+        this.loading = false;
+        this.error = '';
+      },
+      error: (err: HttpErrorResponse) => {
+        this.error = err.error?.detail || 'Error al eliminar ruta';
+        this.loading = false;
+        if (err.status === 401) {
+          this.authService.logout();
+        }
+      }
+    });
+  }
+
   cargarPedidos(): void {
     this.apiService.getPedidos({ estado: 'pendiente' }).subscribe({
       next: (data) => {
@@ -157,6 +182,7 @@ export class RutasComponent implements OnInit, OnDestroy {
       pedidos_ids: []
     };
     this.pedidosSeleccionados = [];
+    this.paradasPreview = [];
   }
 
   editarRuta(ruta: any): void {
@@ -179,7 +205,42 @@ export class RutasComponent implements OnInit, OnDestroy {
     
     // Extraer IDs únicos de pedidos de las paradas
     const pedidosIds = ruta.paradas ? [...new Set(ruta.paradas.map((p: any) => p.pedido_id))] : [];
-    this.pedidosSeleccionados = this.pedidosDisponibles.filter(p => pedidosIds.includes(p.id));
+    
+    // Construir pedidos desde las paradas (porque pueden estar en estado EN_RUTA y no estar en pedidosDisponibles)
+    const pedidosMap = new Map<number, any>();
+    if (ruta.paradas) {
+      for (const parada of ruta.paradas) {
+        if (parada.pedido_id && !pedidosMap.has(parada.pedido_id)) {
+          // Buscar el pedido en pedidosDisponibles primero
+          let pedido = this.pedidosDisponibles.find(p => p.id === parada.pedido_id);
+          // Si no está disponible, construir desde la parada
+          if (!pedido && parada.pedido) {
+            pedido = {
+              id: parada.pedido_id,
+              cliente: parada.pedido.cliente || 'Cliente desconocido',
+              origen: parada.pedido.origen || parada.direccion,
+              destino: parada.pedido.destino || parada.direccion,
+              peso: 0,
+              volumen: 0
+            };
+          } else if (!pedido) {
+            // Si no hay información del pedido, crear uno básico
+            pedido = {
+              id: parada.pedido_id,
+              cliente: 'Pedido #' + parada.pedido_id,
+              origen: parada.direccion,
+              destino: parada.direccion,
+              peso: 0,
+              volumen: 0
+            };
+          }
+          if (pedido) {
+            pedidosMap.set(parada.pedido_id, pedido);
+          }
+        }
+      }
+    }
+    this.pedidosSeleccionados = Array.from(pedidosMap.values());
     
     // Recuperar fechas/horas de las paradas
     this.pedidosConFechas.clear();
@@ -212,6 +273,7 @@ export class RutasComponent implements OnInit, OnDestroy {
     };
     this.mostrarFechasPedido = false;
     this.pedidoSeleccionado = null;
+    this.actualizarParadasPreview();
   }
 
   cancelarForm(): void {
@@ -250,6 +312,7 @@ export class RutasComponent implements OnInit, OnDestroy {
     this.rutaForm.pedidos_ids = this.rutaForm.pedidos_ids.filter((id: number) => id !== pedidoId);
     this.pedidosSeleccionados = this.pedidosSeleccionados.filter(p => p.id !== pedidoId);
     this.pedidosConFechas.delete(pedidoId);
+    this.actualizarParadasPreview();
   }
 
   calcularPesoTotal(): number {
@@ -261,7 +324,8 @@ export class RutasComponent implements OnInit, OnDestroy {
   }
 
   onAnadirPedido(): void {
-    if (this.pedidoSeleccionado && !this.rutaForm.pedidos_ids.includes(this.pedidoSeleccionado)) {
+    const pedidoId = this.pedidoSeleccionado ? Number(this.pedidoSeleccionado) : null;
+    if (pedidoId && !this.rutaForm.pedidos_ids.includes(pedidoId)) {
       // Mostrar los campos de fecha/hora
       this.mostrarFechasPedido = true;
       this.fechaHoraCarga = '';
@@ -270,15 +334,17 @@ export class RutasComponent implements OnInit, OnDestroy {
   }
 
   confirmarAnadirPedido(): void {
-    if (this.pedidoSeleccionado && !this.rutaForm.pedidos_ids.includes(this.pedidoSeleccionado)) {
+    const pedidoId = this.pedidoSeleccionado ? Number(this.pedidoSeleccionado) : null;
+    if (pedidoId && !this.rutaForm.pedidos_ids.includes(pedidoId)) {
       // Guardar las fechas si están definidas
       if (this.fechaHoraCarga || this.fechaHoraDescarga) {
-        this.pedidosConFechas.set(this.pedidoSeleccionado, {
+        this.pedidosConFechas.set(pedidoId, {
           fechaCarga: this.fechaHoraCarga,
           fechaDescarga: this.fechaHoraDescarga
         });
       }
-      this.agregarPedido(this.pedidoSeleccionado);
+      this.agregarPedido(pedidoId);
+      this.actualizarParadasPreview();
       // Limpiar el desplegable y ocultar los campos de fecha
       this.pedidoSeleccionado = null;
       this.mostrarFechasPedido = false;
@@ -308,6 +374,98 @@ export class RutasComponent implements OnInit, OnDestroy {
     return this.calcularPesoTotal() > this.getCapacidadVehiculo();
   }
 
+  private actualizarParadasPreview(): void {
+    const paradas: any[] = [];
+    let orden = 1;
+    for (const pedido of this.pedidosSeleccionados) {
+      const fechas = this.pedidosConFechas.get(pedido.id);
+      paradas.push({
+        orden: orden++,
+        direccion: pedido.origen,
+        tipo_operacion: 'carga',
+        etiqueta: 'Origen',
+        pedido_id: pedido.id,
+        fecha_hora_llegada: fechas?.fechaCarga || ''
+      });
+      paradas.push({
+        orden: orden++,
+        direccion: pedido.destino,
+        tipo_operacion: 'descarga',
+        etiqueta: 'Destino',
+        pedido_id: pedido.id,
+        fecha_hora_llegada: fechas?.fechaDescarga || ''
+      });
+    }
+    this.paradasPreview = paradas;
+  }
+
+  moverParada(index: number, delta: number): void {
+    const nuevoIndex = index + delta;
+    if (nuevoIndex < 0 || nuevoIndex >= this.paradasPreview.length) return;
+    const copia = [...this.paradasPreview];
+    const [item] = copia.splice(index, 1);
+    copia.splice(nuevoIndex, 0, item);
+    // Reasignar orden secuencial
+    copia.forEach((p, idx) => p.orden = idx + 1);
+    this.paradasPreview = copia;
+  }
+
+  // Drag and Drop
+  draggedIndex: number | null = null;
+
+  onDragStart(event: DragEvent, index: number): void {
+    this.draggedIndex = index;
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData('text/html', index.toString());
+    }
+    if (event.target) {
+      (event.target as HTMLElement).classList.add('dragging');
+    }
+  }
+
+  onDragEnd(event: DragEvent): void {
+    if (event.target) {
+      (event.target as HTMLElement).classList.remove('dragging');
+    }
+    this.draggedIndex = null;
+  }
+
+  onDragOver(event: DragEvent, index: number): void {
+    event.preventDefault();
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = 'move';
+    }
+    if (this.draggedIndex !== null && this.draggedIndex !== index) {
+      const paradas = [...this.paradasPreview];
+      const draggedItem = paradas[this.draggedIndex];
+      paradas.splice(this.draggedIndex, 1);
+      paradas.splice(index, 0, draggedItem);
+      // Actualizar orden
+      paradas.forEach((p, i) => {
+        p.orden = i + 1;
+      });
+      this.paradasPreview = paradas;
+      this.draggedIndex = index;
+    }
+  }
+
+  onDrop(event: DragEvent, index: number): void {
+    event.preventDefault();
+    if (this.draggedIndex !== null && this.draggedIndex !== index) {
+      const paradas = [...this.paradasPreview];
+      const draggedItem = paradas[this.draggedIndex];
+      paradas.splice(this.draggedIndex, 1);
+      paradas.splice(index, 0, draggedItem);
+      // Actualizar orden
+      paradas.forEach((p, i) => {
+        p.orden = i + 1;
+      });
+      this.paradasPreview = paradas;
+    }
+    this.draggedIndex = null;
+  }
+
   contarParadasCarga(paradas: any[]): number {
     if (!paradas) return 0;
     return paradas.filter((p: any) => p.tipo_operacion === 'carga').length;
@@ -328,9 +486,10 @@ export class RutasComponent implements OnInit, OnDestroy {
     const fecha = new Date(fechaHora);
     const day = String(fecha.getDate()).padStart(2, '0');
     const month = String(fecha.getMonth() + 1).padStart(2, '0');
-    const year = fecha.getFullYear();
+    const year = fecha.getFullYear().toString().padStart(4, '0');
     const hours = String(fecha.getHours()).padStart(2, '0');
     const minutes = String(fecha.getMinutes()).padStart(2, '0');
+    // Formato dd/mm/YYYY HH:MM
     return `${day}/${month}/${year} ${hours}:${minutes}`;
   }
 
@@ -493,7 +652,7 @@ export class RutasComponent implements OnInit, OnDestroy {
     if (isNaN(date.getTime())) return 'N/A';
     const day = date.getDate().toString().padStart(2, '0');
     const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    const year = date.getFullYear();
+    const year = date.getFullYear().toString().padStart(4, '0');
     return `${day}/${month}/${year}`;
   }
 

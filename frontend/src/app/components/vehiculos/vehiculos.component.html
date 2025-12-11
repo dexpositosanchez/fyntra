@@ -14,22 +14,22 @@
     <div class="user-section">
       <div class="user-menu-container">
         <button class="user-menu-button" (click)="toggleMenuUsuario()" title="Menú de usuario">
-          <span class="user-icon">👤</span>
+          <span class="user-icon app-icon">person</span>
           <span class="user-name">{{ usuario?.nombre || 'Usuario' }}</span>
           <span class="dropdown-arrow">{{ mostrarMenuUsuario ? '▲' : '▼' }}</span>
         </button>
         <div class="user-menu-dropdown" *ngIf="mostrarMenuUsuario">
           <button class="menu-item" *ngIf="estaEnModuloTransportes()" (click)="cambiarAModuloFincas()">
-            <span class="menu-icon">🏢</span>
+            <span class="menu-icon app-icon">apartment</span>
             <span>Módulo Fincas</span>
           </button>
           <button class="menu-item" *ngIf="!estaEnModuloTransportes()" (click)="cambiarAModuloTransportes()">
-            <span class="menu-icon">🚚</span>
+            <span class="menu-icon app-icon">local_shipping</span>
             <span>Módulo Transportes</span>
           </button>
           <div class="menu-divider" *ngIf="estaEnModuloTransportes() || !estaEnModuloTransportes()"></div>
           <button class="menu-item logout-item" (click)="logout()">
-            <span class="menu-icon">🚪</span>
+            <span class="menu-icon app-icon">logout</span>
             <span>Salir</span>
           </button>
         </div>

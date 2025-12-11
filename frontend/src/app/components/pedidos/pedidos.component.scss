@@ -1,6 +1,6 @@
 .pedidos-container {
   min-height: 100vh;
-  background: #f5f5f5;
+  background: #f2f4f7;
 }
 
 .app-header {
@@ -36,7 +36,7 @@
 }
 
 .nav-link {
-  color: #333;
+  color: #2f343d;
   text-decoration: none;
   font-weight: 500;
   font-size: 14px;
@@ -45,12 +45,12 @@
   transition: color 0.3s, border-color 0.3s;
   
   &:hover {
-    color: #20b2aa;
+    color: #1b9d8a;
   }
   
   &.active {
-    color: #20b2aa;
-    border-bottom-color: #20b2aa;
+    color: #1b9d8a;
+    border-bottom-color: #1b9d8a;
   }
 }
 
@@ -62,7 +62,7 @@
 
 .form-container {
   background: white;
-  border: 2px solid #20b2aa;
+  border: 2px solid #1b9d8a;
   border-radius: 12px;
   padding: 40px;
   max-width: 900px;
@@ -71,7 +71,7 @@
 }
 
 .form-title {
-  color: #20b2aa;
+  color: #1b9d8a;
   font-size: 22px;
   font-weight: 700;
   margin-bottom: 30px;
@@ -99,14 +99,14 @@
 
 .form-group label {
   font-size: 14px;
-  color: #333;
+  color: #2f343d;
   font-weight: 500;
 }
 
 .form-input {
   padding: 10px 0;
   border: none;
-  border-bottom: 2px solid #20b2aa;
+  border-bottom: 2px solid #1b9d8a;
   background: transparent;
   font-size: 16px;
   outline: none;
@@ -114,11 +114,11 @@
   width: 100%;
   
   &:focus {
-    border-bottom-color: #00ced1;
+    border-bottom-color: #18c4ac;
   }
   
   &::placeholder {
-    color: #999;
+    color: #8a94a6;
   }
   
   &[type="number"] {
@@ -148,7 +148,7 @@
 }
 
 .submit-button {
-  background: linear-gradient(135deg, #20b2aa 0%, #00ced1 100%);
+  background: linear-gradient(135deg, #1b9d8a 0%, #18c4ac 100%);
   color: white;
   border: none;
   padding: 14px 28px;
@@ -159,14 +159,17 @@
   text-transform: uppercase;
   letter-spacing: 1px;
   transition: transform 0.2s, box-shadow 0.2s;
-  box-shadow: 0 2px 8px rgba(32, 178, 170, 0.3);
+  box-shadow: 0 2px 6px rgba(27, 157, 138, 0.22);
   
   &:hover:not(:disabled) {
     transform: translateY(-2px);
-    box-shadow: 0 4px 16px rgba(32, 178, 170, 0.5);
+    box-shadow: 0 8px 20px rgba(27, 157, 138, 0.6);
   }
   
   &:disabled {
+    color: #6f7785;
+    box-shadow: none;
+    transform: none;
     opacity: 0.6;
     cursor: not-allowed;
   }
@@ -174,7 +177,7 @@
 
 .cancel-button {
   background: #e0e0e0;
-  color: #333;
+  color: #2f343d;
   border: none;
   padding: 12px 24px;
   font-size: 16px;
@@ -211,14 +214,14 @@
   margin-bottom: 25px;
   
   h2 {
-    color: #333;
+    color: #2f343d;
     font-size: 24px;
     margin: 0;
   }
 }
 
 .add-button {
-  background: #20b2aa;
+  background: #1b9d8a;
   color: white;
   border: none;
   padding: 10px 20px;
@@ -229,7 +232,7 @@
   transition: background 0.2s;
   
   &:hover {
-    background: #00ced1;
+    background: #18c4ac;
   }
 }
 
@@ -254,14 +257,14 @@
   border: 1px solid #e0e0e0;
   
   h3 {
-    color: #20b2aa;
+    color: #1b9d8a;
     font-size: 18px;
     margin: 0 0 15px 0;
   }
   
   p {
     margin: 8px 0;
-    color: #666;
+    color: #5b6270;
     font-size: 14px;
   }
   
@@ -285,7 +288,7 @@
   
   &.pendiente {
     background: #fff3e0;
-    color: #f57c00;
+    color: #e67c2f;
   }
   
   &.en-ruta {
@@ -295,7 +298,7 @@
   
   &.entregado {
     background: #e8f5e9;
-    color: #388e3c;
+    color: #2f7d4c;
   }
   
   &.incidencia {
@@ -304,7 +307,7 @@
   }
   
   &.cancelado {
-    background: #f5f5f5;
+    background: #f2f4f7;
     color: #757575;
   }
 }
@@ -312,7 +315,7 @@
 .loading, .error {
   text-align: center;
   padding: 40px;
-  color: #666;
+  color: #5b6270;
 }
 
 .error {
@@ -334,19 +337,19 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  background: #f5f5f5;
+  background: #f2f4f7;
   border: 1px solid #e0e0e0;
   padding: 8px 16px;
   border-radius: 6px;
   cursor: pointer;
   font-size: 14px;
-  color: #333;
+  color: #2f343d;
   transition: all 0.2s;
   
   &:hover {
     background: #e8f5e9;
-    border-color: #20b2aa;
-    color: #20b2aa;
+    border-color: #1b9d8a;
+    color: #1b9d8a;
   }
   
   .user-icon {
@@ -390,11 +393,11 @@
     text-align: left;
     cursor: pointer;
     font-size: 14px;
-    color: #333;
+    color: #2f343d;
     transition: background 0.2s;
     
     &:hover {
-      background: #f5f5f5;
+      background: #f2f4f7;
     }
     
     .menu-icon {

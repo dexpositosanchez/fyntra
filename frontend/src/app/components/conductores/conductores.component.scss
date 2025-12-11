@@ -1,6 +1,6 @@
 .conductores-container {
   min-height: 100vh;
-  background: #f5f5f5;
+  background: #f2f4f7;
 }
 
 .app-header {
@@ -36,7 +36,7 @@
 }
 
 .nav-link {
-  color: #333;
+  color: #2f343d;
   text-decoration: none;
   font-weight: 500;
   font-size: 14px;
@@ -45,12 +45,12 @@
   transition: color 0.3s, border-color 0.3s;
   
   &:hover {
-    color: #20b2aa;
+    color: #1b9d8a;
   }
   
   &.active {
-    color: #20b2aa;
-    border-bottom-color: #20b2aa;
+    color: #1b9d8a;
+    border-bottom-color: #1b9d8a;
   }
 }
 
@@ -68,19 +68,19 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  background: #f5f5f5;
+  background: #f2f4f7;
   border: 1px solid #e0e0e0;
   padding: 8px 16px;
   border-radius: 6px;
   cursor: pointer;
   font-size: 14px;
-  color: #333;
+  color: #2f343d;
   transition: all 0.2s;
   
   &:hover {
     background: #e8f5e9;
-    border-color: #20b2aa;
-    color: #20b2aa;
+    border-color: #1b9d8a;
+    color: #1b9d8a;
   }
   
   .user-icon {
@@ -124,11 +124,11 @@
     text-align: left;
     cursor: pointer;
     font-size: 14px;
-    color: #333;
+    color: #2f343d;
     transition: background 0.2s;
     
     &:hover {
-      background: #f5f5f5;
+      background: #f2f4f7;
     }
     
     .menu-icon {
@@ -161,7 +161,7 @@
 
 .form-container {
   background: white;
-  border: 2px solid #20b2aa;
+  border: 2px solid #1b9d8a;
   border-radius: 12px;
   padding: 40px;
   max-width: 900px;
@@ -170,7 +170,7 @@
 }
 
 .form-title {
-  color: #20b2aa;
+  color: #1b9d8a;
   font-size: 22px;
   font-weight: 700;
   margin-bottom: 30px;
@@ -196,7 +196,7 @@
   gap: 8px;
   
   label {
-    color: #333;
+    color: #2f343d;
     font-weight: 600;
     font-size: 14px;
   }
@@ -205,7 +205,7 @@
 .form-input {
   padding: 10px 0;
   border: none;
-  border-bottom: 2px solid #20b2aa;
+  border-bottom: 2px solid #1b9d8a;
   background: transparent;
   font-size: 16px;
   outline: none;
@@ -213,11 +213,11 @@
   width: 100%;
   
   &:focus {
-    border-bottom-color: #00ced1;
+    border-bottom-color: #18c4ac;
   }
   
   &::placeholder {
-    color: #999;
+    color: #8a94a6;
   }
   
   &[type="date"] {
@@ -256,7 +256,7 @@
 }
 
 .submit-button {
-  background: linear-gradient(135deg, #20b2aa 0%, #00ced1 100%);
+  background: linear-gradient(135deg, #1b9d8a 0%, #18c4ac 100%);
   color: white;
   border: none;
   padding: 14px 28px;
@@ -270,18 +270,21 @@
   
   &:hover:not(:disabled) {
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(32, 178, 170, 0.4);
+    box-shadow: 0 6px 18px rgba(27, 157, 138, 0.55);
   }
   
   &:disabled {
+    color: #6f7785;
+    box-shadow: none;
+    transform: none;
     opacity: 0.6;
     cursor: not-allowed;
   }
 }
 
 .cancel-button {
-  background: #f5f5f5;
-  color: #666;
+  background: #f2f4f7;
+  color: #5b6270;
   border: 1px solid #ddd;
   padding: 14px 28px;
   font-size: 15px;
@@ -318,7 +321,7 @@
   margin-bottom: 25px;
   
   h2 {
-    color: #333;
+    color: #2f343d;
     font-size: 24px;
     margin: 0;
   }
@@ -332,7 +335,7 @@
 
 .filter-button {
   background: #fff3e0;
-  color: #f57c00;
+  color: #e67c2f;
   border: 1px solid #ffb74d;
   padding: 10px 20px;
   border-radius: 6px;
@@ -353,7 +356,7 @@
 }
 
 .add-button {
-  background: #20b2aa;
+  background: #1b9d8a;
   color: white;
   border: none;
   padding: 10px 20px;
@@ -364,14 +367,14 @@
   transition: background 0.2s;
   
   &:hover {
-    background: #00ced1;
+    background: #18c4ac;
   }
 }
 
 .loading, .error {
   text-align: center;
   padding: 20px;
-  color: #666;
+  color: #5b6270;
 }
 
 .error {
@@ -407,7 +410,7 @@
   }
   
   h3 {
-    color: #20b2aa;
+    color: #1b9d8a;
     font-size: 18px;
     margin: 0;
     flex: 1;
@@ -415,7 +418,7 @@
   
   p {
     margin: 8px 0;
-    color: #666;
+    color: #5b6270;
     font-size: 14px;
   }
 }
@@ -429,7 +432,7 @@
   
   &.activo {
     background: #e8f5e9;
-    color: #388e3c;
+    color: #2f7d4c;
   }
   
   &.inactivo {
@@ -453,12 +456,12 @@
   
   &.ok {
     background: #e8f5e9;
-    color: #388e3c;
+    color: #2f7d4c;
   }
   
   &.alerta {
     background: #fff3e0;
-    color: #f57c00;
+    color: #e67c2f;
   }
   
   &.caducada {
@@ -476,7 +479,7 @@
 }
 
 .table-title {
-  color: #20b2aa;
+  color: #1b9d8a;
   font-size: 18px;
   font-weight: 700;
   margin-bottom: 25px;
@@ -487,7 +490,7 @@
 .placeholder-text {
   text-align: center;
   padding: 60px 20px;
-  color: #999;
+  color: #8a94a6;
   font-size: 16px;
 }
 

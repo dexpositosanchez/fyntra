@@ -1,6 +1,6 @@
 .incidencias-container {
   min-height: 100vh;
-  background: #f5f5f5;
+  background: #f2f4f7;
 }
 
 .app-header {
@@ -36,7 +36,7 @@
 }
 
 .nav-link {
-  color: #333;
+  color: #2f343d;
   text-decoration: none;
   font-weight: 500;
   font-size: 14px;
@@ -45,12 +45,12 @@
   transition: color 0.3s, border-color 0.3s;
   
   &:hover {
-    color: #20b2aa;
+    color: #1b9d8a;
   }
   
   &.active {
-    color: #20b2aa;
-    border-bottom-color: #20b2aa;
+    color: #1b9d8a;
+    border-bottom-color: #1b9d8a;
   }
 }
 
@@ -93,7 +93,7 @@
 }
 
 .table-title {
-  color: #20b2aa;
+  color: #1b9d8a;
   font-size: 18px;
   font-weight: 700;
   margin-bottom: 25px;
@@ -113,7 +113,7 @@
       text-align: left;
       font-weight: 600;
       font-size: 13px;
-      color: #666;
+      color: #5b6270;
       border-bottom: 2px solid #e0e0e0;
       
       .sort-icon {
@@ -137,7 +137,7 @@
     td {
       padding: 15px 12px;
       font-size: 14px;
-      color: #333;
+      color: #2f343d;
     }
   }
 }
@@ -154,17 +154,17 @@
   }
   
   &.prioridad-alta {
-    color: #f57c00;
+    color: #e67c2f;
     background: #fff3e0;
   }
   
   &.prioridad-media {
-    color: #fbc02d;
+    color: #f4c542;
     background: #fffde7;
   }
   
   &.prioridad-baja {
-    color: #388e3c;
+    color: #2f7d4c;
     background: #e8f5e9;
   }
 }
@@ -195,7 +195,7 @@
 .loading, .error {
   text-align: center;
   padding: 40px;
-  color: #666;
+  color: #5b6270;
 }
 
 .error {
@@ -205,7 +205,7 @@
 .placeholder-text {
   text-align: center;
   padding: 60px 20px;
-  color: #999;
+  color: #8a94a6;
   font-size: 16px;
 }
 
@@ -224,19 +224,19 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  background: #f5f5f5;
+  background: #f2f4f7;
   border: 1px solid #e0e0e0;
   padding: 8px 16px;
   border-radius: 6px;
   cursor: pointer;
   font-size: 14px;
-  color: #333;
+  color: #2f343d;
   transition: all 0.2s;
   
   &:hover {
     background: #e8f5e9;
-    border-color: #20b2aa;
-    color: #20b2aa;
+    border-color: #1b9d8a;
+    color: #1b9d8a;
   }
   
   .user-icon {
@@ -280,11 +280,11 @@
     text-align: left;
     cursor: pointer;
     font-size: 14px;
-    color: #333;
+    color: #2f343d;
     transition: background 0.2s;
     
     &:hover {
-      background: #f5f5f5;
+      background: #f2f4f7;
     }
     
     .menu-icon {

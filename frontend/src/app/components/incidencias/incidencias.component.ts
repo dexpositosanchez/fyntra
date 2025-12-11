@@ -126,6 +126,16 @@ export class IncidenciasComponent implements OnInit, OnDestroy {
     console.log('Resolver incidencia:', id);
   }
 
+  formatearFecha(fecha: any): string {
+    if (!fecha) return 'N/A';
+    const date = fecha instanceof Date ? fecha : new Date(fecha);
+    if (isNaN(date.getTime())) return 'N/A';
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const year = date.getFullYear().toString().padStart(4, '0');
+    return `${day}/${month}/${year}`;
+  }
+
   toggleMenuUsuario(): void {
     this.mostrarMenuUsuario = !this.mostrarMenuUsuario;
   }

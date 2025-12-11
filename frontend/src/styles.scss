@@ -1,3 +1,15 @@
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@400;500&display=swap');
+
+/* Iconos */
+.app-icon {
+  font-family: 'Material Symbols Outlined';
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+  line-height: 1;
+}
+
 /* Estilos globales */
 * {
   margin: 0;
@@ -9,8 +21,8 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   font-size: 16px;
   line-height: 1.5;
-  color: #333;
-  background-color: #f5f5f5;
+  color: #2f343d;
+  background-color: #f2f4f7;
 }
 
 /* Utilidades */
@@ -30,11 +42,11 @@ body {
   transition: all 0.3s ease;
 
   &.btn-primary {
-    background-color: #20b2aa;
+    background-color: #1b9d8a;
     color: white;
 
     &:hover {
-      background-color: #00ced1;
+      background-color: #18c4ac;
     }
   }
 }
@@ -45,15 +57,15 @@ body {
 }
 
 .prioridad-alta {
-  color: #f57c00;
+  color: #e67c2f;
 }
 
 .prioridad-media {
-  color: #fbc02d;
+  color: #f4c542;
 }
 
 .prioridad-baja {
-  color: #388e3c;
+  color: #2f7d4c;
 }
 
 
