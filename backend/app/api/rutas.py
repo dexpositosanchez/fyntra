@@ -14,8 +14,8 @@ from app.api.dependencies import get_current_user
 
 router = APIRouter(prefix="/rutas", tags=["rutas"])
 
-def validar_vehiculo(vehiculo_id: int, fecha_inicio: datetime, db: Session, ruta_id_excluir: Optional[int] = None) -> Vehiculo:
-    """Valida que el vehículo esté disponible, activo y tenga capacidad suficiente"""
+def validar_vehiculo(vehiculo_id: int, fecha_inicio: datetime, fecha_fin: datetime, db: Session, ruta_id_excluir: Optional[int] = None) -> Vehiculo:
+    """Valida que el vehículo esté disponible, activo y no tenga otra ruta en el rango de fechas"""
     vehiculo = db.query(Vehiculo).filter(Vehiculo.id == vehiculo_id).first()
     
     if not vehiculo:
@@ -31,14 +31,23 @@ def validar_vehiculo(vehiculo_id: int, fecha_inicio: datetime, db: Session, ruta
             detail=f"El vehículo no está disponible. Estado actual: {vehiculo.estado.value}"
         )
     
-    # Validar que el vehículo no tenga otra ruta en el mismo rango de fechas
-    # Por ahora solo validamos que no haya solapamiento básico
+    # Validar que el vehículo no tenga otra ruta que se solape con el rango de fechas
+    # Un rango se solapa con otro si:
+    # - La nueva ruta empieza antes de que termine la existente Y termina después de que empiece la existente
     query = db.query(Ruta).filter(
         Ruta.vehiculo_id == vehiculo_id,
         Ruta.estado != EstadoRuta.CANCELADA,
+        Ruta.fecha_inicio.isnot(None),
+        Ruta.fecha_fin.isnot(None),
         or_(
+            # Caso 1: La nueva ruta empieza dentro del rango de la existente
             and_(Ruta.fecha_inicio <= fecha_inicio, Ruta.fecha_fin >= fecha_inicio),
-            and_(Ruta.fecha_inicio <= fecha_inicio, Ruta.fecha_fin >= fecha_inicio)
+            # Caso 2: La nueva ruta termina dentro del rango de la existente
+            and_(Ruta.fecha_inicio <= fecha_fin, Ruta.fecha_fin >= fecha_fin),
+            # Caso 3: La nueva ruta contiene completamente a la existente
+            and_(Ruta.fecha_inicio >= fecha_inicio, Ruta.fecha_fin <= fecha_fin),
+            # Caso 4: La existente contiene completamente a la nueva
+            and_(Ruta.fecha_inicio <= fecha_inicio, Ruta.fecha_fin >= fecha_fin)
         )
     )
     if ruta_id_excluir:
@@ -48,13 +57,13 @@ def validar_vehiculo(vehiculo_id: int, fecha_inicio: datetime, db: Session, ruta
     if ruta_existente:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"El vehículo ya tiene una ruta asignada que se solapa con el rango de fechas seleccionado"
+            detail=f"El vehículo ya tiene una ruta asignada del {ruta_existente.fecha_inicio.strftime('%d/%m/%Y %H:%M')} al {ruta_existente.fecha_fin.strftime('%d/%m/%Y %H:%M')} que se solapa con el rango seleccionado"
         )
     
     return vehiculo
 
-def validar_conductor(conductor_id: int, fecha_inicio: datetime, db: Session, ruta_id_excluir: Optional[int] = None) -> Conductor:
-    """Valida que el conductor esté disponible, activo y tenga licencia vigente"""
+def validar_conductor(conductor_id: int, fecha_inicio: datetime, fecha_fin: datetime, db: Session, ruta_id_excluir: Optional[int] = None) -> Conductor:
+    """Valida que el conductor esté disponible, activo, tenga licencia vigente y no tenga otra ruta en el rango de fechas"""
     conductor = db.query(Conductor).filter(Conductor.id == conductor_id).first()
     
     if not conductor:
@@ -79,14 +88,23 @@ def validar_conductor(conductor_id: int, fecha_inicio: datetime, db: Session, ru
             detail=f"La licencia del conductor caducó el {conductor.fecha_caducidad_licencia} (hace {dias_caducada} días). No puede asignarse a una ruta."
         )
     
-    # Validar que el conductor no tenga otra ruta en el mismo rango de fechas
-    # Por ahora solo validamos que no haya solapamiento básico
+    # Validar que el conductor no tenga otra ruta que se solape con el rango de fechas
+    # Un rango se solapa con otro si:
+    # - La nueva ruta empieza antes de que termine la existente Y termina después de que empiece la existente
     query = db.query(Ruta).filter(
         Ruta.conductor_id == conductor_id,
         Ruta.estado != EstadoRuta.CANCELADA,
+        Ruta.fecha_inicio.isnot(None),
+        Ruta.fecha_fin.isnot(None),
         or_(
+            # Caso 1: La nueva ruta empieza dentro del rango de la existente
             and_(Ruta.fecha_inicio <= fecha_inicio, Ruta.fecha_fin >= fecha_inicio),
-            and_(Ruta.fecha_inicio <= fecha_inicio, Ruta.fecha_fin >= fecha_inicio)
+            # Caso 2: La nueva ruta termina dentro del rango de la existente
+            and_(Ruta.fecha_inicio <= fecha_fin, Ruta.fecha_fin >= fecha_fin),
+            # Caso 3: La nueva ruta contiene completamente a la existente
+            and_(Ruta.fecha_inicio >= fecha_inicio, Ruta.fecha_fin <= fecha_fin),
+            # Caso 4: La existente contiene completamente a la nueva
+            and_(Ruta.fecha_inicio <= fecha_inicio, Ruta.fecha_fin >= fecha_fin)
         )
     )
     if ruta_id_excluir:
@@ -96,7 +114,7 @@ def validar_conductor(conductor_id: int, fecha_inicio: datetime, db: Session, ru
     if ruta_existente:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"El conductor ya tiene una ruta asignada que se solapa con el rango de fechas seleccionado"
+            detail=f"El conductor ya tiene una ruta asignada del {ruta_existente.fecha_inicio.strftime('%d/%m/%Y %H:%M')} al {ruta_existente.fecha_fin.strftime('%d/%m/%Y %H:%M')} que se solapa con el rango seleccionado"
         )
     
     return conductor
@@ -422,10 +440,10 @@ async def crear_ruta(
         )
     
     # Validar vehículo
-    vehiculo = validar_vehiculo(ruta_data.vehiculo_id, ruta_data.fecha_inicio, db)
+    vehiculo = validar_vehiculo(ruta_data.vehiculo_id, ruta_data.fecha_inicio, ruta_data.fecha_fin, db)
     
     # Validar conductor
-    conductor = validar_conductor(ruta_data.conductor_id, ruta_data.fecha_inicio, db)
+    conductor = validar_conductor(ruta_data.conductor_id, ruta_data.fecha_inicio, ruta_data.fecha_fin, db)
     
     # Validar pedidos
     if not ruta_data.pedidos_ids:
@@ -634,12 +652,13 @@ async def actualizar_ruta(
     
     # Validar vehículo si se está actualizando
     fecha_inicio_validar = ruta_data.fecha_inicio if ruta_data.fecha_inicio else ruta.fecha_inicio
-    if ruta_data.vehiculo_id and fecha_inicio_validar:
-        validar_vehiculo(ruta_data.vehiculo_id, fecha_inicio_validar, db, ruta_id_excluir=ruta_id)
+    fecha_fin_validar = ruta_data.fecha_fin if ruta_data.fecha_fin else ruta.fecha_fin
+    if ruta_data.vehiculo_id and fecha_inicio_validar and fecha_fin_validar:
+        validar_vehiculo(ruta_data.vehiculo_id, fecha_inicio_validar, fecha_fin_validar, db, ruta_id_excluir=ruta_id)
     
     # Validar conductor si se está actualizando
-    if ruta_data.conductor_id and fecha_inicio_validar:
-        validar_conductor(ruta_data.conductor_id, fecha_inicio_validar, db, ruta_id_excluir=ruta_id)
+    if ruta_data.conductor_id and fecha_inicio_validar and fecha_fin_validar:
+        validar_conductor(ruta_data.conductor_id, fecha_inicio_validar, fecha_fin_validar, db, ruta_id_excluir=ruta_id)
     
     # Actualizar campos
     update_data = ruta_data.model_dump(exclude_unset=True)

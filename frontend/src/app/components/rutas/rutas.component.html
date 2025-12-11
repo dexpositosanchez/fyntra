@@ -7,6 +7,7 @@
       <nav class="main-nav">
         <a routerLink="/conductores" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">CONDUCTORES</a>
         <a routerLink="/vehiculos" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">VEHÍCULOS</a>
+        <a routerLink="/mantenimientos" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">MANTENIMIENTOS</a>
         <a routerLink="/rutas" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">RUTAS</a>
         <a routerLink="/pedidos" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">PEDIDOS</a>
       </nav>
@@ -299,7 +300,6 @@
                 </button>
               </div>
             </div>
-            <p><strong>Fecha:</strong> {{ formatearFecha(ruta.fecha) }}</p>
             <p *ngIf="ruta.fecha_inicio">
               <strong>Salida:</strong> {{ formatearFechaHora(ruta.fecha_inicio) }}
             </p>
