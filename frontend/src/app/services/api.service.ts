@@ -216,5 +216,44 @@ export class ApiService {
               headers: this.getHeaders()
             });
           }
+
+          // Mantenimientos
+          getMantenimientos(params?: any): Observable<any> {
+            return this.http.get(`${this.apiUrl}/mantenimientos/`, {
+              headers: this.getHeaders(),
+              params
+            });
+          }
+
+          getMantenimiento(id: number): Observable<any> {
+            return this.http.get(`${this.apiUrl}/mantenimientos/${id}`, {
+              headers: this.getHeaders()
+            });
+          }
+
+          getAlertasMantenimientos(diasAlerta: number = 30): Observable<any> {
+            return this.http.get(`${this.apiUrl}/mantenimientos/alertas`, {
+              headers: this.getHeaders(),
+              params: { dias_alerta: diasAlerta }
+            });
+          }
+
+          createMantenimiento(data: any): Observable<any> {
+            return this.http.post(`${this.apiUrl}/mantenimientos`, data, {
+              headers: this.getHeaders()
+            });
+          }
+
+          updateMantenimiento(id: number, data: any): Observable<any> {
+            return this.http.put(`${this.apiUrl}/mantenimientos/${id}`, data, {
+              headers: this.getHeaders()
+            });
+          }
+
+          deleteMantenimiento(id: number): Observable<any> {
+            return this.http.delete(`${this.apiUrl}/mantenimientos/${id}`, {
+              headers: this.getHeaders()
+            });
+          }
         }
 

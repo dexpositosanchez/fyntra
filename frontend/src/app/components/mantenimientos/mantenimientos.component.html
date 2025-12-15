@@ -1,0 +1,277 @@
+<div class="mantenimientos-container">
+  <header class="app-header">
+    <div class="header-left">
+      <div class="logo-section">
+        <img src="/assets/images/Isotipo.png" alt="Fyntra" class="logo-isotipo" />
+      </div>
+      <nav class="main-nav">
+        <a routerLink="/conductores" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">CONDUCTORES</a>
+        <a routerLink="/vehiculos" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">VEHÍCULOS</a>
+        <a routerLink="/mantenimientos" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">MANTENIMIENTOS</a>
+        <a routerLink="/rutas" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">RUTAS</a>
+        <a routerLink="/pedidos" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">PEDIDOS</a>
+      </nav>
+    </div>
+    <div class="user-section">
+      <div class="user-menu-container">
+        <button class="user-menu-button" (click)="toggleMenuUsuario()" title="Menú de usuario">
+          <span class="user-icon app-icon">person</span>
+          <span class="user-name">{{ usuario?.nombre || 'Usuario' }}</span>
+          <span class="dropdown-arrow">{{ mostrarMenuUsuario ? '▲' : '▼' }}</span>
+        </button>
+        <div class="user-menu-dropdown" *ngIf="mostrarMenuUsuario">
+          <button class="menu-item" *ngIf="estaEnModuloTransportes()" (click)="cambiarAModuloFincas()">
+            <span class="menu-icon app-icon">apartment</span>
+            <span>Módulo Fincas</span>
+          </button>
+          <button class="menu-item" *ngIf="!estaEnModuloTransportes()" (click)="cambiarAModuloTransportes()">
+            <span class="menu-icon app-icon">local_shipping</span>
+            <span>Módulo Transportes</span>
+          </button>
+          <div class="menu-divider" *ngIf="estaEnModuloTransportes() || !estaEnModuloTransportes()"></div>
+          <button class="menu-item logout-item" (click)="logout()">
+            <span class="menu-icon app-icon">logout</span>
+            <span>Salir</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="main-content">
+    <div *ngIf="currentRoute.includes('/mantenimientos')">
+      <div class="form-container" *ngIf="mostrarFormulario">
+        <h2 class="form-title">{{ editandoMantenimiento ? 'EDITAR MANTENIMIENTO' : 'NUEVO MANTENIMIENTO' }}</h2>
+        
+        <form #mantenimientoFormRef="ngForm" (ngSubmit)="onSubmit()" class="mantenimiento-form">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Vehículo *</label>
+              <select
+                [(ngModel)]="mantenimientoForm.vehiculo_id"
+                name="vehiculo_id"
+                class="form-input"
+                required
+              >
+                <option value="">Seleccionar vehículo...</option>
+                <option *ngFor="let vehiculo of vehiculos" [value]="vehiculo.id">
+                  {{ vehiculo.nombre }} - {{ vehiculo.matricula }}
+                </option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Tipo de Mantenimiento *</label>
+              <select
+                [(ngModel)]="mantenimientoForm.tipo"
+                name="tipo"
+                class="form-input"
+                required
+              >
+                <option value="">Seleccionar tipo...</option>
+                <option *ngFor="let tipo of tipos" [value]="tipo.value">
+                  {{ tipo.label }}
+                </option>
+              </select>
+            </div>
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label>Descripción</label>
+              <input
+                type="text"
+                [(ngModel)]="mantenimientoForm.descripcion"
+                name="descripcion"
+                placeholder="Ej: Revisión general, cambio de filtros..."
+                class="form-input"
+              />
+            </div>
+            <div class="form-group">
+              <label>Fecha Programada *</label>
+              <input
+                type="datetime-local"
+                lang="es-ES"
+                [(ngModel)]="mantenimientoForm.fecha_programada"
+                name="fecha_programada"
+                class="form-input"
+                required
+              />
+            </div>
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label>Fecha de Asistencia</label>
+              <input
+                type="datetime-local"
+                lang="es-ES"
+                [(ngModel)]="mantenimientoForm.fecha_inicio"
+                name="fecha_inicio"
+                class="form-input"
+                title="Fecha en que se lleva el vehículo al taller/proveedor"
+              />
+              <small class="form-help">Fecha en que se lleva el vehículo al taller</small>
+            </div>
+            <div class="form-group">
+              <label>Fecha de Caducidad</label>
+              <input
+                type="datetime-local"
+                lang="es-ES"
+                [(ngModel)]="mantenimientoForm.fecha_proximo_mantenimiento"
+                name="fecha_proximo_mantenimiento"
+                class="form-input"
+                title="Fecha de caducidad del mantenimiento (usada para alertas)"
+              />
+              <small class="form-help">Fecha de caducidad (se usará para generar alertas)</small>
+            </div>
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label>Fecha de Fin</label>
+              <input
+                type="datetime-local"
+                lang="es-ES"
+                [(ngModel)]="mantenimientoForm.fecha_fin"
+                name="fecha_fin"
+                class="form-input"
+                title="Fecha de finalización del mantenimiento"
+              />
+            </div>
+            <div class="form-group">
+              <!-- Espacio vacío para mantener el layout -->
+            </div>
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label>Estado</label>
+              <select
+                [(ngModel)]="mantenimientoForm.estado"
+                name="estado"
+                class="form-input"
+              >
+                <option *ngFor="let estado of estados" [value]="estado.value">
+                  {{ estado.label }}
+                </option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Proveedor/Taller</label>
+              <input
+                type="text"
+                [(ngModel)]="mantenimientoForm.proveedor"
+                name="proveedor"
+                placeholder="Ej: Taller ABC"
+                class="form-input"
+              />
+            </div>
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label>Coste (€)</label>
+              <input
+                type="number"
+                [(ngModel)]="mantenimientoForm.coste"
+                name="coste"
+                placeholder="0.00"
+                class="form-input"
+                min="0"
+                step="0.01"
+              />
+            </div>
+            <div class="form-group">
+              <label>Kilometraje</label>
+              <input
+                type="number"
+                [(ngModel)]="mantenimientoForm.kilometraje"
+                name="kilometraje"
+                placeholder="0"
+                class="form-input"
+                min="0"
+              />
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label>Observaciones</label>
+            <textarea
+              [(ngModel)]="mantenimientoForm.observaciones"
+              name="observaciones"
+              placeholder="Observaciones adicionales..."
+              class="form-input"
+              rows="4"
+            ></textarea>
+          </div>
+          
+          <div *ngIf="error" class="error-message">{{ error }}</div>
+          
+          <div class="form-actions">
+            <button type="button" class="cancel-button" (click)="cancelarForm()">Cancelar</button>
+            <button type="submit" class="submit-button" [disabled]="loading">
+              {{ loading ? 'Guardando...' : (editandoMantenimiento ? 'GUARDAR CAMBIOS' : 'CREAR MANTENIMIENTO') }}
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <div class="list-container" *ngIf="!mostrarFormulario">
+        <div class="list-header">
+          <h2>Mantenimientos</h2>
+          <div class="list-actions">
+            <button class="filter-button alertas-button" (click)="toggleAlertas()" [class.active]="mostrarSoloAlertas" [class.has-alerts]="numeroAlertas > 0">
+              <span class="alertas-icon-wrapper">
+                <span class="app-icon">{{ mostrarSoloAlertas ? 'notifications_off' : 'notifications' }}</span>
+                <span class="alertas-text">{{ mostrarSoloAlertas ? 'Ver Todos' : 'Ver Alertas' }}</span>
+                <span class="alertas-badge" *ngIf="numeroAlertas > 0">{{ numeroAlertas }}</span>
+              </span>
+            </button>
+            <button class="add-button" (click)="mostrarForm()">+ Nuevo Mantenimiento</button>
+          </div>
+        </div>
+        
+        <div *ngIf="loading" class="loading">Cargando...</div>
+        <div *ngIf="error" class="error">{{ error }}</div>
+        
+        <div *ngIf="!loading && !error && mostrarSoloAlertas && mantenimientos.length === 0" class="no-alertas">
+          <p>⚠️ No hay mantenimientos con alertas en este momento.</p>
+          <p class="no-alertas-subtitle">
+            Las alertas aparecen cuando un mantenimiento tiene una <strong>fecha de caducidad</strong> configurada y está próximo a vencer (menos de 30 días) o ya está vencido.
+          </p>
+          <p class="no-alertas-subtitle">
+            Para que un mantenimiento tenga alertas, debe tener configurada la <strong>Fecha de Caducidad</strong> (fecha_proximo_mantenimiento).
+          </p>
+        </div>
+        
+        <div class="mantenimientos-grid" *ngIf="!loading && !error && mantenimientos.length > 0">
+          <div class="mantenimiento-card" *ngFor="let mantenimiento of mantenimientos" (click)="editarMantenimiento(mantenimiento)">
+            <div class="mantenimiento-header">
+              <h3>{{ getTipoTexto(mantenimiento.tipo) }}</h3>
+              <span [class]="'status-badge ' + getEstadoClass(mantenimiento.estado)">
+                {{ getEstadoTexto(mantenimiento.estado) }}
+              </span>
+            </div>
+            <p *ngIf="mantenimiento.vehiculo"><strong>Vehículo:</strong> {{ mantenimiento.vehiculo.nombre }} ({{ mantenimiento.vehiculo.matricula }})</p>
+            <p *ngIf="mantenimiento.descripcion"><strong>Descripción:</strong> {{ mantenimiento.descripcion }}</p>
+            <p><strong>📅 Fecha Programada:</strong> {{ formatearFechaHora(mantenimiento.fecha_programada) }}</p>
+            <p *ngIf="mantenimiento.fecha_inicio"><strong>🔧 Fecha de Asistencia:</strong> {{ formatearFechaHora(mantenimiento.fecha_inicio) }}</p>
+            <p *ngIf="mantenimiento.fecha_proximo_mantenimiento" [class.alerta-caducidad]="esProximoAVencer(mantenimiento)">
+              <strong>⚠️ Fecha de Caducidad:</strong> {{ formatearFechaHora(mantenimiento.fecha_proximo_mantenimiento) }}
+              <span *ngIf="calcularDiasRestantes(mantenimiento) !== null" class="dias-restantes">
+                ({{ calcularDiasRestantes(mantenimiento) }} días restantes)
+              </span>
+              <span *ngIf="esProximoAVencer(mantenimiento)" class="badge-alerta">¡Próximo a vencer!</span>
+            </p>
+            <p *ngIf="mantenimiento.fecha_fin"><strong>✅ Fecha de Fin:</strong> {{ formatearFechaHora(mantenimiento.fecha_fin) }}</p>
+            <p *ngIf="mantenimiento.proveedor"><strong>Proveedor:</strong> {{ mantenimiento.proveedor }}</p>
+            <p *ngIf="mantenimiento.coste"><strong>Coste:</strong> {{ mantenimiento.coste }} €</p>
+            <p *ngIf="mantenimiento.kilometraje"><strong>Kilometraje:</strong> {{ mantenimiento.kilometraje }} km</p>
+            <p *ngIf="mantenimiento.observaciones" class="observaciones">{{ mantenimiento.observaciones }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+

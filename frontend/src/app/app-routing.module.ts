@@ -7,6 +7,7 @@ import { VehiculosComponent } from './components/vehiculos/vehiculos.component';
 import { ConductoresComponent } from './components/conductores/conductores.component';
 import { PedidosComponent } from './components/pedidos/pedidos.component';
 import { RutasComponent } from './components/rutas/rutas.component';
+import { MantenimientosComponent } from './components/mantenimientos/mantenimientos.component';
 import { AuthGuard } from './guards/auth.guard';
 
 const routes: Routes = [
@@ -20,6 +21,8 @@ const routes: Routes = [
   { path: 'comunidades', component: IncidenciasComponent, canActivate: [AuthGuard] },
   { path: 'proveedores', component: IncidenciasComponent, canActivate: [AuthGuard] },
   { path: 'conductores', component: ConductoresComponent, canActivate: [AuthGuard] },
+  { path: 'vehiculos', component: VehiculosComponent, canActivate: [AuthGuard] },
+  { path: 'mantenimientos', component: MantenimientosComponent, canActivate: [AuthGuard] },
   { path: 'rutas', component: RutasComponent, canActivate: [AuthGuard] },
   { path: 'pedidos', component: PedidosComponent, canActivate: [AuthGuard] },
   { path: '**', redirectTo: '/login' }
