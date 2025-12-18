@@ -525,13 +525,17 @@ textarea.form-input {
 }
 
 .history-btn {
-  .historial-count {
-    font-size: 11px;
-    background: #1b9d8a;
-    color: white;
-    padding: 2px 6px;
-    border-radius: 10px;
-  }
+  color: #666;
+}
+
+.count-badge {
+  font-size: 11px;
+  background: #1b9d8a;
+  color: white;
+  padding: 2px 6px;
+  border-radius: 10px;
+  min-width: 18px;
+  text-align: center;
 }
 
 .delete-btn {
@@ -674,5 +678,544 @@ textarea.form-input {
   border: 1px solid #ddd;
   border-radius: 6px;
   font-size: 14px;
+}
+
+// Botón de actuaciones
+.actuaciones-btn {
+  color: #666;
+}
+
+// Vista de gestión para proveedores (formulario completo)
+.proveedor-gestion {
+  .incidencia-detalle {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 10px;
+    margin-bottom: 24px;
+    
+    h3 {
+      margin: 0 0 10px 0;
+      color: #2f343d;
+    }
+    
+    .descripcion {
+      color: #666;
+      margin: 0 0 16px 0;
+      line-height: 1.5;
+    }
+    
+    .info-badges {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    
+    .ubicacion {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #666;
+      margin: 0;
+      font-size: 14px;
+      
+      .app-icon {
+        color: #1b9d8a;
+        font-size: 18px;
+      }
+    }
+  }
+  
+  .estado-section {
+    margin-bottom: 24px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid #eee;
+    
+    h4 {
+      margin: 0 0 16px 0;
+      color: #2f343d;
+      font-size: 16px;
+    }
+    
+    .estado-buttons {
+      display: flex;
+      gap: 12px;
+    }
+    
+    .estado-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 20px;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+      
+      .app-icon { font-size: 20px; }
+      
+      &.en-progreso {
+        background: #e8f5e9;
+        color: #388e3c;
+        &:hover { background: #c8e6c9; }
+      }
+      
+      &.resuelta {
+        background: #f3e5f5;
+        color: #7b1fa2;
+        &:hover { background: #e1bee7; }
+      }
+    }
+  }
+  
+  .actuaciones-section-form {
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      
+      h4 {
+        margin: 0;
+        color: #2f343d;
+        font-size: 16px;
+      }
+    }
+    
+    .add-actuacion-btn {
+      padding: 10px 16px;
+      border: 2px dashed #1b9d8a;
+      border-radius: 8px;
+      background: white;
+      color: #1b9d8a;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      
+      &:hover {
+        background: #e8f5e9;
+        border-style: solid;
+      }
+    }
+  }
+  
+  .actuacion-form-inline {
+    background: #f0f7f5;
+    padding: 20px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    border: 1px solid #1b9d8a33;
+  }
+  
+  .actuaciones-lista {
+    .actuacion-card {
+      background: white;
+      border: 1px solid #e0e0e0;
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 12px;
+      
+      .actuacion-header {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        margin-bottom: 10px;
+        
+        .actuacion-fecha {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          font-size: 13px;
+          color: #666;
+          
+          .app-icon { font-size: 16px; }
+        }
+        
+        .actuacion-coste {
+          font-weight: 700;
+          color: #1b9d8a;
+          font-size: 15px;
+        }
+        
+        .delete-btn-small {
+          margin-left: auto;
+          padding: 6px;
+          border: none;
+          background: none;
+          color: #999;
+          cursor: pointer;
+          border-radius: 4px;
+          
+          &:hover { 
+            color: #d32f2f; 
+            background: #ffebee;
+          }
+          
+          .app-icon { font-size: 18px; }
+        }
+      }
+      
+      .actuacion-descripcion {
+        margin: 0;
+        color: #2f343d;
+        line-height: 1.6;
+      }
+    }
+  }
+  
+  .empty-actuaciones {
+    text-align: center;
+    padding: 40px 20px;
+    color: #666;
+    background: #fafafa;
+    border-radius: 10px;
+    border: 2px dashed #ddd;
+    
+    .app-icon {
+      font-size: 40px;
+      color: #ccc;
+      display: block;
+      margin-bottom: 12px;
+    }
+    
+    p { 
+      margin: 0 0 6px 0; 
+      font-weight: 500;
+    }
+    
+    small { color: #999; }
+  }
+}
+
+// Botón de historial en vista proveedor
+.history-button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  background: white;
+  color: #666;
+  cursor: pointer;
+  
+  .app-icon { font-size: 18px; }
+  
+  &:hover {
+    background: #f5f5f5;
+    color: #2f343d;
+  }
+}
+
+// Modal de actuaciones para admin/propietario
+.actuaciones-modal {
+  max-width: 550px;
+  
+  .modal-incidencia-titulo {
+    font-weight: 600;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #eee;
+    color: #2f343d;
+  }
+  
+  .actuaciones-list-modal {
+    .actuacion-item-modal {
+      background: #f8f9fa;
+      padding: 14px;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      
+      .actuacion-header-modal {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+        
+        .actuacion-fecha-modal {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          font-size: 13px;
+          color: #666;
+          
+          .app-icon { font-size: 16px; }
+        }
+        
+        .actuacion-coste-modal {
+          font-weight: 700;
+          color: #1b9d8a;
+        }
+      }
+      
+      .actuacion-descripcion-modal {
+        margin: 0 0 8px 0;
+        color: #2f343d;
+        line-height: 1.5;
+      }
+      
+      .actuacion-proveedor-modal {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+        color: #888;
+        
+        .app-icon { font-size: 14px; }
+      }
+    }
+  }
+  
+  .empty-actuaciones-modal {
+    text-align: center;
+    padding: 40px 20px;
+    color: #666;
+    
+    .app-icon {
+      font-size: 40px;
+      color: #ccc;
+      display: block;
+      margin-bottom: 12px;
+    }
+    
+    p { margin: 0; }
+  }
+}
+
+// Estilos antiguos del modal (mantener por compatibilidad)
+.actuaciones-modal-old {
+  max-width: 600px;
+  
+  .incidencia-info {
+    background: #f8f9fa;
+    padding: 16px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    
+    h4 {
+      margin: 0 0 8px 0;
+      color: #2f343d;
+    }
+    
+    .descripcion {
+      color: #666;
+      font-size: 14px;
+      margin: 0 0 12px 0;
+    }
+    
+    .info-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    
+    .ubicacion {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      color: #666;
+      margin: 8px 0 0 0;
+      
+      .app-icon { font-size: 16px; color: #1b9d8a; }
+    }
+  }
+  
+  .estado-actions {
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #eee;
+    
+    h5 {
+      margin: 0 0 12px 0;
+      color: #666;
+      font-size: 13px;
+    }
+    
+    .estado-buttons {
+      display: flex;
+      gap: 10px;
+    }
+    
+    .estado-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 16px;
+      border: none;
+      border-radius: 6px;
+      font-weight: 500;
+      cursor: pointer;
+      
+      .app-icon { font-size: 18px; }
+      
+      &.en-progreso {
+        background: #e8f5e9;
+        color: #388e3c;
+        &:hover { background: #c8e6c9; }
+      }
+      
+      &.resuelta {
+        background: #f3e5f5;
+        color: #7b1fa2;
+        &:hover { background: #e1bee7; }
+      }
+    }
+  }
+  
+  .actuaciones-section {
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      
+      h5 {
+        margin: 0;
+        color: #2f343d;
+      }
+    }
+    
+    .add-actuacion-btn {
+      padding: 8px 14px;
+      border: 1px dashed #1b9d8a;
+      border-radius: 6px;
+      background: white;
+      color: #1b9d8a;
+      font-weight: 500;
+      cursor: pointer;
+      
+      &:hover {
+        background: #e8f5e9;
+      }
+    }
+  }
+  
+  .actuacion-form {
+    background: #f8f9fa;
+    padding: 16px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    
+    .form-group {
+      margin-bottom: 12px;
+      
+      label {
+        display: block;
+        font-size: 13px;
+        color: #666;
+        margin-bottom: 6px;
+      }
+      
+      textarea, input {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        font-size: 14px;
+        
+        &:focus {
+          outline: none;
+          border-color: #1b9d8a;
+        }
+      }
+      
+      textarea {
+        resize: vertical;
+        min-height: 80px;
+      }
+    }
+    
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    
+    .form-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 12px;
+      
+      .cancel-btn {
+        padding: 8px 16px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        background: white;
+        cursor: pointer;
+        
+        &:hover { background: #f5f5f5; }
+      }
+      
+      .save-btn {
+        padding: 8px 16px;
+        border: none;
+        border-radius: 6px;
+        background: #1b9d8a;
+        color: white;
+        font-weight: 500;
+        cursor: pointer;
+        
+        &:hover { background: #158a79; }
+        &:disabled { opacity: 0.5; cursor: not-allowed; }
+      }
+    }
+  }
+  
+  .actuaciones-list {
+    .actuacion-item {
+      background: white;
+      border: 1px solid #eee;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 10px;
+      
+      .actuacion-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+        
+        .actuacion-fecha {
+          font-size: 12px;
+          color: #666;
+        }
+        
+        .actuacion-coste {
+          font-weight: 600;
+          color: #1b9d8a;
+        }
+        
+        .delete-actuacion {
+          padding: 4px;
+          border: none;
+          background: none;
+          color: #999;
+          cursor: pointer;
+          
+          &:hover { color: #d32f2f; }
+          .app-icon { font-size: 16px; }
+        }
+      }
+      
+      .actuacion-descripcion {
+        margin: 0;
+        color: #2f343d;
+        font-size: 14px;
+        line-height: 1.5;
+      }
+    }
+  }
+  
+  .empty-actuaciones {
+    text-align: center;
+    padding: 30px 20px;
+    color: #666;
+    
+    p { margin: 0 0 6px 0; }
+    small { color: #999; }
+  }
 }
 

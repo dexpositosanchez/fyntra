@@ -28,6 +28,16 @@ export class IncidenciasComponent implements OnInit, OnDestroy {
   mostrarHistorial: boolean = false;
   usuario: any = null;
   esPropietario: boolean = false;
+  esProveedor: boolean = false;
+  mostrarActuaciones: boolean = false;
+  mostrarActuacionesModal: boolean = false;
+  actuaciones: any[] = [];
+  mostrarFormActuacion: boolean = false;
+  actuacionForm: any = {
+    descripcion: '',
+    fecha: '',
+    coste: null
+  };
   private routerSubscription?: Subscription;
 
   incidenciaForm: any = {
@@ -65,8 +75,12 @@ export class IncidenciasComponent implements OnInit, OnDestroy {
     this.currentRoute = this.router.url;
     this.usuario = this.authService.getUsuario();
     this.esPropietario = this.usuario?.rol === 'propietario';
-    this.cargarInmuebles();
-    if (!this.esPropietario) {
+    this.esProveedor = this.usuario?.rol === 'proveedor';
+    
+    if (!this.esProveedor) {
+      this.cargarInmuebles();
+    }
+    if (!this.esPropietario && !this.esProveedor) {
       this.cargarProveedores();
     }
     this.actualizarVista();
@@ -109,7 +123,13 @@ export class IncidenciasComponent implements OnInit, OnDestroy {
 
   cargarIncidencias(): void {
     this.loading = true;
-    this.apiService.getIncidenciasSinResolver().subscribe({
+    
+    // Proveedores usan endpoint diferente
+    const observable = this.esProveedor 
+      ? this.apiService.getMisIncidencias()
+      : this.apiService.getIncidenciasSinResolver();
+    
+    observable.subscribe({
       next: (data) => {
         this.incidencias = data;
         this.loading = false;
@@ -117,34 +137,7 @@ export class IncidenciasComponent implements OnInit, OnDestroy {
       error: (err) => {
         this.error = 'Error al cargar incidencias';
         this.loading = false;
-        // Datos de prueba si no hay conexión
-        this.incidencias = [
-          {
-            id: 1,
-            prioridad: 'urgente',
-            fecha_alta: new Date('2025-11-02'),
-            titulo: 'Avería en fontanería'
-          },
-          {
-            id: 2,
-            prioridad: 'alta',
-            fecha_alta: new Date('2025-11-02'),
-            titulo: 'Problema eléctrico'
-          },
-          {
-            id: 3,
-            prioridad: 'media',
-            fecha_alta: new Date('2025-11-02'),
-            titulo: 'Reparación de persiana'
-          },
-          {
-            id: 4,
-            prioridad: 'baja',
-            fecha_alta: new Date('2025-11-02'),
-            titulo: 'Limpieza de fachada'
-          }
-        ];
-        this.loading = false;
+        this.incidencias = [];
       }
     });
   }
@@ -324,5 +317,98 @@ export class IncidenciasComponent implements OnInit, OnDestroy {
   logout(): void {
     this.mostrarMenuUsuario = false;
     this.authService.logout();
+  }
+
+  // Métodos para proveedores y actuaciones
+  verActuaciones(incidencia: any, event?: Event): void {
+    if (event) event.stopPropagation();
+    this.incidenciaSeleccionada = incidencia;
+    
+    if (this.esProveedor) {
+      // Proveedores: vista completa de gestión
+      this.mostrarActuaciones = true;
+    } else {
+      // Admin/Propietario: modal de solo lectura
+      this.mostrarActuacionesModal = true;
+    }
+    this.cargarActuaciones(incidencia.id);
+  }
+
+  cargarActuaciones(incidenciaId: number): void {
+    this.apiService.getActuacionesIncidencia(incidenciaId).subscribe({
+      next: (data) => this.actuaciones = data,
+      error: () => this.actuaciones = []
+    });
+  }
+
+  cerrarActuaciones(): void {
+    this.mostrarActuaciones = false;
+    this.mostrarActuacionesModal = false;
+    this.incidenciaSeleccionada = null;
+    this.actuaciones = [];
+    this.mostrarFormActuacion = false;
+  }
+
+  mostrarFormularioActuacion(): void {
+    this.mostrarFormActuacion = true;
+    this.actuacionForm = {
+      descripcion: '',
+      fecha: new Date().toISOString().split('T')[0],
+      coste: null
+    };
+  }
+
+  cancelarFormActuacion(): void {
+    this.mostrarFormActuacion = false;
+  }
+
+  guardarActuacion(): void {
+    if (!this.incidenciaSeleccionada) return;
+    
+    const data = {
+      incidencia_id: this.incidenciaSeleccionada.id,
+      descripcion: this.actuacionForm.descripcion,
+      fecha: new Date(this.actuacionForm.fecha).toISOString(),
+      coste: this.actuacionForm.coste || null
+    };
+
+    this.apiService.createActuacion(data).subscribe({
+      next: () => {
+        this.cargarActuaciones(this.incidenciaSeleccionada.id);
+        this.cancelarFormActuacion();
+        this.cargarIncidencias(); // Actualizar lista
+      },
+      error: (err) => this.error = err.error?.detail || 'Error al crear actuación'
+    });
+  }
+
+  cambiarEstadoProveedor(nuevoEstado: string): void {
+    if (!this.incidenciaSeleccionada) return;
+    
+    this.apiService.cambiarEstadoIncidenciaProveedor(
+      this.incidenciaSeleccionada.id, 
+      nuevoEstado
+    ).subscribe({
+      next: () => {
+        this.incidenciaSeleccionada.estado = nuevoEstado;
+        this.cargarIncidencias();
+      },
+      error: (err) => this.error = err.error?.detail || 'Error al cambiar estado'
+    });
+  }
+
+  estadosProveedor = [
+    { value: 'en_progreso', label: 'En Progreso' },
+    { value: 'resuelta', label: 'Resuelta' }
+  ];
+
+  eliminarActuacion(actuacion: any, event: Event): void {
+    event.stopPropagation();
+    if (confirm('¿Eliminar esta actuación?')) {
+      this.apiService.deleteActuacion(actuacion.id).subscribe({
+        next: () => this.cargarActuaciones(this.incidenciaSeleccionada.id),
+        error: (err) => this.error = err.error?.detail || 'Error al eliminar'
+      });
+    }
   }
 }

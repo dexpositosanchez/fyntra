@@ -5,12 +5,16 @@
         <img src="/assets/images/Isotipo.png" alt="Fyntra" class="logo-isotipo" />
       </div>
       <nav class="main-nav">
-        <a routerLink="/incidencias" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">INCIDENCIAS</a>
-        <a routerLink="/inmuebles" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">{{ esPropietario ? 'MIS INMUEBLES' : 'INMUEBLES' }}</a>
-        <ng-container *ngIf="!esPropietario">
-          <a routerLink="/comunidades" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">COMUNIDADES</a>
-          <a routerLink="/propietarios" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">PROPIETARIOS</a>
-          <a routerLink="/proveedores" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">PROVEEDORES</a>
+        <a routerLink="/incidencias" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">
+          {{ esProveedor ? 'MIS INCIDENCIAS' : 'INCIDENCIAS' }}
+        </a>
+        <ng-container *ngIf="!esProveedor">
+          <a routerLink="/inmuebles" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">{{ esPropietario ? 'MIS INMUEBLES' : 'INMUEBLES' }}</a>
+          <ng-container *ngIf="!esPropietario">
+            <a routerLink="/comunidades" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">COMUNIDADES</a>
+            <a routerLink="/propietarios" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">PROPIETARIOS</a>
+            <a routerLink="/proveedores" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">PROVEEDORES</a>
+          </ng-container>
         </ng-container>
       </nav>
     </div>
@@ -22,7 +26,7 @@
           <span class="dropdown-arrow">{{ mostrarMenuUsuario ? '▲' : '▼' }}</span>
         </button>
         <div class="user-menu-dropdown" *ngIf="mostrarMenuUsuario">
-          <ng-container *ngIf="!esPropietario">
+          <ng-container *ngIf="!esPropietario && !esProveedor">
             <button class="menu-item" *ngIf="estaEnModuloTransportes()" (click)="cambiarAModuloFincas()">
               <span class="menu-icon app-icon">apartment</span>
               <span>Módulo Fincas</span>
@@ -43,8 +47,118 @@
   </header>
 
   <main class="main-content">
+    <!-- Vista de gestión de incidencia para proveedores -->
+    <div class="form-container proveedor-gestion" *ngIf="esProveedor && mostrarActuaciones && incidenciaSeleccionada">
+      <div class="form-header">
+        <h2>Gestión de Incidencia</h2>
+        <button class="close-button" (click)="cerrarActuaciones()">×</button>
+      </div>
+      
+      <!-- Info de la incidencia -->
+      <div class="incidencia-detalle">
+        <h3>{{ incidenciaSeleccionada.titulo }}</h3>
+        <p class="descripcion" *ngIf="incidenciaSeleccionada.descripcion">{{ incidenciaSeleccionada.descripcion }}</p>
+        <div class="info-badges">
+          <span [class]="'estado-badge ' + getEstadoClass(incidenciaSeleccionada.estado)">
+            {{ getEstadoLabel(incidenciaSeleccionada.estado) }}
+          </span>
+          <span [class]="'prioridad-badge ' + getPrioridadClass(incidenciaSeleccionada.prioridad)">
+            {{ getPrioridadTexto(incidenciaSeleccionada.prioridad) }}
+          </span>
+        </div>
+        <p class="ubicacion" *ngIf="incidenciaSeleccionada.inmueble">
+          <span class="app-icon">location_on</span>
+          {{ incidenciaSeleccionada.inmueble?.referencia }} - {{ incidenciaSeleccionada.inmueble?.direccion }}
+        </p>
+      </div>
+
+      <!-- Cambiar estado -->
+      <div class="estado-section" *ngIf="incidenciaSeleccionada.estado !== 'cerrada'">
+        <div class="form-group">
+          <label>Estado de la incidencia</label>
+          <select class="form-input" [ngModel]="incidenciaSeleccionada.estado" 
+                  (ngModelChange)="cambiarEstadoProveedor($event)">
+            <option value="asignada" [disabled]="incidenciaSeleccionada.estado !== 'asignada'">Asignada</option>
+            <option value="en_progreso">En Progreso</option>
+            <option value="resuelta">Resuelta</option>
+            <option value="cerrada">Cerrada (sin solución)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Sección de actuaciones -->
+      <div class="actuaciones-section-form">
+        <div class="section-header">
+          <h4>Actuaciones realizadas</h4>
+          <button class="add-actuacion-btn" (click)="mostrarFormularioActuacion()" *ngIf="!mostrarFormActuacion">
+            + Nueva Actuación
+          </button>
+        </div>
+
+        <!-- Formulario nueva actuación -->
+        <div class="actuacion-form-inline" *ngIf="mostrarFormActuacion">
+          <div class="form-group">
+            <label>Descripción del trabajo realizado *</label>
+            <textarea [(ngModel)]="actuacionForm.descripcion" rows="3" class="form-input"
+                      placeholder="Describa detalladamente el trabajo realizado..." required></textarea>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Fecha de realización *</label>
+              <input type="date" [(ngModel)]="actuacionForm.fecha" class="form-input" required>
+            </div>
+            <div class="form-group">
+              <label>Coste (€)</label>
+              <input type="number" [(ngModel)]="actuacionForm.coste" step="0.01" min="0" 
+                     class="form-input" placeholder="0.00">
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="button" class="cancel-button" (click)="cancelarFormActuacion()">Cancelar</button>
+            <button type="button" class="submit-button" (click)="guardarActuacion()" 
+                    [disabled]="!actuacionForm.descripcion || !actuacionForm.fecha">
+              GUARDAR ACTUACIÓN
+            </button>
+          </div>
+        </div>
+
+        <!-- Lista de actuaciones -->
+        <div class="actuaciones-lista" *ngIf="actuaciones.length > 0">
+          <div class="actuacion-card" *ngFor="let act of actuaciones">
+            <div class="actuacion-header">
+              <span class="actuacion-fecha">
+                <span class="app-icon">calendar_today</span>
+                {{ formatearFecha(act.fecha) }}
+              </span>
+              <span class="actuacion-coste" *ngIf="act.coste">{{ act.coste | number:'1.2-2' }} €</span>
+              <button class="delete-btn-small" (click)="eliminarActuacion(act, $event)" title="Eliminar">
+                <span class="app-icon">delete</span>
+              </button>
+            </div>
+            <p class="actuacion-descripcion">{{ act.descripcion }}</p>
+          </div>
+        </div>
+        
+        <div class="empty-actuaciones" *ngIf="actuaciones.length === 0 && !mostrarFormActuacion">
+          <span class="app-icon">build</span>
+          <p>No hay actuaciones registradas</p>
+          <small>Añada una actuación para documentar el trabajo realizado</small>
+        </div>
+      </div>
+
+      <div *ngIf="error" class="error-message">{{ error }}</div>
+      
+      <div class="form-actions">
+        <button type="button" class="cancel-button" (click)="cerrarActuaciones()">Volver a la lista</button>
+        <button type="button" class="history-button" (click)="verHistorial(incidenciaSeleccionada, $event)" 
+                *ngIf="incidenciaSeleccionada?.historial?.length > 0">
+          <span class="app-icon">history</span> Ver historial ({{ incidenciaSeleccionada?.historial?.length }})
+        </button>
+      </div>
+    </div>
+
     <!-- Formulario de Incidencia -->
-    <div class="form-container" *ngIf="mostrarFormulario">
+    <div class="form-container" *ngIf="mostrarFormulario && !esProveedor">
       <div class="form-header">
         <h2>{{ editandoIncidencia ? 'Editar Incidencia' : 'Nueva Incidencia' }}</h2>
         <button class="close-button" (click)="cancelarForm()">×</button>
@@ -113,10 +227,10 @@
     </div>
 
     <!-- Lista de Incidencias -->
-    <div *ngIf="!mostrarFormulario && currentRoute.includes('/incidencias')">
+    <div *ngIf="!mostrarFormulario && !mostrarActuaciones && currentRoute.includes('/incidencias')">
       <div class="list-header">
-        <h2>{{ esPropietario ? 'Mis Incidencias' : 'Incidencias' }}</h2>
-        <div class="header-actions">
+        <h2>{{ esProveedor ? 'Mis Incidencias Asignadas' : (esPropietario ? 'Mis Incidencias' : 'Incidencias') }}</h2>
+        <div class="header-actions" *ngIf="!esProveedor">
           <button class="add-button" (click)="mostrarForm()">+ Nueva Incidencia</button>
         </div>
       </div>
@@ -142,7 +256,8 @@
       <div *ngIf="error && !mostrarFormulario" class="error">{{ error }}</div>
       
       <div class="incidencias-grid" *ngIf="!loading">
-        <div class="incidencia-card" *ngFor="let incidencia of incidencias" (click)="editarIncidencia(incidencia)">
+        <div class="incidencia-card" *ngFor="let incidencia of incidencias" 
+             (click)="esProveedor ? verActuaciones(incidencia, $event) : editarIncidencia(incidencia)">
           <div class="card-header">
             <span [class]="'prioridad-badge ' + getPrioridadClass(incidencia.prioridad)">
               {{ getPrioridadTexto(incidencia.prioridad) }}
@@ -154,18 +269,26 @@
           <h3 class="incidencia-titulo">{{ incidencia.titulo }}</h3>
           <p class="incidencia-inmueble" *ngIf="incidencia.inmueble">
             <span class="app-icon">home</span>
-            {{ incidencia.inmueble.referencia }}
+            {{ incidencia.inmueble.referencia }} - {{ incidencia.inmueble.direccion }}
           </p>
           <p class="incidencia-fecha">
             <span class="app-icon">calendar_today</span>
             {{ formatearFecha(incidencia.fecha_alta) }}
           </p>
           <div class="card-actions">
-            <button class="action-btn history-btn" (click)="verHistorial(incidencia, $event)" title="Ver historial" *ngIf="incidencia.historial?.length > 0">
+            <!-- Historial para todos -->
+            <button class="action-btn history-btn" (click)="verHistorial(incidencia, $event)" title="Ver historial">
               <span class="app-icon">history</span>
-              <span class="historial-count">{{ incidencia.historial.length }}</span>
+              <span class="count-badge" *ngIf="incidencia.historial?.length">{{ incidencia.historial.length }}</span>
             </button>
-            <button class="action-btn delete-btn" *ngIf="!esPropietario" (click)="eliminarIncidencia(incidencia, $event)" title="Eliminar">
+            <!-- Actuaciones para todos -->
+            <button class="action-btn actuaciones-btn" 
+                    (click)="verActuaciones(incidencia, $event)" title="Ver actuaciones">
+              <span class="app-icon">build</span>
+              <span class="count-badge" *ngIf="incidencia.actuaciones_count">{{ incidencia.actuaciones_count }}</span>
+            </button>
+            <!-- Eliminar solo para admin -->
+            <button class="action-btn delete-btn" *ngIf="!esPropietario && !esProveedor" (click)="eliminarIncidencia(incidencia, $event)" title="Eliminar">
               <span class="app-icon">delete</span>
             </button>
           </div>
@@ -173,12 +296,46 @@
         
         <div class="empty-state" *ngIf="incidencias.length === 0">
           <span class="app-icon empty-icon">inbox</span>
-          <p>No hay incidencias {{ esPropietario ? 'registradas' : 'sin resolver' }}</p>
-          <button class="add-button" (click)="mostrarForm()">Crear primera incidencia</button>
+          <p>{{ esProveedor ? 'No tiene incidencias asignadas' : (esPropietario ? 'No hay incidencias registradas' : 'No hay incidencias sin resolver') }}</p>
+          <button class="add-button" *ngIf="!esProveedor" (click)="mostrarForm()">Crear primera incidencia</button>
         </div>
       </div>
     </div>
   </main>
+</div>
+
+<!-- Modal Actuaciones (para admin/propietario) -->
+<div class="modal-overlay" *ngIf="mostrarActuacionesModal" (click)="cerrarActuaciones()">
+  <div class="modal-content actuaciones-modal" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>Actuaciones de la incidencia</h3>
+      <button class="close-button" (click)="cerrarActuaciones()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-incidencia-titulo">{{ incidenciaSeleccionada?.titulo }}</div>
+      
+      <div class="actuaciones-list-modal" *ngIf="actuaciones.length > 0">
+        <div class="actuacion-item-modal" *ngFor="let act of actuaciones">
+          <div class="actuacion-header-modal">
+            <span class="actuacion-fecha-modal">
+              <span class="app-icon">calendar_today</span>
+              {{ formatearFecha(act.fecha) }}
+            </span>
+            <span class="actuacion-coste-modal" *ngIf="act.coste">{{ act.coste | number:'1.2-2' }} €</span>
+          </div>
+          <p class="actuacion-descripcion-modal">{{ act.descripcion }}</p>
+          <div class="actuacion-proveedor-modal" *ngIf="act.proveedor">
+            <span class="app-icon">person</span> {{ act.proveedor.nombre }}
+          </div>
+        </div>
+      </div>
+      
+      <div class="empty-actuaciones-modal" *ngIf="actuaciones.length === 0">
+        <span class="app-icon">build</span>
+        <p>No hay actuaciones registradas</p>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- Modal Historial -->
@@ -208,3 +365,4 @@
     </div>
   </div>
 </div>
+

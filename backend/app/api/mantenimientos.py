@@ -99,105 +99,86 @@ async def listar_mantenimientos(
     current_user: Usuario = Depends(get_current_user)
 ):
     """Listar todos los mantenimientos con filtros opcionales"""
-    try:
-        if current_user.rol not in ["super_admin", "admin_transportes"]:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="No tiene permisos para ver mantenimientos"
-            )
-        
-        query = db.query(Mantenimiento).options(joinedload(Mantenimiento.vehiculo))
-        
-        if vehiculo_id:
-            query = query.filter(Mantenimiento.vehiculo_id == vehiculo_id)
-        if tipo:
-            query = query.filter(Mantenimiento.tipo == tipo)
-        if estado:
-            query = query.filter(Mantenimiento.estado == estado)
-        
-        mantenimientos = query.order_by(Mantenimiento.fecha_programada.asc()).offset(skip).limit(limit).all()
-        resultados = []
-        
-        # Crear fecha actual con timezone para comparar correctamente con fechas de la BD
-        hoy = datetime.now(timezone.utc)
-        for mantenimiento in mantenimientos:
-            # Verificar si está vencido basándose en fecha_proximo_mantenimiento
-            fecha_control = mantenimiento.fecha_proximo_mantenimiento or mantenimiento.fecha_programada
-            if mantenimiento.estado == EstadoMantenimiento.PROGRAMADO and fecha_control:
-                # Asegurarse de que ambas fechas tengan la misma zona horaria para comparar
-                fecha_control_tz = fecha_control
-                if fecha_control.tzinfo is None:
-                    # Si la fecha no tiene timezone, asumir UTC
-                    fecha_control_tz = fecha_control.replace(tzinfo=timezone.utc)
-                elif hoy.tzinfo is None:
-                    # Si hoy no tiene timezone, usar el timezone de fecha_control
-                    hoy = datetime.now(fecha_control.tzinfo)
-                
-                if fecha_control_tz < hoy:
-                    # Actualizar estado a vencido si no se ha completado
-                    mantenimiento.estado = EstadoMantenimiento.VENCIDO
-                    db.commit()
-                    db.refresh(mantenimiento)
+    if current_user.rol not in ["super_admin", "admin_transportes"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tiene permisos para ver mantenimientos"
+        )
+    
+    query = db.query(Mantenimiento).options(joinedload(Mantenimiento.vehiculo))
+    
+    if vehiculo_id:
+        query = query.filter(Mantenimiento.vehiculo_id == vehiculo_id)
+    if tipo:
+        query = query.filter(Mantenimiento.tipo == tipo)
+    if estado:
+        query = query.filter(Mantenimiento.estado == estado)
+    
+    mantenimientos = query.order_by(Mantenimiento.fecha_programada.asc()).offset(skip).limit(limit).all()
+    resultados = []
+    
+    # Crear fecha actual con timezone para comparar correctamente con fechas de la BD
+    hoy = datetime.now(timezone.utc)
+    for mantenimiento in mantenimientos:
+        # Verificar si está vencido basándose en fecha_proximo_mantenimiento
+        fecha_control = mantenimiento.fecha_proximo_mantenimiento or mantenimiento.fecha_programada
+        if mantenimiento.estado == EstadoMantenimiento.PROGRAMADO and fecha_control:
+            # Asegurarse de que ambas fechas tengan la misma zona horaria para comparar
+            fecha_control_tz = fecha_control
+            if fecha_control.tzinfo is None:
+                # Si la fecha no tiene timezone, asumir UTC
+                fecha_control_tz = fecha_control.replace(tzinfo=timezone.utc)
+            elif hoy.tzinfo is None:
+                # Si hoy no tiene timezone, usar el timezone de fecha_control
+                hoy = datetime.now(fecha_control.tzinfo)
             
-            # Filtrar por próximos a vencer (usa fecha_proximo_mantenimiento)
-            if proximos_vencer:
-                if not mantenimiento_proximo_vencer(mantenimiento.fecha_proximo_mantenimiento):
-                    continue
-            
-            # Filtrar por vencidos
-            if vencidos:
-                if mantenimiento.estado != EstadoMantenimiento.VENCIDO:
-                    continue
-            
-            # Construir respuesta con información del vehículo
-            try:
-                mantenimiento_dict = {
-                    "id": mantenimiento.id,
-                    "vehiculo_id": mantenimiento.vehiculo_id,
-                    "tipo": mantenimiento.tipo,
-                    "descripcion": mantenimiento.descripcion,
-                    "fecha_programada": mantenimiento.fecha_programada,
-                    "fecha_inicio": mantenimiento.fecha_inicio,
-                    "fecha_fin": mantenimiento.fecha_fin,
-                    "observaciones": mantenimiento.observaciones,
-                    "coste": mantenimiento.coste,
-                    "kilometraje": mantenimiento.kilometraje,
-                    "proveedor": mantenimiento.proveedor,
-                    "estado": mantenimiento.estado,
-                    "creado_en": mantenimiento.creado_en,
-                    "fecha_proximo_mantenimiento": mantenimiento.fecha_proximo_mantenimiento
-                }
-                # Asegurarse de que el vehículo siempre esté presente (None si no existe)
-                if mantenimiento.vehiculo:
-                    mantenimiento_dict["vehiculo"] = {
-                        "id": mantenimiento.vehiculo.id,
-                        "nombre": mantenimiento.vehiculo.nombre,
-                        "matricula": mantenimiento.vehiculo.matricula,
-                        "marca": mantenimiento.vehiculo.marca,
-                        "modelo": mantenimiento.vehiculo.modelo
-                    }
-                else:
-                    mantenimiento_dict["vehiculo"] = None
-                resultados.append(MantenimientoResponse(**mantenimiento_dict))
-            except Exception as e:
-                import traceback
-                print(f"Error al construir respuesta de mantenimiento {mantenimiento.id}: {str(e)}")
-                print(traceback.format_exc())
-                # Continuar con el siguiente mantenimiento en lugar de fallar completamente
+            if fecha_control_tz < hoy:
+                # Actualizar estado a vencido si no se ha completado
+                mantenimiento.estado = EstadoMantenimiento.VENCIDO
+                db.commit()
+                db.refresh(mantenimiento)
+        
+        # Filtrar por próximos a vencer (usa fecha_proximo_mantenimiento)
+        if proximos_vencer:
+            if not mantenimiento_proximo_vencer(mantenimiento.fecha_proximo_mantenimiento):
                 continue
         
-        return resultados
-    except HTTPException:
-        raise
-    except Exception as e:
-        import traceback
-        print(f"Error al listar mantenimientos: {str(e)}")
-        print(traceback.format_exc())
-        db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error al listar mantenimientos: {str(e)}"
-        )
+        # Filtrar por vencidos
+        if vencidos:
+            if mantenimiento.estado != EstadoMantenimiento.VENCIDO:
+                continue
+        
+        # Construir respuesta con información del vehículo
+        mantenimiento_dict = {
+            "id": mantenimiento.id,
+            "vehiculo_id": mantenimiento.vehiculo_id,
+            "tipo": mantenimiento.tipo,
+            "descripcion": mantenimiento.descripcion,
+            "fecha_programada": mantenimiento.fecha_programada,
+            "fecha_inicio": mantenimiento.fecha_inicio,
+            "fecha_fin": mantenimiento.fecha_fin,
+            "observaciones": mantenimiento.observaciones,
+            "coste": mantenimiento.coste,
+            "kilometraje": mantenimiento.kilometraje,
+            "proveedor": mantenimiento.proveedor,
+            "estado": mantenimiento.estado,
+            "creado_en": mantenimiento.creado_en,
+            "fecha_proximo_mantenimiento": mantenimiento.fecha_proximo_mantenimiento
+        }
+        # Asegurarse de que el vehículo siempre esté presente (None si no existe)
+        if mantenimiento.vehiculo:
+            mantenimiento_dict["vehiculo"] = {
+                "id": mantenimiento.vehiculo.id,
+                "nombre": mantenimiento.vehiculo.nombre,
+                "matricula": mantenimiento.vehiculo.matricula,
+                "marca": mantenimiento.vehiculo.marca,
+                "modelo": mantenimiento.vehiculo.modelo
+            }
+        else:
+            mantenimiento_dict["vehiculo"] = None
+        resultados.append(MantenimientoResponse(**mantenimiento_dict))
+    
+    return resultados
 
 @router.get("/alertas", response_model=List[MantenimientoResponse])
 async def obtener_alertas_mantenimientos(
@@ -250,7 +231,7 @@ async def obtener_alertas_mantenimientos(
         # Calcular días restantes usando SOLO la fecha de caducidad
         dias_restantes = calcular_dias_restantes(fecha_caducidad)
         print(f"[ALERTAS] Mantenimiento {mantenimiento.id}: días_restantes hasta caducidad={dias_restantes}")
-        
+    
         # Verificar si está próximo a vencer usando la función helper
         # La función verifica si está entre 0 y dias_alerta días
         if mantenimiento_proximo_vencer(fecha_caducidad, dias_alerta):

@@ -37,7 +37,7 @@ class Incidencia(Base):
     # Relaciones
     inmueble = relationship("Inmueble", back_populates="incidencias")
     creador = relationship("Usuario", back_populates="incidencias_creadas", foreign_keys=[creador_usuario_id])
-    proveedor = relationship("Proveedor", foreign_keys=[proveedor_id])
+    proveedor = relationship("Proveedor", foreign_keys=[proveedor_id], overlaps="incidencias_asignadas")
     actuaciones = relationship("Actuacion", back_populates="incidencia", cascade="all, delete-orphan")
     documentos = relationship("Documento", back_populates="incidencia", cascade="all, delete-orphan")
 

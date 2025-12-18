@@ -11,6 +11,7 @@ import { MantenimientosComponent } from './components/mantenimientos/mantenimien
 import { ComunidadesComponent } from './components/comunidades/comunidades.component';
 import { InmueblesComponent } from './components/inmuebles/inmuebles.component';
 import { PropietariosComponent } from './components/propietarios/propietarios.component';
+import { ProveedoresComponent } from './components/proveedores/proveedores.component';
 import { AuthGuard } from './guards/auth.guard';
 import { AdminFincasGuard } from './guards/admin-fincas.guard';
 
@@ -22,7 +23,7 @@ const routes: Routes = [
   { path: 'comunidades', component: ComunidadesComponent, canActivate: [AdminFincasGuard] },
   { path: 'inmuebles', component: InmueblesComponent, canActivate: [AuthGuard] },
   { path: 'propietarios', component: PropietariosComponent, canActivate: [AdminFincasGuard] },
-  { path: 'proveedores', component: IncidenciasComponent, canActivate: [AdminFincasGuard] },
+  { path: 'proveedores', component: ProveedoresComponent, canActivate: [AdminFincasGuard] },
   { path: 'vehiculos', component: VehiculosComponent, canActivate: [AuthGuard] },
   { path: 'conductores', component: ConductoresComponent, canActivate: [AuthGuard] },
   { path: 'mantenimientos', component: MantenimientosComponent, canActivate: [AuthGuard] },

@@ -1,0 +1,359 @@
+.proveedores-container {
+  min-height: 100vh;
+  background: #f2f4f7;
+}
+
+.app-header {
+  background: white;
+  padding: 15px 30px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 40px;
+}
+
+.logo-isotipo {
+  height: 50px;
+}
+
+.main-nav {
+  display: flex;
+  gap: 30px;
+}
+
+.nav-link {
+  color: #2f343d;
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 14px;
+  padding: 8px 0;
+  border-bottom: 2px solid transparent;
+  
+  &:hover, &.active {
+    color: #1b9d8a;
+    border-bottom-color: #1b9d8a;
+  }
+}
+
+.user-menu-container {
+  position: relative;
+}
+
+.user-menu-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border: 1px solid #e0e0e0;
+  border-radius: 20px;
+  background: white;
+  cursor: pointer;
+}
+
+.user-menu-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  min-width: 200px;
+  z-index: 1000;
+  
+  .menu-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 12px 16px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    
+    &:hover { background: #f2f4f7; }
+    &.logout-item { color: #d32f2f; }
+  }
+  
+  .menu-divider {
+    height: 1px;
+    background: #e0e0e0;
+  }
+}
+
+.main-content {
+  padding: 20px;
+}
+
+.form-container {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.form-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  
+  h2 { margin: 0; }
+  
+  .close-button {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+  }
+}
+
+.form-group {
+  margin-bottom: 16px;
+  
+  label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 500;
+  }
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.form-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  
+  &:focus {
+    outline: none;
+    border-color: #1b9d8a;
+  }
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.cancel-button {
+  padding: 10px 20px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  background: white;
+  cursor: pointer;
+}
+
+.submit-button {
+  padding: 10px 24px;
+  border: none;
+  border-radius: 6px;
+  background: #1b9d8a;
+  color: white;
+  font-weight: 500;
+  cursor: pointer;
+  
+  &:disabled { opacity: 0.6; }
+}
+
+.error-message {
+  color: #d32f2f;
+  background: #ffebee;
+  padding: 10px;
+  border-radius: 6px;
+}
+
+.list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  
+  h2 { margin: 0; }
+}
+
+.add-button {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  background: #1b9d8a;
+  color: white;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.filters-section {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  
+  label { font-size: 12px; color: #666; }
+}
+
+.filter-input {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+}
+
+.proveedores-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+.proveedor-card {
+  background: white;
+  border-radius: 10px;
+  padding: 16px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  }
+  
+  &.inactivo {
+    opacity: 0.7;
+    background: #f9f9f9;
+  }
+  
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  
+  .proveedor-nombre {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0 0 8px 0;
+  }
+  
+  .proveedor-contacto {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: #666;
+    margin: 4px 0;
+    
+    .app-icon { font-size: 16px; }
+  }
+  
+  .card-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #eee;
+  }
+}
+
+.especialidad-badge {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  background: #e3f2fd;
+  color: #1976d2;
+}
+
+.estado-badge {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  
+  &.activo { background: #e8f5e9; color: #388e3c; }
+  &.inactivo { background: #ffebee; color: #d32f2f; }
+}
+
+.action-btn {
+  padding: 6px 10px;
+  border: none;
+  border-radius: 6px;
+  background: #f5f5f5;
+  cursor: pointer;
+  
+  &:hover { background: #e0e0e0; }
+  .app-icon { font-size: 16px; }
+}
+
+.toggle-btn .app-icon { color: #1b9d8a; }
+.delete-btn { color: #d32f2f; &:hover { background: #ffebee; } }
+
+.empty-state {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 60px 20px;
+  color: #666;
+  
+  .empty-icon { font-size: 48px; color: #ccc; display: block; margin-bottom: 16px; }
+}
+
+.loading, .error {
+  text-align: center;
+  padding: 20px;
+}
+
+.error { color: #d32f2f; }
+
+// Sección de crear usuario
+.usuario-section {
+  margin-top: 20px;
+  padding: 16px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px dashed #dee2e6;
+}
+
+.checkbox-group {
+  margin-bottom: 12px;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-weight: 500;
+  
+  input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: #1b9d8a;
+  }
+}
+
+.help-text {
+  display: block;
+  margin-top: 6px;
+  margin-left: 28px;
+  font-size: 12px;
+  color: #666;
+}
+
+

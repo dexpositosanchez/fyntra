@@ -375,5 +375,46 @@ export class ApiService {
               headers: this.getHeaders()
             });
           }
+
+          // Actuaciones (para proveedores)
+          getMisIncidencias(params?: any): Observable<any> {
+            return this.http.get(`${this.apiUrl}/actuaciones/mis-incidencias`, {
+              headers: this.getHeaders(),
+              params
+            });
+          }
+
+          getActuacionesIncidencia(incidenciaId: number): Observable<any> {
+            return this.http.get(`${this.apiUrl}/actuaciones/incidencia/${incidenciaId}`, {
+              headers: this.getHeaders()
+            });
+          }
+
+          createActuacion(data: any): Observable<any> {
+            return this.http.post(`${this.apiUrl}/actuaciones`, data, {
+              headers: this.getHeaders()
+            });
+          }
+
+          updateActuacion(id: number, data: any): Observable<any> {
+            return this.http.put(`${this.apiUrl}/actuaciones/${id}`, data, {
+              headers: this.getHeaders()
+            });
+          }
+
+          deleteActuacion(id: number): Observable<any> {
+            return this.http.delete(`${this.apiUrl}/actuaciones/${id}`, {
+              headers: this.getHeaders()
+            });
+          }
+
+          cambiarEstadoIncidenciaProveedor(incidenciaId: number, estado: string, comentario?: string): Observable<any> {
+            const params: any = { nuevo_estado: estado };
+            if (comentario) params.comentario = comentario;
+            return this.http.put(`${this.apiUrl}/actuaciones/incidencia/${incidenciaId}/estado`, null, {
+              headers: this.getHeaders(),
+              params
+            });
+          }
         }
 

@@ -51,6 +51,7 @@ class IncidenciaResponse(IncidenciaBase):
     creado_en: datetime
     inmueble: Optional[InmuebleSimple] = None
     historial: List[HistorialIncidenciaResponse] = []
+    actuaciones_count: int = 0
     
     class Config:
         from_attributes = True

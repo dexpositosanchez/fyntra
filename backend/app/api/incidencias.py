@@ -27,7 +27,7 @@ def registrar_cambio_estado(db: Session, incidencia_id: int, usuario_id: int,
     db.add(historial)
 
 def incidencia_to_response(incidencia: Incidencia, db: Session) -> dict:
-    """Convierte una incidencia a dict con historial"""
+    """Convierte una incidencia a dict con historial y actuaciones_count"""
     historial = []
     for h in incidencia.historial:
         usuario = db.query(Usuario).filter(Usuario.id == h.usuario_id).first()
@@ -39,6 +39,10 @@ def incidencia_to_response(incidencia: Incidencia, db: Session) -> dict:
             "fecha": h.fecha,
             "usuario_nombre": usuario.nombre if usuario else None
         })
+    
+    # Contar actuaciones
+    from app.models.actuacion import Actuacion
+    actuaciones_count = db.query(Actuacion).filter(Actuacion.incidencia_id == incidencia.id).count()
     
     return {
         "id": incidencia.id,
@@ -54,7 +58,8 @@ def incidencia_to_response(incidencia: Incidencia, db: Session) -> dict:
         "version": incidencia.version,
         "creado_en": incidencia.creado_en,
         "inmueble": incidencia.inmueble,
-        "historial": historial
+        "historial": historial,
+        "actuaciones_count": actuaciones_count
     }
 
 def get_inmuebles_propietario(db: Session, usuario_id: int) -> List[int]:
@@ -78,13 +83,22 @@ async def listar_incidencias(
         joinedload(Incidencia.historial)
     )
     
-    # Filtros según rol - propietarios solo ven incidencias de sus inmuebles
+    # Filtros según rol
     if current_user.rol == "propietario":
+        # Propietarios solo ven incidencias de sus inmuebles
         inmueble_ids = get_inmuebles_propietario(db, current_user.id)
         if inmueble_ids:
             query = query.filter(Incidencia.inmueble_id.in_(inmueble_ids))
         else:
             return []  # Sin inmuebles, sin incidencias
+    elif current_user.rol == "proveedor":
+        # Proveedores solo ven incidencias asignadas a ellos
+        from app.models.proveedor import Proveedor
+        proveedor = db.query(Proveedor).filter(Proveedor.usuario_id == current_user.id).first()
+        if proveedor:
+            query = query.filter(Incidencia.proveedor_id == proveedor.id)
+        else:
+            return []  # Sin proveedor asociado, sin incidencias
     
     if estado:
         query = query.filter(Incidencia.estado == estado)
@@ -105,11 +119,18 @@ async def listar_incidencias_sin_resolver(
         joinedload(Incidencia.historial)
     ).filter(Incidencia.estado != EstadoIncidencia.CERRADA)
     
-    # Propietarios solo ven sus incidencias
+    # Filtros según rol
     if current_user.rol == "propietario":
         inmueble_ids = get_inmuebles_propietario(db, current_user.id)
         if inmueble_ids:
             query = query.filter(Incidencia.inmueble_id.in_(inmueble_ids))
+        else:
+            return []
+    elif current_user.rol == "proveedor":
+        from app.models.proveedor import Proveedor
+        proveedor = db.query(Proveedor).filter(Proveedor.usuario_id == current_user.id).first()
+        if proveedor:
+            query = query.filter(Incidencia.proveedor_id == proveedor.id)
         else:
             return []
     

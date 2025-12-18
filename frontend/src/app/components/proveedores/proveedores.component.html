@@ -1,0 +1,173 @@
+<div class="proveedores-container">
+  <header class="app-header">
+    <div class="header-left">
+      <div class="logo-section">
+        <img src="/assets/images/Isotipo.png" alt="Fyntra" class="logo-isotipo" />
+      </div>
+      <nav class="main-nav">
+        <a routerLink="/incidencias" class="nav-link" routerLinkActive="active">INCIDENCIAS</a>
+        <a routerLink="/inmuebles" class="nav-link" routerLinkActive="active">INMUEBLES</a>
+        <a routerLink="/comunidades" class="nav-link" routerLinkActive="active">COMUNIDADES</a>
+        <a routerLink="/propietarios" class="nav-link" routerLinkActive="active">PROPIETARIOS</a>
+        <a routerLink="/proveedores" class="nav-link" routerLinkActive="active">PROVEEDORES</a>
+      </nav>
+    </div>
+    <div class="user-section">
+      <div class="user-menu-container">
+        <button class="user-menu-button" (click)="toggleMenuUsuario()">
+          <span class="user-icon app-icon">person</span>
+          <span class="user-name">{{ usuario?.nombre || 'Usuario' }}</span>
+          <span class="dropdown-arrow">{{ mostrarMenuUsuario ? '▲' : '▼' }}</span>
+        </button>
+        <div class="user-menu-dropdown" *ngIf="mostrarMenuUsuario">
+          <button class="menu-item" (click)="cambiarAModuloTransportes()">
+            <span class="menu-icon app-icon">local_shipping</span>
+            <span>Módulo Transportes</span>
+          </button>
+          <div class="menu-divider"></div>
+          <button class="menu-item logout-item" (click)="logout()">
+            <span class="menu-icon app-icon">logout</span>
+            <span>Salir</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="main-content">
+    <!-- Formulario -->
+    <div class="form-container" *ngIf="mostrarFormulario">
+      <div class="form-header">
+        <h2>{{ editandoProveedor ? 'Editar Proveedor' : 'Nuevo Proveedor' }}</h2>
+        <button class="close-button" (click)="cancelarForm()">×</button>
+      </div>
+      <form (ngSubmit)="onSubmit()">
+        <div class="form-group">
+          <label for="nombre">Nombre *</label>
+          <input type="text" id="nombre" [(ngModel)]="proveedorForm.nombre" name="nombre" required class="form-input">
+        </div>
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label for="email">Email</label>
+            <input type="email" id="email" [(ngModel)]="proveedorForm.email" name="email" class="form-input">
+          </div>
+          <div class="form-group">
+            <label for="telefono">Teléfono</label>
+            <input type="tel" id="telefono" [(ngModel)]="proveedorForm.telefono" name="telefono" class="form-input">
+          </div>
+        </div>
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label for="especialidad">Especialidad</label>
+            <select id="especialidad" [(ngModel)]="proveedorForm.especialidad" name="especialidad" class="form-input">
+              <option value="">Seleccionar...</option>
+              <option *ngFor="let esp of especialidades" [value]="esp">{{ esp }}</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="activo">Estado</label>
+            <select id="activo" [(ngModel)]="proveedorForm.activo" name="activo" class="form-input">
+              <option [ngValue]="true">Activo</option>
+              <option [ngValue]="false">Inactivo</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Sección para crear usuario (solo al crear nuevo proveedor) -->
+        <div class="usuario-section" *ngIf="!editandoProveedor">
+          <div class="form-group checkbox-group">
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="proveedorForm.crearUsuario" name="crearUsuario">
+              <span>Crear acceso al sistema para este proveedor</span>
+            </label>
+            <small class="help-text">Permite al proveedor iniciar sesión para ver y gestionar sus incidencias asignadas</small>
+          </div>
+          
+          <div class="form-group" *ngIf="proveedorForm.crearUsuario">
+            <label for="password">Contraseña *</label>
+            <input type="password" id="password" [(ngModel)]="proveedorForm.password" name="password" 
+                   class="form-input" placeholder="Contraseña para acceso al sistema"
+                   [required]="proveedorForm.crearUsuario">
+            <small class="help-text">El proveedor usará su email y esta contraseña para acceder</small>
+          </div>
+        </div>
+        
+        <div *ngIf="error" class="error-message">{{ error }}</div>
+        
+        <div class="form-actions">
+          <button type="button" class="cancel-button" (click)="cancelarForm()">Cancelar</button>
+          <button type="submit" class="submit-button" [disabled]="loading">
+            {{ loading ? 'Guardando...' : (editandoProveedor ? 'GUARDAR CAMBIOS' : 'CREAR PROVEEDOR') }}
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Lista -->
+    <div *ngIf="!mostrarFormulario">
+      <div class="list-header">
+        <h2>Proveedores</h2>
+        <button class="add-button" (click)="mostrarForm()">+ Nuevo Proveedor</button>
+      </div>
+      
+      <div class="filters-section">
+        <div class="filter-group">
+          <label>Especialidad</label>
+          <select [(ngModel)]="filtroEspecialidad" (change)="aplicarFiltros()" class="filter-input">
+            <option value="">Todas</option>
+            <option *ngFor="let esp of especialidades" [value]="esp">{{ esp }}</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Estado</label>
+          <select [(ngModel)]="filtroActivo" (change)="aplicarFiltros()" class="filter-input">
+            <option value="">Todos</option>
+            <option value="true">Activos</option>
+            <option value="false">Inactivos</option>
+          </select>
+        </div>
+      </div>
+
+      <div *ngIf="loading" class="loading">Cargando...</div>
+      <div *ngIf="error && !mostrarFormulario" class="error">{{ error }}</div>
+      
+      <div class="proveedores-grid" *ngIf="!loading">
+        <div class="proveedor-card" *ngFor="let proveedor of proveedores" 
+             [class.inactivo]="!proveedor.activo" (click)="editarProveedor(proveedor)">
+          <div class="card-header">
+            <span class="especialidad-badge" *ngIf="proveedor.especialidad">{{ proveedor.especialidad }}</span>
+            <span class="estado-badge" [class.activo]="proveedor.activo" [class.inactivo]="!proveedor.activo">
+              {{ proveedor.activo ? 'Activo' : 'Inactivo' }}
+            </span>
+          </div>
+          <h3 class="proveedor-nombre">{{ proveedor.nombre }}</h3>
+          <p class="proveedor-contacto" *ngIf="proveedor.email">
+            <span class="app-icon">email</span> {{ proveedor.email }}
+          </p>
+          <p class="proveedor-contacto" *ngIf="proveedor.telefono">
+            <span class="app-icon">phone</span> {{ proveedor.telefono }}
+          </p>
+          <div class="card-actions">
+            <button class="action-btn toggle-btn" (click)="toggleActivo(proveedor, $event)" 
+                    [title]="proveedor.activo ? 'Desactivar' : 'Activar'">
+              <span class="app-icon">{{ proveedor.activo ? 'toggle_on' : 'toggle_off' }}</span>
+            </button>
+            <button class="action-btn delete-btn" (click)="eliminarProveedor(proveedor, $event)" title="Eliminar">
+              <span class="app-icon">delete</span>
+            </button>
+          </div>
+        </div>
+        
+        <div class="empty-state" *ngIf="proveedores.length === 0">
+          <span class="app-icon empty-icon">business</span>
+          <p>No hay proveedores registrados</p>
+          <button class="add-button" (click)="mostrarForm()">Crear primer proveedor</button>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+

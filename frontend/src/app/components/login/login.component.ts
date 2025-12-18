@@ -30,8 +30,8 @@ export class LoginComponent {
     this.authService.login(this.email, this.password).subscribe({
       next: () => {
         const usuario = this.authService.getUsuario();
-        // Propietarios van directo a incidencias
-        if (usuario?.rol === 'propietario') {
+        // Propietarios y proveedores van directo a incidencias
+        if (usuario?.rol === 'propietario' || usuario?.rol === 'proveedor') {
           this.router.navigate(['/incidencias']);
         } else {
           this.router.navigate(['/modulos']);

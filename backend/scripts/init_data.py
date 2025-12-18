@@ -22,8 +22,8 @@ def create_initial_data():
     db = SessionLocal()
     
     try:
-        # Crear usuarios de prueba
-        usuarios = [
+        # Crear usuarios de prueba (admins)
+        usuarios_admin = [
             Usuario(
                 nombre="Administrador",
                 email="admin@fyntra.com",
@@ -42,18 +42,64 @@ def create_initial_data():
                 hash_password=get_password_hash("fincas123"),
                 rol="admin_fincas"
             ),
-            Usuario(
-                nombre="Propietario Test",
-                email="propietario@test.com",
-                hash_password=get_password_hash("test123"),
-                rol="propietario"
-            ),
         ]
         
-        for usuario in usuarios:
+        for usuario in usuarios_admin:
             existing = db.query(Usuario).filter(Usuario.email == usuario.email).first()
             if not existing:
                 db.add(usuario)
+        
+        # Crear propietario de prueba (usuario + propietario)
+        propietario_email = "propietario@test.com"
+        propietario_usuario = db.query(Usuario).filter(Usuario.email == propietario_email).first()
+        if not propietario_usuario:
+            propietario_usuario = Usuario(
+                nombre="Propietario Test",
+                email=propietario_email,
+                hash_password=get_password_hash("123456"),
+                rol="propietario"
+            )
+            db.add(propietario_usuario)
+            db.flush()
+        
+        # Crear 10 proveedores de prueba (cada uno con usuario)
+        proveedores_data = [
+            {"nombre": "Fontanería Rápida S.L.", "email": "fontaneria@test.com", "telefono": "912345001", "especialidad": "Fontanería"},
+            {"nombre": "ElectroServicios Madrid", "email": "electricidad@test.com", "telefono": "912345002", "especialidad": "Electricidad"},
+            {"nombre": "Construcciones García", "email": "construcciones@test.com", "telefono": "912345003", "especialidad": "Albañilería"},
+            {"nombre": "Pinturas Profesionales", "email": "pinturas@test.com", "telefono": "912345004", "especialidad": "Pintura"},
+            {"nombre": "Carpintería Hermanos López", "email": "carpinteria@test.com", "telefono": "912345005", "especialidad": "Carpintería"},
+            {"nombre": "Cerrajería 24h Express", "email": "cerrajeria@test.com", "telefono": "912345006", "especialidad": "Cerrajería"},
+            {"nombre": "Clima Control S.A.", "email": "climatizacion@test.com", "telefono": "912345007", "especialidad": "Climatización"},
+            {"nombre": "Limpiezas Brillante", "email": "limpieza@test.com", "telefono": "912345008", "especialidad": "Limpieza"},
+            {"nombre": "Jardines del Sur", "email": "jardineria@test.com", "telefono": "912345009", "especialidad": "Jardinería"},
+            {"nombre": "Ascensores Verticalia", "email": "ascensores@test.com", "telefono": "912345010", "especialidad": "Ascensores"},
+        ]
+        
+        for prov_data in proveedores_data:
+            # Verificar si ya existe el proveedor
+            existing_prov = db.query(Proveedor).filter(Proveedor.email == prov_data["email"]).first()
+            if not existing_prov:
+                # Crear usuario para el proveedor
+                prov_usuario = Usuario(
+                    nombre=prov_data["nombre"],
+                    email=prov_data["email"],
+                    hash_password=get_password_hash("123456"),
+                    rol="proveedor"
+                )
+                db.add(prov_usuario)
+                db.flush()
+                
+                # Crear proveedor vinculado al usuario
+                proveedor = Proveedor(
+                    nombre=prov_data["nombre"],
+                    email=prov_data["email"],
+                    telefono=prov_data["telefono"],
+                    especialidad=prov_data["especialidad"],
+                    usuario_id=prov_usuario.id,
+                    activo=True
+                )
+                db.add(proveedor)
         
         # Crear comunidad de prueba
         comunidad = Comunidad(
