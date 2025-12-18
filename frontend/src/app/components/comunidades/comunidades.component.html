@@ -1,0 +1,155 @@
+<div class="comunidades-container">
+  <header class="app-header">
+    <div class="header-left">
+      <div class="logo-section">
+        <img src="/assets/images/Isotipo.png" alt="Fyntra" class="logo-isotipo" />
+      </div>
+      <nav class="main-nav">
+        <a routerLink="/incidencias" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">INCIDENCIAS</a>
+        <a routerLink="/comunidades" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">COMUNIDADES</a>
+        <a routerLink="/inmuebles" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">INMUEBLES</a>
+        <a routerLink="/propietarios" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">PROPIETARIOS</a>
+        <a routerLink="/proveedores" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">PROVEEDORES</a>
+      </nav>
+    </div>
+    <div class="user-section">
+      <div class="user-menu-container">
+        <button class="user-menu-button" (click)="toggleMenuUsuario()" title="Menú de usuario">
+          <span class="user-icon app-icon">person</span>
+          <span class="user-name">{{ usuario?.nombre || 'Usuario' }}</span>
+          <span class="dropdown-arrow">{{ mostrarMenuUsuario ? '▲' : '▼' }}</span>
+        </button>
+        <div class="user-menu-dropdown" *ngIf="mostrarMenuUsuario">
+          <button class="menu-item" *ngIf="estaEnModuloFincas()" (click)="cambiarAModuloTransportes()">
+            <span class="menu-icon app-icon">local_shipping</span>
+            <span>Módulo Transportes</span>
+          </button>
+          <button class="menu-item" *ngIf="!estaEnModuloFincas()" (click)="cambiarAModuloFincas()">
+            <span class="menu-icon app-icon">apartment</span>
+            <span>Módulo Fincas</span>
+          </button>
+          <div class="menu-divider"></div>
+          <button class="menu-item logout-item" (click)="logout()">
+            <span class="menu-icon app-icon">logout</span>
+            <span>Salir</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="main-content">
+    <div class="form-container" *ngIf="mostrarFormulario">
+      <h2 class="form-title">{{ editandoComunidad ? 'EDITAR COMUNIDAD' : 'NUEVA COMUNIDAD' }}</h2>
+      
+      <form (ngSubmit)="onSubmit()" class="comunidad-form">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Nombre *</label>
+            <input
+              type="text"
+              [(ngModel)]="comunidadForm.nombre"
+              name="nombre"
+              placeholder="Ej: Comunidad Calle Mayor 15"
+              class="form-input"
+              required
+            />
+          </div>
+          <div class="form-group">
+            <label>CIF</label>
+            <input
+              type="text"
+              [(ngModel)]="comunidadForm.cif"
+              name="cif"
+              placeholder="Ej: H12345678"
+              class="form-input"
+            />
+          </div>
+        </div>
+        
+        <div class="form-row">
+          <div class="form-group full-width">
+            <label>Dirección</label>
+            <input
+              type="text"
+              [(ngModel)]="comunidadForm.direccion"
+              name="direccion"
+              placeholder="Ej: Calle Mayor 15, 28001 Madrid"
+              class="form-input"
+            />
+          </div>
+        </div>
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label>Teléfono</label>
+            <input
+              type="text"
+              [(ngModel)]="comunidadForm.telefono"
+              name="telefono"
+              placeholder="Ej: 912345678"
+              class="form-input"
+            />
+          </div>
+          <div class="form-group">
+            <label>Email</label>
+            <input
+              type="email"
+              [(ngModel)]="comunidadForm.email"
+              name="email"
+              placeholder="Ej: comunidad@ejemplo.com"
+              class="form-input"
+            />
+          </div>
+        </div>
+        
+        <div *ngIf="error" class="error-message">{{ error }}</div>
+        
+        <div class="form-actions">
+          <button type="button" class="cancel-button" (click)="cancelarForm()">Cancelar</button>
+          <button type="submit" class="submit-button" [disabled]="loading">
+            {{ loading ? 'Guardando...' : (editandoComunidad ? 'GUARDAR CAMBIOS' : 'CREAR COMUNIDAD') }}
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <div class="list-container" *ngIf="!mostrarFormulario">
+      <div class="list-header">
+        <h2>Comunidades</h2>
+        <div class="header-actions">
+          <button class="add-button" (click)="mostrarForm()">+ Nueva Comunidad</button>
+        </div>
+      </div>
+      
+      <div *ngIf="loading" class="loading">Cargando...</div>
+      <div *ngIf="error" class="error">{{ error }}</div>
+      
+      <div class="comunidades-grid" *ngIf="!loading && !error">
+        <div class="comunidad-card" *ngFor="let comunidad of comunidades" (click)="editarComunidad(comunidad)">
+          <div class="card-header">
+            <h3>{{ comunidad.nombre }}</h3>
+            <button class="delete-button" (click)="eliminarComunidad(comunidad, $event)" title="Eliminar comunidad">
+              <span class="app-icon">delete</span>
+            </button>
+          </div>
+          <p *ngIf="comunidad.cif"><strong>CIF:</strong> {{ comunidad.cif }}</p>
+          <p *ngIf="comunidad.direccion"><strong>Dirección:</strong> {{ comunidad.direccion }}</p>
+          <p *ngIf="comunidad.telefono"><strong>Teléfono:</strong> {{ comunidad.telefono }}</p>
+          <p *ngIf="comunidad.email"><strong>Email:</strong> {{ comunidad.email }}</p>
+          <div class="inmuebles-count" *ngIf="comunidad.inmuebles">
+            <span class="app-icon">home</span>
+            <span>{{ comunidad.inmuebles.length }} inmuebles</span>
+          </div>
+        </div>
+        
+        <div class="empty-state" *ngIf="comunidades.length === 0">
+          <span class="app-icon empty-icon">apartment</span>
+          <p>No hay comunidades registradas</p>
+          <button class="add-button" (click)="mostrarForm()">Crear primera comunidad</button>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+

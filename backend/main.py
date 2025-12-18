@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from app.core.config import settings
-from app.api import auth, incidencias, vehiculos, comunidades, conductores, pedidos, rutas, mantenimientos
+from app.api import auth, incidencias, vehiculos, comunidades, conductores, pedidos, rutas, mantenimientos, inmuebles, propietarios
 from app.database import engine, Base
 
 # Crear tablas en la base de datos
@@ -49,6 +49,8 @@ app.include_router(conductores.router, prefix="/api")
 app.include_router(pedidos.router, prefix="/api")
 app.include_router(rutas.router, prefix="/api")
 app.include_router(mantenimientos.router, prefix="/api")
+app.include_router(inmuebles.router, prefix="/api")
+app.include_router(propietarios.router, prefix="/api")
 
 @app.get("/")
 async def root():

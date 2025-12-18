@@ -15,6 +15,9 @@ import { ConductoresComponent } from './components/conductores/conductores.compo
 import { PedidosComponent } from './components/pedidos/pedidos.component';
 import { RutasComponent } from './components/rutas/rutas.component';
 import { MantenimientosComponent } from './components/mantenimientos/mantenimientos.component';
+import { ComunidadesComponent } from './components/comunidades/comunidades.component';
+import { InmueblesComponent } from './components/inmuebles/inmuebles.component';
+import { PropietariosComponent } from './components/propietarios/propietarios.component';
 import { AppRoutingModule } from './app-routing.module';
 
 @NgModule({
@@ -27,7 +30,10 @@ import { AppRoutingModule } from './app-routing.module';
     ConductoresComponent,
     PedidosComponent,
     RutasComponent,
-    MantenimientosComponent
+    MantenimientosComponent,
+    ComunidadesComponent,
+    InmueblesComponent,
+    PropietariosComponent
   ],
   imports: [
     BrowserModule,

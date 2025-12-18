@@ -1,0 +1,210 @@
+<div class="propietarios-container">
+  <header class="app-header">
+    <div class="header-left">
+      <div class="logo-section">
+        <img src="/assets/images/Isotipo.png" alt="Fyntra" class="logo-isotipo" />
+      </div>
+      <nav class="main-nav">
+        <a routerLink="/incidencias" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">INCIDENCIAS</a>
+        <a routerLink="/comunidades" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">COMUNIDADES</a>
+        <a routerLink="/inmuebles" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">INMUEBLES</a>
+        <a routerLink="/propietarios" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">PROPIETARIOS</a>
+        <a routerLink="/proveedores" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">PROVEEDORES</a>
+      </nav>
+    </div>
+    <div class="user-section">
+      <div class="user-menu-container">
+        <button class="user-menu-button" (click)="toggleMenuUsuario()" title="Menú de usuario">
+          <span class="user-icon app-icon">person</span>
+          <span class="user-name">{{ usuario?.nombre || 'Usuario' }}</span>
+          <span class="dropdown-arrow">{{ mostrarMenuUsuario ? '▲' : '▼' }}</span>
+        </button>
+        <div class="user-menu-dropdown" *ngIf="mostrarMenuUsuario">
+          <button class="menu-item" (click)="cambiarAModuloTransportes()">
+            <span class="menu-icon app-icon">local_shipping</span>
+            <span>Módulo Transportes</span>
+          </button>
+          <div class="menu-divider"></div>
+          <button class="menu-item logout-item" (click)="logout()">
+            <span class="menu-icon app-icon">logout</span>
+            <span>Salir</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="main-content">
+    <div class="form-container" *ngIf="mostrarFormulario">
+      <h2 class="form-title">{{ editandoPropietario ? 'EDITAR PROPIETARIO' : 'NUEVO PROPIETARIO' }}</h2>
+      
+      <form (ngSubmit)="onSubmit()" class="propietario-form">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Nombre *</label>
+            <input
+              type="text"
+              [(ngModel)]="propietarioForm.nombre"
+              name="nombre"
+              placeholder="Ej: Juan"
+              class="form-input"
+              required
+            />
+          </div>
+          <div class="form-group">
+            <label>Apellidos</label>
+            <input
+              type="text"
+              [(ngModel)]="propietarioForm.apellidos"
+              name="apellidos"
+              placeholder="Ej: García López"
+              class="form-input"
+            />
+          </div>
+        </div>
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label>DNI/NIE</label>
+            <input
+              type="text"
+              [(ngModel)]="propietarioForm.dni"
+              name="dni"
+              placeholder="Ej: 12345678A"
+              class="form-input"
+            />
+          </div>
+          <div class="form-group">
+            <label>Teléfono</label>
+            <input
+              type="text"
+              [(ngModel)]="propietarioForm.telefono"
+              name="telefono"
+              placeholder="Ej: 600123456"
+              class="form-input"
+            />
+          </div>
+        </div>
+        
+        <div class="form-row">
+          <div class="form-group full-width">
+            <label>Email</label>
+            <input
+              type="email"
+              [(ngModel)]="propietarioForm.email"
+              name="email"
+              placeholder="Ej: juan@ejemplo.com"
+              class="form-input"
+            />
+          </div>
+        </div>
+        
+        <!-- Acceso al sistema -->
+        <div class="acceso-section" *ngIf="!editandoPropietario">
+          <div class="acceso-header">
+            <label class="checkbox-label">
+              <input
+                type="checkbox"
+                [(ngModel)]="propietarioForm.crear_usuario"
+                name="crear_usuario"
+              />
+              <span>Crear acceso al sistema</span>
+            </label>
+            <span class="acceso-help">Permite al propietario iniciar sesión para ver sus inmuebles y crear incidencias</span>
+          </div>
+          <div class="form-row" *ngIf="propietarioForm.crear_usuario">
+            <div class="form-group full-width">
+              <label>Contraseña *</label>
+              <input
+                type="password"
+                [(ngModel)]="propietarioForm.password"
+                name="password"
+                placeholder="Mínimo 6 caracteres"
+                class="form-input"
+                minlength="6"
+              />
+            </div>
+          </div>
+        </div>
+        
+        <div class="acceso-badge" *ngIf="editandoPropietario && propietarioForm.tiene_acceso">
+          <span class="app-icon">verified_user</span>
+          <span>Este propietario tiene acceso al sistema</span>
+        </div>
+        
+        <!-- Selector de inmuebles -->
+        <div class="form-group full-width">
+          <label>Inmuebles Asociados</label>
+          <div class="selector-container">
+            <div class="selected-items" *ngIf="propietarioForm.inmueble_ids.length > 0">
+              <span class="selected-chip" *ngFor="let inmuebleId of propietarioForm.inmueble_ids">
+                {{ getInmuebleNombre(inmuebleId) }}
+                <button type="button" class="remove-chip" (click)="toggleInmueble(inmuebleId)">×</button>
+              </span>
+            </div>
+            <div class="selector-dropdown">
+              <select class="form-input" (change)="onInmuebleSelect($event)">
+                <option value="">+ Añadir inmueble...</option>
+                <option *ngFor="let inmueble of getInmueblesDisponibles()" [value]="inmueble.id">
+                  {{ inmueble.referencia }} - {{ inmueble.direccion || 'Sin dirección' }}
+                </option>
+              </select>
+            </div>
+          </div>
+        </div>
+        
+        <div *ngIf="error" class="error-message">{{ error }}</div>
+        
+        <div class="form-actions">
+          <button type="button" class="cancel-button" (click)="cancelarForm()">Cancelar</button>
+          <button type="submit" class="submit-button" [disabled]="loading">
+            {{ loading ? 'Guardando...' : (editandoPropietario ? 'GUARDAR CAMBIOS' : 'CREAR PROPIETARIO') }}
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <div class="list-container" *ngIf="!mostrarFormulario">
+      <div class="list-header">
+        <h2>Propietarios</h2>
+        <div class="header-actions">
+          <button class="add-button" (click)="mostrarForm()">+ Nuevo Propietario</button>
+        </div>
+      </div>
+      
+      <div *ngIf="loading" class="loading">Cargando...</div>
+      <div *ngIf="error" class="error">{{ error }}</div>
+      
+      <div class="propietarios-grid" *ngIf="!loading && !error">
+        <div class="propietario-card" *ngFor="let propietario of propietarios" (click)="editarPropietario(propietario)">
+          <div class="card-header">
+            <h3>{{ propietario.nombre }} {{ propietario.apellidos }}</h3>
+            <button class="delete-button" (click)="eliminarPropietario(propietario, $event)" title="Eliminar propietario">
+              <span class="app-icon">delete</span>
+            </button>
+          </div>
+          <p *ngIf="propietario.dni"><strong>DNI:</strong> {{ propietario.dni }}</p>
+          <p *ngIf="propietario.telefono"><strong>Teléfono:</strong> {{ propietario.telefono }}</p>
+          <p *ngIf="propietario.email"><strong>Email:</strong> {{ propietario.email }}</p>
+          <div class="card-footer">
+            <div class="inmuebles-info" *ngIf="propietario.inmuebles && propietario.inmuebles.length > 0">
+              <span class="app-icon">home</span>
+              <span>{{ propietario.inmuebles.length }} inmueble(s)</span>
+            </div>
+            <div class="acceso-info" *ngIf="propietario.tiene_acceso">
+              <span class="app-icon">verified_user</span>
+              <span>Con acceso</span>
+            </div>
+          </div>
+        </div>
+        
+        <div class="empty-state" *ngIf="propietarios.length === 0">
+          <span class="app-icon empty-icon">people</span>
+          <p>No hay propietarios registrados</p>
+          <button class="add-button" (click)="mostrarForm()">Crear primer propietario</button>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+

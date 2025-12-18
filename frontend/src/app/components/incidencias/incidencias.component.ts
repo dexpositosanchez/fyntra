@@ -12,14 +12,48 @@ import { AuthService } from '../../services/auth.service';
 })
 export class IncidenciasComponent implements OnInit, OnDestroy {
   incidencias: any[] = [];
+  inmuebles: any[] = [];
+  proveedores: any[] = [];
   loading: boolean = false;
   error: string = '';
   filtroFecha: string = '';
   filtroPrioridad: string = '';
+  filtroEstado: string = '';
   currentRoute: string = '';
   mostrarMenuUsuario: boolean = false;
+  mostrarFormulario: boolean = false;
+  editandoIncidencia: boolean = false;
+  incidenciaIdEditando: number | null = null;
+  incidenciaSeleccionada: any = null;
+  mostrarHistorial: boolean = false;
   usuario: any = null;
+  esPropietario: boolean = false;
   private routerSubscription?: Subscription;
+
+  incidenciaForm: any = {
+    titulo: '',
+    descripcion: '',
+    prioridad: 'media',
+    inmueble_id: '',
+    estado: 'abierta',
+    proveedor_id: null,
+    comentario_cambio: ''
+  };
+
+  estados = [
+    { value: 'abierta', label: 'Abierta' },
+    { value: 'asignada', label: 'Asignada' },
+    { value: 'en_progreso', label: 'En Progreso' },
+    { value: 'resuelta', label: 'Resuelta' },
+    { value: 'cerrada', label: 'Cerrada' }
+  ];
+
+  prioridades = [
+    { value: 'baja', label: 'Baja' },
+    { value: 'media', label: 'Media' },
+    { value: 'alta', label: 'Alta' },
+    { value: 'urgente', label: 'Urgente' }
+  ];
 
   constructor(
     private apiService: ApiService,
@@ -30,6 +64,11 @@ export class IncidenciasComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.currentRoute = this.router.url;
     this.usuario = this.authService.getUsuario();
+    this.esPropietario = this.usuario?.rol === 'propietario';
+    this.cargarInmuebles();
+    if (!this.esPropietario) {
+      this.cargarProveedores();
+    }
     this.actualizarVista();
     
     // Suscribirse a cambios de ruta
@@ -39,6 +78,20 @@ export class IncidenciasComponent implements OnInit, OnDestroy {
         this.currentRoute = event.url;
         this.actualizarVista();
       });
+  }
+
+  cargarInmuebles(): void {
+    this.apiService.getInmuebles().subscribe({
+      next: (data) => this.inmuebles = data,
+      error: () => this.inmuebles = []
+    });
+  }
+
+  cargarProveedores(): void {
+    this.apiService.getProveedores().subscribe({
+      next: (data) => this.proveedores = data,
+      error: () => this.proveedores = []
+    });
   }
 
   actualizarVista(): void {
@@ -116,14 +169,125 @@ export class IncidenciasComponent implements OnInit, OnDestroy {
     return textos[prioridad?.toLowerCase()] || prioridad || 'Media';
   }
 
-  verDetalle(id: number): void {
-    // Implementar navegación a detalle
-    console.log('Ver detalle incidencia:', id);
+  mostrarForm(): void {
+    this.mostrarFormulario = true;
+    this.editandoIncidencia = false;
+    this.incidenciaIdEditando = null;
+    this.incidenciaForm = {
+      titulo: '',
+      descripcion: '',
+      prioridad: 'media',
+      inmueble_id: this.inmuebles.length === 1 ? this.inmuebles[0].id : '',
+      estado: 'abierta',
+      proveedor_id: null,
+      comentario_cambio: ''
+    };
   }
 
-  resolver(id: number): void {
-    // Implementar resolución de incidencia
-    console.log('Resolver incidencia:', id);
+  editarIncidencia(incidencia: any): void {
+    this.mostrarFormulario = true;
+    this.editandoIncidencia = true;
+    this.incidenciaIdEditando = incidencia.id;
+    this.incidenciaForm = {
+      titulo: incidencia.titulo,
+      descripcion: incidencia.descripcion || '',
+      prioridad: incidencia.prioridad,
+      inmueble_id: incidencia.inmueble_id,
+      estado: incidencia.estado,
+      proveedor_id: incidencia.proveedor_id,
+      comentario_cambio: '',
+      version: incidencia.version
+    };
+  }
+
+  cancelarForm(): void {
+    this.mostrarFormulario = false;
+    this.editandoIncidencia = false;
+    this.incidenciaIdEditando = null;
+    this.error = '';
+  }
+
+  onSubmit(): void {
+    this.loading = true;
+    this.error = '';
+
+    if (this.editandoIncidencia && this.incidenciaIdEditando) {
+      const updateData: any = {
+        titulo: this.incidenciaForm.titulo,
+        descripcion: this.incidenciaForm.descripcion,
+        prioridad: this.incidenciaForm.prioridad,
+        estado: this.incidenciaForm.estado,
+        proveedor_id: this.incidenciaForm.proveedor_id || null,
+        version: this.incidenciaForm.version,
+        comentario_cambio: this.incidenciaForm.comentario_cambio || null
+      };
+
+      this.apiService.updateIncidencia(this.incidenciaIdEditando, updateData).subscribe({
+        next: () => {
+          this.loading = false;
+          this.cancelarForm();
+          this.cargarIncidencias();
+        },
+        error: (err) => {
+          this.loading = false;
+          this.error = err.error?.detail || 'Error al actualizar incidencia';
+        }
+      });
+    } else {
+      const createData = {
+        titulo: this.incidenciaForm.titulo,
+        descripcion: this.incidenciaForm.descripcion,
+        prioridad: this.incidenciaForm.prioridad,
+        inmueble_id: parseInt(this.incidenciaForm.inmueble_id)
+      };
+
+      this.apiService.createIncidencia(createData).subscribe({
+        next: () => {
+          this.loading = false;
+          this.cancelarForm();
+          this.cargarIncidencias();
+        },
+        error: (err) => {
+          this.loading = false;
+          this.error = err.error?.detail || 'Error al crear incidencia';
+        }
+      });
+    }
+  }
+
+  eliminarIncidencia(incidencia: any, event: Event): void {
+    event.stopPropagation();
+    if (confirm(`¿Eliminar incidencia "${incidencia.titulo}"?`)) {
+      this.apiService.deleteIncidencia(incidencia.id).subscribe({
+        next: () => this.cargarIncidencias(),
+        error: (err) => this.error = err.error?.detail || 'Error al eliminar'
+      });
+    }
+  }
+
+  verHistorial(incidencia: any, event: Event): void {
+    event.stopPropagation();
+    this.incidenciaSeleccionada = incidencia;
+    this.mostrarHistorial = true;
+  }
+
+  cerrarHistorial(): void {
+    this.mostrarHistorial = false;
+    this.incidenciaSeleccionada = null;
+  }
+
+  getEstadoLabel(estado: string): string {
+    const est = this.estados.find(e => e.value === estado);
+    return est ? est.label : estado;
+  }
+
+  getEstadoClass(estado: string): string {
+    return 'estado-' + estado.replace('_', '-');
+  }
+
+  getInmuebleNombre(inmuebleId: number): string {
+    const inmueble = this.inmuebles.find(i => i.id === inmuebleId);
+    return inmueble ? `${inmueble.referencia} - ${inmueble.direccion || ''}` : 'N/A';
   }
 
   formatearFecha(fecha: any): string {

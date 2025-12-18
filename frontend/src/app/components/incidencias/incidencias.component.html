@@ -5,11 +5,13 @@
         <img src="/assets/images/Isotipo.png" alt="Fyntra" class="logo-isotipo" />
       </div>
       <nav class="main-nav">
-        <a routerLink="/propietarios" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">PROPIETARIOS</a>
-        <a routerLink="/propiedades" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">PROPIEDADES</a>
-        <a routerLink="/comunidades" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">COMUNIDADES</a>
         <a routerLink="/incidencias" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">INCIDENCIAS</a>
-        <a routerLink="/proveedores" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">PROVEEDORES</a>
+        <a routerLink="/inmuebles" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">{{ esPropietario ? 'MIS INMUEBLES' : 'INMUEBLES' }}</a>
+        <ng-container *ngIf="!esPropietario">
+          <a routerLink="/comunidades" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">COMUNIDADES</a>
+          <a routerLink="/propietarios" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">PROPIETARIOS</a>
+          <a routerLink="/proveedores" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">PROVEEDORES</a>
+        </ng-container>
       </nav>
     </div>
     <div class="user-section">
@@ -20,15 +22,17 @@
           <span class="dropdown-arrow">{{ mostrarMenuUsuario ? '▲' : '▼' }}</span>
         </button>
         <div class="user-menu-dropdown" *ngIf="mostrarMenuUsuario">
-          <button class="menu-item" *ngIf="estaEnModuloTransportes()" (click)="cambiarAModuloFincas()">
-            <span class="menu-icon app-icon">apartment</span>
-            <span>Módulo Fincas</span>
-          </button>
-          <button class="menu-item" *ngIf="!estaEnModuloTransportes()" (click)="cambiarAModuloTransportes()">
-            <span class="menu-icon app-icon">local_shipping</span>
-            <span>Módulo Transportes</span>
-          </button>
-          <div class="menu-divider" *ngIf="estaEnModuloTransportes() || !estaEnModuloTransportes()"></div>
+          <ng-container *ngIf="!esPropietario">
+            <button class="menu-item" *ngIf="estaEnModuloTransportes()" (click)="cambiarAModuloFincas()">
+              <span class="menu-icon app-icon">apartment</span>
+              <span>Módulo Fincas</span>
+            </button>
+            <button class="menu-item" *ngIf="!estaEnModuloTransportes()" (click)="cambiarAModuloTransportes()">
+              <span class="menu-icon app-icon">local_shipping</span>
+              <span>Módulo Transportes</span>
+            </button>
+            <div class="menu-divider"></div>
+          </ng-container>
           <button class="menu-item logout-item" (click)="logout()">
             <span class="menu-icon app-icon">logout</span>
             <span>Salir</span>
@@ -39,79 +43,168 @@
   </header>
 
   <main class="main-content">
-    <!-- Sección de Incidencias -->
-    <div *ngIf="currentRoute.includes('/incidencias')">
+    <!-- Formulario de Incidencia -->
+    <div class="form-container" *ngIf="mostrarFormulario">
+      <div class="form-header">
+        <h2>{{ editandoIncidencia ? 'Editar Incidencia' : 'Nueva Incidencia' }}</h2>
+        <button class="close-button" (click)="cancelarForm()">×</button>
+      </div>
+      <form (ngSubmit)="onSubmit()">
+        <div class="form-group">
+          <label for="titulo">Título *</label>
+          <input type="text" id="titulo" [(ngModel)]="incidenciaForm.titulo" name="titulo" required class="form-input" placeholder="Descripción breve del problema">
+        </div>
+        
+        <div class="form-group">
+          <label for="descripcion">Descripción</label>
+          <textarea id="descripcion" [(ngModel)]="incidenciaForm.descripcion" name="descripcion" rows="4" class="form-input" placeholder="Detalle del problema"></textarea>
+        </div>
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label for="inmueble_id">Inmueble *</label>
+            <select id="inmueble_id" [(ngModel)]="incidenciaForm.inmueble_id" name="inmueble_id" required class="form-input" [disabled]="editandoIncidencia">
+              <option value="">Seleccionar inmueble</option>
+              <option *ngFor="let inmueble of inmuebles" [value]="inmueble.id">
+                {{ inmueble.referencia }} - {{ inmueble.direccion || 'Sin dirección' }}
+              </option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label for="prioridad">Prioridad</label>
+            <select id="prioridad" [(ngModel)]="incidenciaForm.prioridad" name="prioridad" class="form-input">
+              <option *ngFor="let p of prioridades" [value]="p.value">{{ p.label }}</option>
+            </select>
+          </div>
+        </div>
+        
+        <div class="form-row" *ngIf="editandoIncidencia">
+          <div class="form-group">
+            <label for="estado">Estado</label>
+            <select id="estado" [(ngModel)]="incidenciaForm.estado" name="estado" class="form-input" [disabled]="esPropietario">
+              <option *ngFor="let e of estados" [value]="e.value">{{ e.label }}</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label for="proveedor_id">Proveedor asignado</label>
+            <select id="proveedor_id" [(ngModel)]="incidenciaForm.proveedor_id" name="proveedor_id" class="form-input" [disabled]="esPropietario">
+              <option [ngValue]="null">Sin asignar</option>
+              <option *ngFor="let prov of proveedores" [value]="prov.id">{{ prov.nombre }}</option>
+            </select>
+          </div>
+        </div>
+        
+        <div class="form-group" *ngIf="editandoIncidencia">
+          <label for="comentario_cambio">Comentario del cambio</label>
+          <input type="text" id="comentario_cambio" [(ngModel)]="incidenciaForm.comentario_cambio" name="comentario_cambio" class="form-input" placeholder="Motivo del cambio (opcional)" [disabled]="esPropietario">
+        </div>
+        
+        <div *ngIf="error" class="error-message">{{ error }}</div>
+        
+        <div class="form-actions">
+          <button type="button" class="cancel-button" (click)="cancelarForm()">Cancelar</button>
+          <button type="submit" class="submit-button" [disabled]="loading">
+            {{ loading ? 'Guardando...' : (editandoIncidencia ? 'GUARDAR CAMBIOS' : 'CREAR INCIDENCIA') }}
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Lista de Incidencias -->
+    <div *ngIf="!mostrarFormulario && currentRoute.includes('/incidencias')">
+      <div class="list-header">
+        <h2>{{ esPropietario ? 'Mis Incidencias' : 'Incidencias' }}</h2>
+        <div class="header-actions">
+          <button class="add-button" (click)="mostrarForm()">+ Nueva Incidencia</button>
+        </div>
+      </div>
+      
       <div class="filters-section">
-        <button class="filter-button">
-          <span>Fecha</span>
-          <span class="icon app-icon">calendar_month</span>
-        </button>
-        <button class="filter-button">
-          <span>Prioridad</span>
-          <span class="icon">▼</span>
-        </button>
+        <div class="filter-group">
+          <label>Prioridad</label>
+          <select [(ngModel)]="filtroPrioridad" class="filter-input">
+            <option value="">Todas</option>
+            <option *ngFor="let p of prioridades" [value]="p.value">{{ p.label }}</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Estado</label>
+          <select [(ngModel)]="filtroEstado" class="filter-input">
+            <option value="">Todos</option>
+            <option *ngFor="let e of estados" [value]="e.value">{{ e.label }}</option>
+          </select>
+        </div>
       </div>
 
-      <div class="table-container">
-        <h2 class="table-title">INCIDENCIAS SIN RESOLVER</h2>
+      <div *ngIf="loading" class="loading">Cargando...</div>
+      <div *ngIf="error && !mostrarFormulario" class="error">{{ error }}</div>
+      
+      <div class="incidencias-grid" *ngIf="!loading">
+        <div class="incidencia-card" *ngFor="let incidencia of incidencias" (click)="editarIncidencia(incidencia)">
+          <div class="card-header">
+            <span [class]="'prioridad-badge ' + getPrioridadClass(incidencia.prioridad)">
+              {{ getPrioridadTexto(incidencia.prioridad) }}
+            </span>
+            <span [class]="'estado-badge ' + getEstadoClass(incidencia.estado)">
+              {{ getEstadoLabel(incidencia.estado) }}
+            </span>
+          </div>
+          <h3 class="incidencia-titulo">{{ incidencia.titulo }}</h3>
+          <p class="incidencia-inmueble" *ngIf="incidencia.inmueble">
+            <span class="app-icon">home</span>
+            {{ incidencia.inmueble.referencia }}
+          </p>
+          <p class="incidencia-fecha">
+            <span class="app-icon">calendar_today</span>
+            {{ formatearFecha(incidencia.fecha_alta) }}
+          </p>
+          <div class="card-actions">
+            <button class="action-btn history-btn" (click)="verHistorial(incidencia, $event)" title="Ver historial" *ngIf="incidencia.historial?.length > 0">
+              <span class="app-icon">history</span>
+              <span class="historial-count">{{ incidencia.historial.length }}</span>
+            </button>
+            <button class="action-btn delete-btn" *ngIf="!esPropietario" (click)="eliminarIncidencia(incidencia, $event)" title="Eliminar">
+              <span class="app-icon">delete</span>
+            </button>
+          </div>
+        </div>
         
-        <div *ngIf="loading" class="loading">Cargando...</div>
-        <div *ngIf="error" class="error">{{ error }}</div>
-        
-        <table class="incidencias-table" *ngIf="!loading && !error">
-          <thead>
-            <tr>
-              <th>Prioridad <span class="sort-icon">▼</span></th>
-              <th>Fecha <span class="sort-icon">▼</span></th>
-              <th>Finca <span class="sort-icon">▼</span></th>
-              <th>Propiedad <span class="sort-icon">▼</span></th>
-              <th>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let incidencia of incidencias">
-              <td>
-                <span [class]="'prioridad-badge ' + getPrioridadClass(incidencia.prioridad)">
-                  {{ getPrioridadTexto(incidencia.prioridad) }}
-                </span>
-              </td>
-              <td>{{ formatearFecha(incidencia.fecha_alta) }}</td>
-              <td>{{ incidencia.inmueble?.comunidad?.nombre || 'Finca Prueba' }}</td>
-              <td>{{ incidencia.inmueble?.referencia || 'Propiedad Prueba' }}</td>
-              <td class="actions-cell">
-                <button class="action-btn view-btn" (click)="verDetalle(incidencia.id)" title="Ver detalle">
-                  <span class="app-icon">search</span>
-                </button>
-                <button class="action-btn resolve-btn" (click)="resolver(incidencia.id)" title="Resolver">
-                  <span class="app-icon">check</span>
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        <div class="empty-state" *ngIf="incidencias.length === 0">
+          <span class="app-icon empty-icon">inbox</span>
+          <p>No hay incidencias {{ esPropietario ? 'registradas' : 'sin resolver' }}</p>
+          <button class="add-button" (click)="mostrarForm()">Crear primera incidencia</button>
+        </div>
       </div>
-    </div>
-
-    <!-- Secciones placeholder para otras rutas -->
-    <div *ngIf="currentRoute.includes('/propietarios')" class="table-container">
-      <h2 class="table-title">PROPIETARIOS</h2>
-      <p class="placeholder-text">Gestión de propietarios - Próximamente</p>
-    </div>
-
-    <div *ngIf="currentRoute.includes('/propiedades')" class="table-container">
-      <h2 class="table-title">PROPIEDADES</h2>
-      <p class="placeholder-text">Gestión de propiedades - Próximamente</p>
-    </div>
-
-    <div *ngIf="currentRoute.includes('/comunidades')" class="table-container">
-      <h2 class="table-title">COMUNIDADES</h2>
-      <p class="placeholder-text">Gestión de comunidades - Próximamente</p>
-    </div>
-
-    <div *ngIf="currentRoute.includes('/proveedores')" class="table-container">
-      <h2 class="table-title">PROVEEDORES</h2>
-      <p class="placeholder-text">Gestión de proveedores - Próximamente</p>
     </div>
   </main>
 </div>
 
+<!-- Modal Historial -->
+<div class="modal-overlay" *ngIf="mostrarHistorial" (click)="cerrarHistorial()">
+  <div class="modal-content historial-modal" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>Historial de cambios</h3>
+      <button class="close-button" (click)="cerrarHistorial()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="historial-titulo">{{ incidenciaSeleccionada?.titulo }}</div>
+      <div class="historial-timeline" *ngIf="incidenciaSeleccionada?.historial?.length > 0">
+        <div class="historial-item" *ngFor="let h of incidenciaSeleccionada.historial">
+          <div class="historial-fecha">{{ formatearFecha(h.fecha) }}</div>
+          <div class="historial-cambio">
+            <span *ngIf="h.estado_anterior" class="estado-anterior">{{ getEstadoLabel(h.estado_anterior) }}</span>
+            <span *ngIf="h.estado_anterior" class="arrow">→</span>
+            <span class="estado-nuevo">{{ getEstadoLabel(h.estado_nuevo) }}</span>
+          </div>
+          <div class="historial-usuario" *ngIf="h.usuario_nombre">por {{ h.usuario_nombre }}</div>
+          <div class="historial-comentario" *ngIf="h.comentario">{{ h.comentario }}</div>
+        </div>
+      </div>
+      <div class="empty-historial" *ngIf="!incidenciaSeleccionada?.historial?.length">
+        No hay historial de cambios
+      </div>
+    </div>
+  </div>
+</div>

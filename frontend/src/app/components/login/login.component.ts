@@ -29,8 +29,13 @@ export class LoginComponent {
 
     this.authService.login(this.email, this.password).subscribe({
       next: () => {
-        // Redirigir a la selección de módulo
-        this.router.navigate(['/modulos']);
+        const usuario = this.authService.getUsuario();
+        // Propietarios van directo a incidencias
+        if (usuario?.rol === 'propietario') {
+          this.router.navigate(['/incidencias']);
+        } else {
+          this.router.navigate(['/modulos']);
+        }
       },
       error: (err) => {
         this.error = err.error?.detail || 'Error al iniciar sesión';

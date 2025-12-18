@@ -8,20 +8,23 @@ import { ConductoresComponent } from './components/conductores/conductores.compo
 import { PedidosComponent } from './components/pedidos/pedidos.component';
 import { RutasComponent } from './components/rutas/rutas.component';
 import { MantenimientosComponent } from './components/mantenimientos/mantenimientos.component';
+import { ComunidadesComponent } from './components/comunidades/comunidades.component';
+import { InmueblesComponent } from './components/inmuebles/inmuebles.component';
+import { PropietariosComponent } from './components/propietarios/propietarios.component';
 import { AuthGuard } from './guards/auth.guard';
+import { AdminFincasGuard } from './guards/admin-fincas.guard';
 
 const routes: Routes = [
   { path: '', redirectTo: '/login', pathMatch: 'full' },
   { path: 'login', component: LoginComponent },
-  { path: 'modulos', component: ModuloSelectorComponent, canActivate: [AuthGuard] },
+  { path: 'modulos', component: ModuloSelectorComponent, canActivate: [AdminFincasGuard] },
   { path: 'incidencias', component: IncidenciasComponent, canActivate: [AuthGuard] },
+  { path: 'comunidades', component: ComunidadesComponent, canActivate: [AdminFincasGuard] },
+  { path: 'inmuebles', component: InmueblesComponent, canActivate: [AuthGuard] },
+  { path: 'propietarios', component: PropietariosComponent, canActivate: [AdminFincasGuard] },
+  { path: 'proveedores', component: IncidenciasComponent, canActivate: [AdminFincasGuard] },
   { path: 'vehiculos', component: VehiculosComponent, canActivate: [AuthGuard] },
-  { path: 'propietarios', component: IncidenciasComponent, canActivate: [AuthGuard] },
-  { path: 'propiedades', component: IncidenciasComponent, canActivate: [AuthGuard] },
-  { path: 'comunidades', component: IncidenciasComponent, canActivate: [AuthGuard] },
-  { path: 'proveedores', component: IncidenciasComponent, canActivate: [AuthGuard] },
   { path: 'conductores', component: ConductoresComponent, canActivate: [AuthGuard] },
-  { path: 'vehiculos', component: VehiculosComponent, canActivate: [AuthGuard] },
   { path: 'mantenimientos', component: MantenimientosComponent, canActivate: [AuthGuard] },
   { path: 'rutas', component: RutasComponent, canActivate: [AuthGuard] },
   { path: 'pedidos', component: PedidosComponent, canActivate: [AuthGuard] },

@@ -1,0 +1,215 @@
+<div class="inmuebles-container">
+  <header class="app-header">
+    <div class="header-left">
+      <div class="logo-section">
+        <img src="/assets/images/Isotipo.png" alt="Fyntra" class="logo-isotipo" />
+      </div>
+      <nav class="main-nav">
+        <a routerLink="/incidencias" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">INCIDENCIAS</a>
+        <a routerLink="/inmuebles" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">{{ esPropietario ? 'MIS INMUEBLES' : 'INMUEBLES' }}</a>
+        <ng-container *ngIf="!esPropietario">
+          <a routerLink="/comunidades" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">COMUNIDADES</a>
+          <a routerLink="/propietarios" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">PROPIETARIOS</a>
+          <a routerLink="/proveedores" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">PROVEEDORES</a>
+        </ng-container>
+      </nav>
+    </div>
+    <div class="user-section">
+      <div class="user-menu-container">
+        <button class="user-menu-button" (click)="toggleMenuUsuario()" title="Menú de usuario">
+          <span class="user-icon app-icon">person</span>
+          <span class="user-name">{{ usuario?.nombre || 'Usuario' }}</span>
+          <span class="dropdown-arrow">{{ mostrarMenuUsuario ? '▲' : '▼' }}</span>
+        </button>
+        <div class="user-menu-dropdown" *ngIf="mostrarMenuUsuario">
+          <button class="menu-item" *ngIf="estaEnModuloFincas()" (click)="cambiarAModuloTransportes()">
+            <span class="menu-icon app-icon">local_shipping</span>
+            <span>Módulo Transportes</span>
+          </button>
+          <button class="menu-item" *ngIf="!estaEnModuloFincas()" (click)="cambiarAModuloFincas()">
+            <span class="menu-icon app-icon">apartment</span>
+            <span>Módulo Fincas</span>
+          </button>
+          <div class="menu-divider"></div>
+          <button class="menu-item logout-item" (click)="logout()">
+            <span class="menu-icon app-icon">logout</span>
+            <span>Salir</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="main-content">
+    <div class="form-container" *ngIf="mostrarFormulario">
+      <h2 class="form-title">{{ editandoInmueble ? 'EDITAR INMUEBLE' : 'NUEVO INMUEBLE' }}</h2>
+      
+      <form (ngSubmit)="onSubmit()" class="inmueble-form">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Comunidad *</label>
+            <select
+              [(ngModel)]="inmuebleForm.comunidad_id"
+              name="comunidad_id"
+              class="form-input"
+              required
+            >
+              <option value="">Seleccione una comunidad</option>
+              <option *ngFor="let comunidad of comunidades" [value]="comunidad.id">
+                {{ comunidad.nombre }}
+              </option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Referencia Catastral *</label>
+            <input
+              type="text"
+              [(ngModel)]="inmuebleForm.referencia"
+              name="referencia"
+              placeholder="Ej: 1234567AB1234N0001"
+              class="form-input"
+              required
+            />
+          </div>
+        </div>
+        
+        <div class="form-row">
+          <div class="form-group full-width">
+            <label>Dirección</label>
+            <input
+              type="text"
+              [(ngModel)]="inmuebleForm.direccion"
+              name="direccion"
+              placeholder="Ej: Calle Mayor 15, 1ºA"
+              class="form-input"
+            />
+          </div>
+        </div>
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label>Metros Cuadrados</label>
+            <input
+              type="number"
+              [(ngModel)]="inmuebleForm.metros"
+              name="metros"
+              placeholder="Ej: 85"
+              class="form-input"
+              min="0"
+              step="0.01"
+            />
+          </div>
+          <div class="form-group">
+            <label>Tipo</label>
+            <select
+              [(ngModel)]="inmuebleForm.tipo"
+              name="tipo"
+              class="form-input"
+            >
+              <option value="">Seleccione un tipo</option>
+              <option *ngFor="let tipo of tiposInmueble" [value]="tipo.value">
+                {{ tipo.label }}
+              </option>
+            </select>
+          </div>
+        </div>
+        
+        <!-- Selector de propietarios -->
+        <div class="form-group full-width">
+          <label>Propietarios</label>
+          <div class="selector-container">
+            <div class="selected-items" *ngIf="inmuebleForm.propietario_ids.length > 0">
+              <span class="selected-chip" *ngFor="let propId of inmuebleForm.propietario_ids">
+                {{ getPropietarioNombre(propId) }}
+                <button type="button" class="remove-chip" (click)="togglePropietario(propId)">×</button>
+              </span>
+            </div>
+            <div class="selector-dropdown">
+              <select class="form-input" (change)="onPropietarioSelect($event)">
+                <option value="">+ Añadir propietario...</option>
+                <option *ngFor="let prop of getPropietariosDisponibles()" [value]="prop.id">
+                  {{ prop.nombre }} {{ prop.apellidos || '' }} {{ prop.dni ? '(' + prop.dni + ')' : '' }}
+                </option>
+              </select>
+            </div>
+          </div>
+        </div>
+        
+        <div *ngIf="error" class="error-message">{{ error }}</div>
+        
+        <div class="form-actions">
+          <button type="button" class="cancel-button" (click)="cancelarForm()">Cancelar</button>
+          <button type="submit" class="submit-button" [disabled]="loading">
+            {{ loading ? 'Guardando...' : (editandoInmueble ? 'GUARDAR CAMBIOS' : 'CREAR INMUEBLE') }}
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <div class="list-container" *ngIf="!mostrarFormulario">
+      <div class="list-header">
+        <h2>{{ esPropietario ? 'Mis Inmuebles' : 'Inmuebles' }}</h2>
+        <div class="header-actions" *ngIf="!esPropietario">
+          <button class="add-button" (click)="mostrarForm()">+ Nuevo Inmueble</button>
+        </div>
+      </div>
+      
+      <div class="filters-section" *ngIf="!esPropietario">
+        <div class="filter-group">
+          <label>Comunidad</label>
+          <select [(ngModel)]="filtroComunidad" (change)="aplicarFiltros()" class="filter-input">
+            <option value="">Todas</option>
+            <option *ngFor="let comunidad of comunidades" [value]="comunidad.id">
+              {{ comunidad.nombre }}
+            </option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Tipo</label>
+          <select [(ngModel)]="filtroTipo" (change)="aplicarFiltros()" class="filter-input">
+            <option value="">Todos</option>
+            <option *ngFor="let tipo of tiposInmueble" [value]="tipo.value">
+              {{ tipo.label }}
+            </option>
+          </select>
+        </div>
+        <button class="clear-filters" *ngIf="filtroComunidad || filtroTipo" (click)="limpiarFiltros()">
+          Limpiar filtros
+        </button>
+      </div>
+      
+      <div *ngIf="loading" class="loading">Cargando...</div>
+      <div *ngIf="error" class="error">{{ error }}</div>
+      
+      <div class="inmuebles-grid" *ngIf="!loading && !error">
+        <div class="inmueble-card" *ngFor="let inmueble of inmuebles" (click)="!esPropietario && editarInmueble(inmueble)" [class.readonly]="esPropietario">
+          <div class="card-header">
+            <h3>{{ inmueble.referencia }}</h3>
+            <div class="card-actions">
+              <span [class]="'tipo-badge ' + getTipoClass(inmueble.tipo)">
+                {{ getTipoLabel(inmueble.tipo) }}
+              </span>
+              <button class="delete-button" *ngIf="!esPropietario" (click)="eliminarInmueble(inmueble, $event)" title="Eliminar inmueble">
+                <span class="app-icon">delete</span>
+              </button>
+            </div>
+          </div>
+          <p *ngIf="inmueble.direccion"><strong>Dirección:</strong> {{ inmueble.direccion }}</p>
+          <p *ngIf="inmueble.metros"><strong>Superficie:</strong> {{ inmueble.metros }} m²</p>
+          <p *ngIf="inmueble.comunidad"><strong>Comunidad:</strong> {{ inmueble.comunidad.nombre }}</p>
+          <div class="propietarios-info" *ngIf="!esPropietario && inmueble.propietarios && inmueble.propietarios.length > 0">
+            <span class="app-icon">people</span>
+            <span>{{ inmueble.propietarios.length }} propietario(s)</span>
+          </div>
+        </div>
+        
+        <div class="empty-state" *ngIf="inmuebles.length === 0">
+          <span class="app-icon empty-icon">home</span>
+          <p>No hay inmuebles registrados</p>
+          <button class="add-button" (click)="mostrarForm()">Crear primer inmueble</button>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+

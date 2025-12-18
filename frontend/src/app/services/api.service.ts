@@ -108,6 +108,126 @@ export class ApiService {
     });
   }
 
+  getComunidad(id: number): Observable<any> {
+    return this.http.get(`${this.apiUrl}/comunidades/${id}`, {
+      headers: this.getHeaders()
+    });
+  }
+
+  createComunidad(data: any): Observable<any> {
+    return this.http.post(`${this.apiUrl}/comunidades`, data, {
+      headers: this.getHeaders()
+    });
+  }
+
+  updateComunidad(id: number, data: any): Observable<any> {
+    return this.http.put(`${this.apiUrl}/comunidades/${id}`, data, {
+      headers: this.getHeaders()
+    });
+  }
+
+  deleteComunidad(id: number): Observable<any> {
+    return this.http.delete(`${this.apiUrl}/comunidades/${id}`, {
+      headers: this.getHeaders()
+    });
+  }
+
+  // Inmuebles
+  getInmuebles(params?: any): Observable<any> {
+    return this.http.get(`${this.apiUrl}/inmuebles`, {
+      headers: this.getHeaders(),
+      params
+    });
+  }
+
+  getInmueble(id: number): Observable<any> {
+    return this.http.get(`${this.apiUrl}/inmuebles/${id}`, {
+      headers: this.getHeaders()
+    });
+  }
+
+  createInmueble(data: any): Observable<any> {
+    return this.http.post(`${this.apiUrl}/inmuebles`, data, {
+      headers: this.getHeaders()
+    });
+  }
+
+  updateInmueble(id: number, data: any): Observable<any> {
+    return this.http.put(`${this.apiUrl}/inmuebles/${id}`, data, {
+      headers: this.getHeaders()
+    });
+  }
+
+  deleteInmueble(id: number): Observable<any> {
+    return this.http.delete(`${this.apiUrl}/inmuebles/${id}`, {
+      headers: this.getHeaders()
+    });
+  }
+
+  // Propietarios
+  getPropietarios(params?: any): Observable<any> {
+    return this.http.get(`${this.apiUrl}/propietarios`, {
+      headers: this.getHeaders(),
+      params
+    });
+  }
+
+  getPropietario(id: number): Observable<any> {
+    return this.http.get(`${this.apiUrl}/propietarios/${id}`, {
+      headers: this.getHeaders()
+    });
+  }
+
+  createPropietario(data: any): Observable<any> {
+    return this.http.post(`${this.apiUrl}/propietarios`, data, {
+      headers: this.getHeaders()
+    });
+  }
+
+  updatePropietario(id: number, data: any): Observable<any> {
+    return this.http.put(`${this.apiUrl}/propietarios/${id}`, data, {
+      headers: this.getHeaders()
+    });
+  }
+
+  deletePropietario(id: number): Observable<any> {
+    return this.http.delete(`${this.apiUrl}/propietarios/${id}`, {
+      headers: this.getHeaders()
+    });
+  }
+
+  // Proveedores
+  getProveedores(params?: any): Observable<any> {
+    return this.http.get(`${this.apiUrl}/proveedores`, {
+      headers: this.getHeaders(),
+      params
+    });
+  }
+
+  getProveedor(id: number): Observable<any> {
+    return this.http.get(`${this.apiUrl}/proveedores/${id}`, {
+      headers: this.getHeaders()
+    });
+  }
+
+  createProveedor(data: any): Observable<any> {
+    return this.http.post(`${this.apiUrl}/proveedores`, data, {
+      headers: this.getHeaders()
+    });
+  }
+
+  updateProveedor(id: number, data: any): Observable<any> {
+    return this.http.put(`${this.apiUrl}/proveedores/${id}`, data, {
+      headers: this.getHeaders()
+    });
+  }
+
+  deleteProveedor(id: number): Observable<any> {
+    return this.http.delete(`${this.apiUrl}/proveedores/${id}`, {
+      headers: this.getHeaders()
+    });
+  }
+
   // Conductores
   getConductores(params?: any): Observable<any> {
     return this.http.get(`${this.apiUrl}/conductores/`, {
