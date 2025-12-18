@@ -40,4 +40,5 @@ class Incidencia(Base):
     proveedor = relationship("Proveedor", foreign_keys=[proveedor_id], overlaps="incidencias_asignadas")
     actuaciones = relationship("Actuacion", back_populates="incidencia", cascade="all, delete-orphan")
     documentos = relationship("Documento", back_populates="incidencia", cascade="all, delete-orphan")
+    mensajes = relationship("Mensaje", back_populates="incidencia", cascade="all, delete-orphan")
 

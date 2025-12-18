@@ -447,5 +447,25 @@ export class ApiService {
               headers: this.getHeaders()
             });
           }
+
+          // Mensajes
+          getMensajesIncidencia(incidenciaId: number): Observable<any> {
+            return this.http.get(`${this.apiUrl}/mensajes/incidencia/${incidenciaId}`, {
+              headers: this.getHeaders()
+            });
+          }
+
+          enviarMensaje(incidenciaId: number, contenido: string): Observable<any> {
+            return this.http.post(`${this.apiUrl}/mensajes/incidencia/${incidenciaId}`, 
+              { contenido }, 
+              { headers: this.getHeaders() }
+            );
+          }
+
+          eliminarMensaje(mensajeId: number): Observable<any> {
+            return this.http.delete(`${this.apiUrl}/mensajes/${mensajeId}`, {
+              headers: this.getHeaders()
+            });
+          }
         }
 

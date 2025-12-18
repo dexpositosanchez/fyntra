@@ -293,6 +293,11 @@
               <span class="app-icon">attach_file</span>
               <span class="count-badge" *ngIf="incidencia.documentos_count">{{ incidencia.documentos_count }}</span>
             </button>
+            <!-- Chat para todos -->
+            <button class="action-btn chat-btn" 
+                    (click)="abrirChat(incidencia, $event)" title="Chat">
+              <span class="app-icon">chat</span>
+            </button>
             <!-- Eliminar solo para admin -->
             <button class="action-btn delete-btn" *ngIf="!esPropietario && !esProveedor" (click)="eliminarIncidencia(incidencia, $event)" title="Eliminar">
               <span class="app-icon">delete</span>
@@ -470,6 +475,55 @@
            [src]="documentoVisualizando?.url" alt="{{ documentoVisualizando?.nombre }}">
       <iframe *ngIf="documentoVisualizando?.tipo_archivo === 'application/pdf'" 
               [src]="documentoVisualizando?.url" frameborder="0"></iframe>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Chat -->
+<div class="modal-overlay chat-overlay" *ngIf="mostrarChatModal" (click)="cerrarChat()">
+  <div class="chat-modal" (click)="$event.stopPropagation()">
+    <div class="chat-header">
+      <h3>Chat - {{ incidenciaSeleccionada?.titulo }}</h3>
+      <button class="close-button" (click)="cerrarChat()">×</button>
+    </div>
+    
+    <div class="chat-messages" *ngIf="!cargandoMensajes">
+      <div *ngIf="mensajes.length === 0" class="chat-empty">
+        <span class="app-icon">chat</span>
+        <p>No hay mensajes aún</p>
+        <small>Inicia la conversación escribiendo un mensaje</small>
+      </div>
+      
+      <div *ngFor="let mensaje of mensajes" 
+           class="mensaje" 
+           [class.mensaje-propio]="esMiMensaje(mensaje)"
+           [class.mensaje-otro]="!esMiMensaje(mensaje)">
+        <div class="mensaje-header">
+          <span class="mensaje-autor">{{ mensaje.usuario_nombre }}</span>
+          <span class="mensaje-rol">({{ getRolLabel(mensaje.usuario_rol) }})</span>
+          <span class="mensaje-fecha">{{ formatearFecha(mensaje.creado_en) }}</span>
+          <button *ngIf="puedeEliminarMensaje(mensaje)" 
+                  class="mensaje-delete" 
+                  (click)="eliminarMensaje(mensaje)"
+                  title="Eliminar mensaje">×</button>
+        </div>
+        <div class="mensaje-contenido">{{ mensaje.contenido }}</div>
+      </div>
+    </div>
+    
+    <div class="chat-loading" *ngIf="cargandoMensajes">
+      <span class="app-icon spin">sync</span> Cargando mensajes...
+    </div>
+    
+    <div class="chat-input">
+      <input type="text" 
+             [(ngModel)]="nuevoMensaje" 
+             placeholder="Escribe un mensaje..." 
+             (keyup.enter)="enviarMensaje()"
+             maxlength="2000">
+      <button class="send-btn" (click)="enviarMensaje()" [disabled]="!nuevoMensaje.trim()">
+        <span class="app-icon">send</span>
+      </button>
     </div>
   </div>
 </div>

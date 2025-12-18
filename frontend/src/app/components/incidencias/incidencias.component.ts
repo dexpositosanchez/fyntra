@@ -46,6 +46,11 @@ export class IncidenciasComponent implements OnInit, OnDestroy {
   archivoSeleccionado: File | null = null;
   mostrarVisorDocumento: boolean = false;
   documentoVisualizando: any = null;
+  // Mensajes/Chat
+  mensajes: any[] = [];
+  mostrarChatModal: boolean = false;
+  nuevoMensaje: string = '';
+  cargandoMensajes: boolean = false;
   private routerSubscription?: Subscription;
 
   incidenciaForm: any = {
@@ -531,5 +536,87 @@ export class IncidenciasComponent implements OnInit, OnDestroy {
 
   puedeEliminarDocumento(documento: any): boolean {
     return documento.usuario_id === this.usuario?.id || this.usuario?.rol === 'super_admin';
+  }
+
+  // ========== CHAT / MENSAJES ==========
+  abrirChat(incidencia: any, event: Event): void {
+    event.stopPropagation();
+    this.incidenciaSeleccionada = incidencia;
+    this.mostrarChatModal = true;
+    this.cargarMensajes(incidencia.id);
+  }
+
+  cerrarChat(): void {
+    this.mostrarChatModal = false;
+    this.mensajes = [];
+    this.nuevoMensaje = '';
+  }
+
+  cargarMensajes(incidenciaId: number): void {
+    this.cargandoMensajes = true;
+    this.apiService.getMensajesIncidencia(incidenciaId).subscribe({
+      next: (data) => {
+        this.mensajes = data;
+        this.cargandoMensajes = false;
+        setTimeout(() => this.scrollChatAlFinal(), 100);
+      },
+      error: (err) => {
+        this.error = err.error?.detail || 'Error al cargar mensajes';
+        this.cargandoMensajes = false;
+      }
+    });
+  }
+
+  enviarMensaje(): void {
+    if (!this.nuevoMensaje.trim() || !this.incidenciaSeleccionada) return;
+    
+    this.apiService.enviarMensaje(this.incidenciaSeleccionada.id, this.nuevoMensaje.trim()).subscribe({
+      next: (mensaje) => {
+        this.mensajes.push(mensaje);
+        this.nuevoMensaje = '';
+        setTimeout(() => this.scrollChatAlFinal(), 100);
+      },
+      error: (err) => this.error = err.error?.detail || 'Error al enviar mensaje'
+    });
+  }
+
+  eliminarMensaje(mensaje: any): void {
+    if (confirm('¿Eliminar este mensaje?')) {
+      this.apiService.eliminarMensaje(mensaje.id).subscribe({
+        next: () => {
+          this.mensajes = this.mensajes.filter(m => m.id !== mensaje.id);
+        },
+        error: (err) => this.error = err.error?.detail || 'Error al eliminar mensaje'
+      });
+    }
+  }
+
+  puedeEliminarMensaje(mensaje: any): boolean {
+    // Solo el autor puede eliminar y solo si es el último mensaje
+    if (mensaje.usuario_id !== this.usuario?.id) return false;
+    if (this.mensajes.length === 0) return false;
+    const ultimoMensaje = this.mensajes[this.mensajes.length - 1];
+    return ultimoMensaje.id === mensaje.id;
+  }
+
+  scrollChatAlFinal(): void {
+    const chatBody = document.querySelector('.chat-messages');
+    if (chatBody) {
+      chatBody.scrollTop = chatBody.scrollHeight;
+    }
+  }
+
+  getRolLabel(rol: string): string {
+    const roles: {[key: string]: string} = {
+      'super_admin': 'Admin',
+      'admin_fincas': 'Admin Fincas',
+      'propietario': 'Propietario',
+      'proveedor': 'Proveedor'
+    };
+    return roles[rol] || rol;
+  }
+
+  esMiMensaje(mensaje: any): boolean {
+    return mensaje.usuario_id === this.usuario?.id;
   }
 }
