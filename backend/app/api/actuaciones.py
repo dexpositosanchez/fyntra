@@ -69,7 +69,8 @@ async def listar_incidencias_asignadas(
     query = db.query(Incidencia).options(
         joinedload(Incidencia.inmueble),
         joinedload(Incidencia.actuaciones),
-        joinedload(Incidencia.historial)
+        joinedload(Incidencia.historial),
+        joinedload(Incidencia.documentos)
     ).filter(Incidencia.proveedor_id == proveedor.id)
     
     if estado:
@@ -106,6 +107,7 @@ async def listar_incidencias_asignadas(
                 "direccion": inc.inmueble.direccion
             } if inc.inmueble else None,
             "actuaciones_count": len(inc.actuaciones),
+            "documentos_count": len(inc.documentos) if hasattr(inc, 'documentos') else 0,
             "historial": historial
         })
     

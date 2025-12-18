@@ -416,5 +416,36 @@ export class ApiService {
               params
             });
           }
+
+          // Documentos
+          getDocumentosIncidencia(incidenciaId: number): Observable<any> {
+            return this.http.get(`${this.apiUrl}/documentos/incidencia/${incidenciaId}`, {
+              headers: this.getHeaders()
+            });
+          }
+
+          subirDocumento(incidenciaId: number, nombre: string, archivo: File): Observable<any> {
+            const formData = new FormData();
+            formData.append('incidencia_id', incidenciaId.toString());
+            formData.append('nombre', nombre);
+            formData.append('archivo', archivo);
+            
+            const token = localStorage.getItem('access_token');
+            const headers = new HttpHeaders({
+              ...(token && { 'Authorization': `Bearer ${token}` })
+            });
+            
+            return this.http.post(`${this.apiUrl}/documentos/`, formData, { headers });
+          }
+
+          getUrlDocumento(documentoId: number): string {
+            return `${this.apiUrl}/documentos/${documentoId}/archivo`;
+          }
+
+          eliminarDocumento(documentoId: number): Observable<any> {
+            return this.http.delete(`${this.apiUrl}/documentos/${documentoId}`, {
+              headers: this.getHeaders()
+            });
+          }
         }
 

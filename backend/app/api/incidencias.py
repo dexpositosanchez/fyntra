@@ -40,9 +40,11 @@ def incidencia_to_response(incidencia: Incidencia, db: Session) -> dict:
             "usuario_nombre": usuario.nombre if usuario else None
         })
     
-    # Contar actuaciones
+    # Contar actuaciones y documentos
     from app.models.actuacion import Actuacion
+    from app.models.documento import Documento
     actuaciones_count = db.query(Actuacion).filter(Actuacion.incidencia_id == incidencia.id).count()
+    documentos_count = db.query(Documento).filter(Documento.incidencia_id == incidencia.id).count()
     
     return {
         "id": incidencia.id,
@@ -59,7 +61,8 @@ def incidencia_to_response(incidencia: Incidencia, db: Session) -> dict:
         "creado_en": incidencia.creado_en,
         "inmueble": incidencia.inmueble,
         "historial": historial,
-        "actuaciones_count": actuaciones_count
+        "actuaciones_count": actuaciones_count,
+        "documentos_count": documentos_count
     }
 
 def get_inmuebles_propietario(db: Session, usuario_id: int) -> List[int]:

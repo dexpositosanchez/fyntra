@@ -287,6 +287,12 @@
               <span class="app-icon">build</span>
               <span class="count-badge" *ngIf="incidencia.actuaciones_count">{{ incidencia.actuaciones_count }}</span>
             </button>
+            <!-- Documentos para todos -->
+            <button class="action-btn documentos-btn" 
+                    (click)="verDocumentos(incidencia, $event)" title="Ver documentos">
+              <span class="app-icon">attach_file</span>
+              <span class="count-badge" *ngIf="incidencia.documentos_count">{{ incidencia.documentos_count }}</span>
+            </button>
             <!-- Eliminar solo para admin -->
             <button class="action-btn delete-btn" *ngIf="!esPropietario && !esProveedor" (click)="eliminarIncidencia(incidencia, $event)" title="Eliminar">
               <span class="app-icon">delete</span>
@@ -362,6 +368,108 @@
       <div class="empty-historial" *ngIf="!incidenciaSeleccionada?.historial?.length">
         No hay historial de cambios
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Documentos -->
+<div class="modal-overlay" *ngIf="mostrarDocumentosModal" (click)="cerrarDocumentos()">
+  <div class="modal-content documentos-modal" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>Documentos de la incidencia</h3>
+      <button class="close-button" (click)="cerrarDocumentos()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-incidencia-titulo">{{ incidenciaSeleccionada?.titulo }}</div>
+      
+      <!-- Botón para añadir documento -->
+      <div class="documentos-header" *ngIf="!mostrarFormDocumento">
+        <button class="add-documento-btn" (click)="mostrarFormularioDocumento()">
+          <span class="app-icon">upload_file</span> Subir documento
+        </button>
+      </div>
+
+      <!-- Formulario subir documento -->
+      <div class="documento-form" *ngIf="mostrarFormDocumento">
+        <div class="form-group">
+          <label>Nombre del documento *</label>
+          <input type="text" [(ngModel)]="documentoForm.nombre" class="form-input" 
+                 placeholder="Ej: Factura reparación, Foto avería...">
+        </div>
+        <div class="form-group">
+          <label>Archivo *</label>
+          <div class="file-input-wrapper">
+            <input type="file" id="archivo" (change)="onArchivoSeleccionado($event)" 
+                   accept="image/*,.pdf,.doc,.docx,.xls,.xlsx">
+            <label for="archivo" class="file-label">
+              <span class="app-icon">cloud_upload</span>
+              {{ archivoSeleccionado ? archivoSeleccionado.name : 'Seleccionar archivo' }}
+            </label>
+          </div>
+          <small class="help-text">Formatos: imágenes, PDF, Word, Excel. Máx: 10MB</small>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="cancel-btn" (click)="cancelarFormDocumento()">Cancelar</button>
+          <button type="button" class="save-btn" (click)="subirDocumento()" 
+                  [disabled]="!documentoForm.nombre || !archivoSeleccionado || loading">
+            {{ loading ? 'Subiendo...' : 'Subir documento' }}
+          </button>
+        </div>
+      </div>
+
+      <!-- Lista de documentos -->
+      <div class="documentos-list" *ngIf="documentos.length > 0 && !mostrarFormDocumento">
+        <div class="documento-item" *ngFor="let doc of documentos">
+          <div class="documento-icon">
+            <span class="app-icon" *ngIf="doc.tipo_archivo?.startsWith('image/')">image</span>
+            <span class="app-icon" *ngIf="doc.tipo_archivo === 'application/pdf'">picture_as_pdf</span>
+            <span class="app-icon" *ngIf="!doc.tipo_archivo?.startsWith('image/') && doc.tipo_archivo !== 'application/pdf'">description</span>
+          </div>
+          <div class="documento-info">
+            <div class="documento-nombre">{{ doc.nombre }}</div>
+            <div class="documento-meta">
+              <span>{{ doc.nombre_archivo }}</span>
+              <span *ngIf="doc.tamano">• {{ formatearTamano(doc.tamano) }}</span>
+            </div>
+            <div class="documento-subido">
+              <span class="app-icon">person</span> {{ doc.subido_por }} • {{ formatearFecha(doc.creado_en) }}
+            </div>
+          </div>
+          <div class="documento-actions">
+            <button class="ver-btn" (click)="verDocumento(doc)" title="Ver/Descargar">
+              <span class="app-icon">visibility</span>
+            </button>
+            <button class="delete-btn" *ngIf="puedeEliminarDocumento(doc)" 
+                    (click)="eliminarDocumento(doc, $event)" title="Eliminar">
+              <span class="app-icon">delete</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="empty-documentos" *ngIf="documentos.length === 0 && !mostrarFormDocumento">
+        <span class="app-icon">folder_open</span>
+        <p>No hay documentos adjuntos</p>
+        <small>Sube fotos, facturas o presupuestos relacionados con la incidencia</small>
+      </div>
+      
+      <div *ngIf="error" class="error-message">{{ error }}</div>
+    </div>
+  </div>
+</div>
+
+<!-- Visor de documento -->
+<div class="modal-overlay visor-overlay" *ngIf="mostrarVisorDocumento" (click)="cerrarVisor()">
+  <div class="visor-content" (click)="$event.stopPropagation()">
+    <div class="visor-header">
+      <span class="visor-titulo">{{ documentoVisualizando?.nombre }}</span>
+      <button class="close-button" (click)="cerrarVisor()">×</button>
+    </div>
+    <div class="visor-body">
+      <img *ngIf="documentoVisualizando?.tipo_archivo?.startsWith('image/')" 
+           [src]="documentoVisualizando?.url" alt="{{ documentoVisualizando?.nombre }}">
+      <iframe *ngIf="documentoVisualizando?.tipo_archivo === 'application/pdf'" 
+              [src]="documentoVisualizando?.url" frameborder="0"></iframe>
     </div>
   </div>
 </div>

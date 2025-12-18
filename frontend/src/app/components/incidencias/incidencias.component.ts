@@ -38,6 +38,14 @@ export class IncidenciasComponent implements OnInit, OnDestroy {
     fecha: '',
     coste: null
   };
+  // Documentos
+  documentos: any[] = [];
+  mostrarDocumentosModal: boolean = false;
+  mostrarFormDocumento: boolean = false;
+  documentoForm: any = { nombre: '' };
+  archivoSeleccionado: File | null = null;
+  mostrarVisorDocumento: boolean = false;
+  documentoVisualizando: any = null;
   private routerSubscription?: Subscription;
 
   incidenciaForm: any = {
@@ -410,5 +418,118 @@ export class IncidenciasComponent implements OnInit, OnDestroy {
         error: (err) => this.error = err.error?.detail || 'Error al eliminar'
       });
     }
+  }
+
+  // Métodos para documentos
+  verDocumentos(incidencia: any, event: Event): void {
+    event.stopPropagation();
+    this.incidenciaSeleccionada = incidencia;
+    this.mostrarDocumentosModal = true;
+    this.cargarDocumentos(incidencia.id);
+  }
+
+  cargarDocumentos(incidenciaId: number): void {
+    this.apiService.getDocumentosIncidencia(incidenciaId).subscribe({
+      next: (data) => this.documentos = data,
+      error: () => this.documentos = []
+    });
+  }
+
+  cerrarDocumentos(): void {
+    this.mostrarDocumentosModal = false;
+    this.mostrarFormDocumento = false;
+    this.documentos = [];
+    this.archivoSeleccionado = null;
+  }
+
+  mostrarFormularioDocumento(): void {
+    this.mostrarFormDocumento = true;
+    this.documentoForm = { nombre: '' };
+    this.archivoSeleccionado = null;
+  }
+
+  cancelarFormDocumento(): void {
+    this.mostrarFormDocumento = false;
+    this.archivoSeleccionado = null;
+  }
+
+  onArchivoSeleccionado(event: any): void {
+    const file = event.target.files[0];
+    if (file) {
+      this.archivoSeleccionado = file;
+      if (!this.documentoForm.nombre) {
+        this.documentoForm.nombre = file.name.split('.')[0];
+      }
+    }
+  }
+
+  subirDocumento(): void {
+    if (!this.incidenciaSeleccionada || !this.archivoSeleccionado) return;
+
+    this.loading = true;
+    this.apiService.subirDocumento(
+      this.incidenciaSeleccionada.id,
+      this.documentoForm.nombre,
+      this.archivoSeleccionado
+    ).subscribe({
+      next: () => {
+        this.loading = false;
+        this.cancelarFormDocumento();
+        this.cargarDocumentos(this.incidenciaSeleccionada.id);
+        this.cargarIncidencias(); // Actualizar contador
+      },
+      error: (err) => {
+        this.loading = false;
+        this.error = err.error?.detail || 'Error al subir documento';
+      }
+    });
+  }
+
+  verDocumento(documento: any): void {
+    const url = this.apiService.getUrlDocumento(documento.id);
+    const token = localStorage.getItem('access_token');
+    const fullUrl = url + '?token=' + token;
+    
+    // Para imágenes, mostrar en modal
+    if (documento.tipo_archivo?.startsWith('image/')) {
+      this.documentoVisualizando = { ...documento, url: fullUrl };
+      this.mostrarVisorDocumento = true;
+    } else {
+      // Para PDFs y otros archivos, abrir en nueva pestaña
+      window.open(fullUrl, '_blank');
+    }
+  }
+
+  cerrarVisor(): void {
+    this.mostrarVisorDocumento = false;
+    this.documentoVisualizando = null;
+  }
+
+  eliminarDocumento(documento: any, event: Event): void {
+    event.stopPropagation();
+    if (confirm(`¿Eliminar documento "${documento.nombre}"?`)) {
+      this.apiService.eliminarDocumento(documento.id).subscribe({
+        next: () => {
+          this.cargarDocumentos(this.incidenciaSeleccionada.id);
+          this.cargarIncidencias();
+        },
+        error: (err) => this.error = err.error?.detail || 'Error al eliminar'
+      });
+    }
+  }
+
+  formatearTamano(bytes: number): string {
+    if (!bytes) return '';
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  }
+
+  esImagenOPdf(tipo: string): boolean {
+    return tipo?.startsWith('image/') || tipo === 'application/pdf';
+  }
+
+  puedeEliminarDocumento(documento: any): boolean {
+    return documento.usuario_id === this.usuario?.id || this.usuario?.rol === 'super_admin';
   }
 }
