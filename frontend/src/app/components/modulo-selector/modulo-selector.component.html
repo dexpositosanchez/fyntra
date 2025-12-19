@@ -37,6 +37,17 @@
           <span class="feature">Pedidos</span>
         </div>
       </div>
+
+      <div class="modulo-card sistema-card" *ngIf="usuario?.rol === 'super_admin'" (click)="irAUsuarios()">
+        <div class="modulo-icon app-icon">people</div>
+        <h2>Gestión de Usuarios</h2>
+        <p>Administración de usuarios del sistema</p>
+        <div class="modulo-features">
+          <span class="feature">Crear</span>
+          <span class="feature">Editar</span>
+          <span class="feature">Roles</span>
+        </div>
+      </div>
     </div>
   </main>
 </div>

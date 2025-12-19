@@ -467,5 +467,43 @@ export class ApiService {
               headers: this.getHeaders()
             });
           }
+
+          // Usuarios (solo super_admin)
+          getUsuarios(): Observable<any> {
+            return this.http.get(`${this.apiUrl}/usuarios`, {
+              headers: this.getHeaders()
+            });
+          }
+
+          getUsuario(usuarioId: number): Observable<any> {
+            return this.http.get(`${this.apiUrl}/usuarios/${usuarioId}`, {
+              headers: this.getHeaders()
+            });
+          }
+
+          crearUsuario(data: any): Observable<any> {
+            return this.http.post(`${this.apiUrl}/usuarios`, data, {
+              headers: this.getHeaders()
+            });
+          }
+
+          actualizarUsuario(usuarioId: number, data: any): Observable<any> {
+            return this.http.put(`${this.apiUrl}/usuarios/${usuarioId}`, data, {
+              headers: this.getHeaders()
+            });
+          }
+
+          eliminarUsuario(usuarioId: number): Observable<any> {
+            return this.http.delete(`${this.apiUrl}/usuarios/${usuarioId}`, {
+              headers: this.getHeaders()
+            });
+          }
+
+          cambiarPasswordUsuario(usuarioId: number, password: string): Observable<any> {
+            return this.http.put(`${this.apiUrl}/usuarios/${usuarioId}/password`, 
+              { password }, 
+              { headers: this.getHeaders() }
+            );
+          }
         }
 

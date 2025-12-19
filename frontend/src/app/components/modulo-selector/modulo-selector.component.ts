@@ -25,6 +25,10 @@ export class ModuloSelectorComponent {
     }
   }
 
+  irAUsuarios(): void {
+    this.router.navigate(['/usuarios']);
+  }
+
   logout(): void {
     this.authService.logout();
   }

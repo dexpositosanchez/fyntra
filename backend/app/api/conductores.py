@@ -7,6 +7,7 @@ from app.models.conductor import Conductor
 from app.models.usuario import Usuario
 from app.schemas.conductor import ConductorCreate, ConductorUpdate, ConductorResponse
 from app.api.dependencies import get_current_user
+from app.core.security import get_password_hash
 
 router = APIRouter(prefix="/conductores", tags=["conductores"])
 
@@ -56,6 +57,7 @@ async def listar_conductores(
             "licencia": conductor.licencia,
             "fecha_caducidad_licencia": conductor.fecha_caducidad_licencia,
             "activo": conductor.activo,
+            "usuario_id": conductor.usuario_id,
             "creado_en": conductor.creado_en,
             "dias_restantes_licencia": dias_restantes,
             "licencia_proxima_caducar": proxima_caducar
@@ -93,6 +95,7 @@ async def obtener_alertas_licencias(
             "licencia": conductor.licencia,
             "fecha_caducidad_licencia": conductor.fecha_caducidad_licencia,
             "activo": conductor.activo,
+            "usuario_id": conductor.usuario_id,
             "creado_en": conductor.creado_en,
             "dias_restantes_licencia": dias_restantes,
             "licencia_proxima_caducar": True
@@ -126,6 +129,7 @@ async def obtener_conductor(
         "licencia": conductor.licencia,
         "fecha_caducidad_licencia": conductor.fecha_caducidad_licencia,
         "activo": conductor.activo,
+        "usuario_id": conductor.usuario_id,
         "creado_en": conductor.creado_en,
         "dias_restantes_licencia": dias_restantes,
         "licencia_proxima_caducar": proxima_caducar
@@ -171,8 +175,35 @@ async def crear_conductor(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Ya existe un conductor con este email"
             )
+        
+        # Si se proporciona password, verificar que el email no exista como usuario
+        if conductor_data.password:
+            usuario_existente = db.query(Usuario).filter(Usuario.email == conductor_data.email).first()
+            if usuario_existente:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Ya existe un usuario con ese email. No se puede crear un conductor con acceso."
+                )
     
-    nuevo_conductor = Conductor(**conductor_data.model_dump())
+    usuario_id = None
+    
+    # Si se proporciona password y email, crear usuario automáticamente
+    if conductor_data.password and conductor_data.email:
+        nombre_completo = f"{conductor_data.nombre} {conductor_data.apellidos or ''}".strip()
+        nuevo_usuario = Usuario(
+            nombre=nombre_completo,
+            email=conductor_data.email,
+            hash_password=get_password_hash(conductor_data.password),
+            rol="conductor",
+            activo=conductor_data.activo
+        )
+        db.add(nuevo_usuario)
+        db.flush()  # Para obtener el ID
+        usuario_id = nuevo_usuario.id
+    
+    # Crear conductor (excluyendo password del dump)
+    conductor_dict = conductor_data.model_dump(exclude={'password'})
+    nuevo_conductor = Conductor(**conductor_dict, usuario_id=usuario_id)
     db.add(nuevo_conductor)
     db.commit()
     db.refresh(nuevo_conductor)
@@ -189,6 +220,7 @@ async def crear_conductor(
         "licencia": nuevo_conductor.licencia,
         "fecha_caducidad_licencia": nuevo_conductor.fecha_caducidad_licencia,
         "activo": nuevo_conductor.activo,
+        "usuario_id": nuevo_conductor.usuario_id,
         "creado_en": nuevo_conductor.creado_en,
         "dias_restantes_licencia": dias_restantes,
         "licencia_proxima_caducar": proxima_caducar
@@ -253,9 +285,56 @@ async def actualizar_conductor(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Ya existe un conductor con este email"
             )
+        # Si el email cambia y hay un usuario asociado, actualizar el email del usuario
+        if conductor.usuario_id:
+            usuario_asociado = db.query(Usuario).filter(Usuario.id == conductor.usuario_id).first()
+            if usuario_asociado:
+                usuario_asociado.email = update_data["email"]
     
+    # Manejar creación/actualización de usuario si se proporciona password
+    password = update_data.pop("password", None)
+    if password:
+        if not conductor.email:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="El conductor debe tener un email para crear un usuario"
+            )
+        
+        if conductor.usuario_id:
+            # Actualizar contraseña del usuario existente
+            usuario_asociado = db.query(Usuario).filter(Usuario.id == conductor.usuario_id).first()
+            if usuario_asociado:
+                usuario_asociado.hash_password = get_password_hash(password)
+        else:
+            # Crear nuevo usuario
+            nombre_completo = f"{conductor.nombre} {conductor.apellidos or ''}".strip()
+            nuevo_usuario = Usuario(
+                nombre=nombre_completo,
+                email=conductor.email,
+                hash_password=get_password_hash(password),
+                rol="conductor",
+                activo=conductor.activo
+            )
+            db.add(nuevo_usuario)
+            db.flush()
+            conductor.usuario_id = nuevo_usuario.id
+    
+    # Actualizar campos del conductor (excluyendo password que ya se procesó)
     for field, value in update_data.items():
         setattr(conductor, field, value)
+    
+    # Actualizar nombre del usuario si cambia el nombre del conductor
+    if conductor.usuario_id and ("nombre" in update_data or "apellidos" in update_data):
+        usuario_asociado = db.query(Usuario).filter(Usuario.id == conductor.usuario_id).first()
+        if usuario_asociado:
+            nombre_completo = f"{conductor.nombre} {conductor.apellidos or ''}".strip()
+            usuario_asociado.nombre = nombre_completo
+    
+    # Actualizar estado activo del usuario si cambia
+    if conductor.usuario_id and "activo" in update_data:
+        usuario_asociado = db.query(Usuario).filter(Usuario.id == conductor.usuario_id).first()
+        if usuario_asociado:
+            usuario_asociado.activo = update_data["activo"]
     
     db.commit()
     db.refresh(conductor)
@@ -272,6 +351,7 @@ async def actualizar_conductor(
         "licencia": conductor.licencia,
         "fecha_caducidad_licencia": conductor.fecha_caducidad_licencia,
         "activo": conductor.activo,
+        "usuario_id": conductor.usuario_id,
         "creado_en": conductor.creado_en,
         "dias_restantes_licencia": dias_restantes,
         "licencia_proxima_caducar": proxima_caducar

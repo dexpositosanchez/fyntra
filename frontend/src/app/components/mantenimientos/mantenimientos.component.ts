@@ -581,6 +581,11 @@ export class MantenimientosComponent implements OnInit, OnDestroy {
     return diasRestantes;
   }
 
+  irAUsuarios(): void {
+    this.mostrarMenuUsuario = false;
+    this.router.navigate(['/usuarios']);
+  }
+
   logout(): void {
     this.authService.logout();
   }

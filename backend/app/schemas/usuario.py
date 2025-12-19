@@ -33,3 +33,6 @@ class Token(BaseModel):
     token_type: str
     usuario: UsuarioResponse
 
+class CambiarPassword(BaseModel):
+    password: str
+

@@ -677,6 +677,11 @@ export class RutasComponent implements OnInit, OnDestroy {
     this.router.navigate(['/vehiculos']);
   }
 
+  irAUsuarios(): void {
+    this.mostrarMenuUsuario = false;
+    this.router.navigate(['/usuarios']);
+  }
+
   logout(): void {
     this.mostrarMenuUsuario = false;
     this.authService.logout();

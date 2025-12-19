@@ -23,7 +23,9 @@ export class ConductoresComponent implements OnInit, OnDestroy {
     email: '',
     licencia: '',
     fecha_caducidad_licencia: '',
-    activo: true
+    activo: true,
+    crearAccesoMovil: false,
+    password: ''
   };
   loading: boolean = false;
   error: string = '';
@@ -112,7 +114,9 @@ export class ConductoresComponent implements OnInit, OnDestroy {
       email: '',
       licencia: '',
       fecha_caducidad_licencia: '',
-      activo: true
+      activo: true,
+      crearAccesoMovil: false,
+      password: ''
     };
   }
 
@@ -150,6 +154,19 @@ export class ConductoresComponent implements OnInit, OnDestroy {
     this.mostrarFormulario = false;
     this.editandoConductor = false;
     this.conductorIdEditando = null;
+    this.conductorForm = {
+      nombre: '',
+      apellidos: '',
+      dni: '',
+      telefono: '',
+      email: '',
+      licencia: '',
+      fecha_caducidad_licencia: '',
+      activo: true,
+      crearAccesoMovil: false,
+      password: ''
+    };
+    this.error = '';
   }
 
   onSubmit(): void {
@@ -158,11 +175,45 @@ export class ConductoresComponent implements OnInit, OnDestroy {
       return;
     }
 
+    if (!this.editandoConductor && this.conductorForm.crearAccesoMovil && !this.conductorForm.password) {
+      this.error = 'La contraseña es obligatoria para crear acceso móvil';
+      return;
+    }
+
+    if (this.conductorForm.password && this.conductorForm.password.length < 6) {
+      this.error = 'La contraseña debe tener al menos 6 caracteres';
+      return;
+    }
+
+    if (this.conductorForm.crearAccesoMovil && !this.conductorForm.email) {
+      this.error = 'El email es obligatorio para crear acceso móvil';
+      return;
+    }
+
     this.loading = true;
     
+    const data: any = {
+      nombre: this.conductorForm.nombre,
+      apellidos: this.conductorForm.apellidos || null,
+      dni: this.conductorForm.dni || null,
+      telefono: this.conductorForm.telefono || null,
+      email: this.conductorForm.email || null,
+      licencia: this.conductorForm.licencia,
+      fecha_caducidad_licencia: this.conductorForm.fecha_caducidad_licencia,
+      activo: this.conductorForm.activo
+    };
+
+    if (!this.editandoConductor && this.conductorForm.crearAccesoMovil) {
+      data.password = this.conductorForm.password;
+    }
+
     if (this.editandoConductor && this.conductorIdEditando) {
+      // Si se está editando y se proporciona password, añadirlo
+      if (this.conductorForm.password) {
+        data.password = this.conductorForm.password;
+      }
       // Actualizar conductor existente
-      this.apiService.updateConductor(this.conductorIdEditando, this.conductorForm).subscribe({
+      this.apiService.updateConductor(this.conductorIdEditando, data).subscribe({
         next: () => {
           this.cargarConductores();
           this.mostrarFormulario = false;
@@ -178,7 +229,7 @@ export class ConductoresComponent implements OnInit, OnDestroy {
       });
     } else {
       // Crear nuevo conductor
-      this.apiService.createConductor(this.conductorForm).subscribe({
+      this.apiService.createConductor(data).subscribe({
         next: () => {
           this.cargarConductores();
           this.mostrarFormulario = false;
@@ -242,6 +293,11 @@ export class ConductoresComponent implements OnInit, OnDestroy {
   cambiarAModuloTransportes(): void {
     this.mostrarMenuUsuario = false;
     this.router.navigate(['/vehiculos']);
+  }
+
+  irAUsuarios(): void {
+    this.mostrarMenuUsuario = false;
+    this.router.navigate(['/usuarios']);
   }
 
   logout(): void {

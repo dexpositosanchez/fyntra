@@ -29,6 +29,11 @@
             <span>Módulo Transportes</span>
           </button>
           <div class="menu-divider" *ngIf="estaEnModuloTransportes() || !estaEnModuloTransportes()"></div>
+          <button class="menu-item" *ngIf="usuario?.rol === 'super_admin'" (click)="irAUsuarios()">
+            <span class="menu-icon app-icon">people</span>
+            <span>Gestión de Usuarios</span>
+          </button>
+          <div class="menu-divider" *ngIf="usuario?.rol === 'super_admin'"></div>
           <button class="menu-item logout-item" (click)="logout()">
             <span class="menu-icon app-icon">logout</span>
             <span>Salir</span>

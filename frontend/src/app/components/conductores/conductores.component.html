@@ -29,6 +29,11 @@
             <span>Módulo Transportes</span>
           </button>
           <div class="menu-divider" *ngIf="estaEnModuloTransportes() || !estaEnModuloTransportes()"></div>
+          <button class="menu-item" *ngIf="usuario?.rol === 'super_admin'" (click)="irAUsuarios()">
+            <span class="menu-icon app-icon">people</span>
+            <span>Gestión de Usuarios</span>
+          </button>
+          <div class="menu-divider" *ngIf="usuario?.rol === 'super_admin'"></div>
           <button class="menu-item logout-item" (click)="logout()">
             <span class="menu-icon app-icon">logout</span>
             <span>Salir</span>
@@ -152,6 +157,27 @@
                   Inactivo
                 </label>
               </div>
+            </div>
+          </div>
+
+          <!-- Sección para crear acceso móvil (solo al crear nuevo conductor o al editar) -->
+          <div class="usuario-section" *ngIf="!editandoConductor || conductorForm.email">
+            <div class="form-group checkbox-group" *ngIf="!editandoConductor">
+              <label class="checkbox-label">
+                <input type="checkbox" [(ngModel)]="conductorForm.crearAccesoMovil" name="crearAccesoMovil">
+                <span>Crear acceso móvil para este conductor</span>
+              </label>
+              <small class="help-text">Permite al conductor iniciar sesión en la aplicación móvil</small>
+            </div>
+            
+            <div class="form-group" *ngIf="(conductorForm.crearAccesoMovil && !editandoConductor) || (editandoConductor && conductorForm.email)">
+              <label for="password">Contraseña {{ editandoConductor ? '(opcional)' : '*' }}</label>
+              <input type="password" id="password" [(ngModel)]="conductorForm.password" name="password" 
+                     class="form-input" 
+                     [required]="!editandoConductor && conductorForm.crearAccesoMovil"
+                     placeholder="Contraseña para acceso móvil"
+                     minlength="6">
+              <small class="help-text">Mínimo 6 caracteres. {{ editandoConductor ? 'Dejar vacío para no cambiar.' : 'El conductor usará su email y esta contraseña para acceder.' }}</small>
             </div>
           </div>
           
