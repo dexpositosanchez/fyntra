@@ -35,6 +35,14 @@ class ComunidadSimple(BaseModel):
     class Config:
         from_attributes = True
 
+class InmuebleSimple(BaseModel):
+    id: int
+    referencia: str
+    direccion: Optional[str] = None
+    
+    class Config:
+        from_attributes = True
+
 class InmuebleResponse(InmuebleBase):
     id: int
     creado_en: datetime

@@ -22,6 +22,23 @@ services:
       timeout: 5s
       retries: 5
 
+  # Redis para caché
+  redis:
+    image: redis:7-alpine
+    container_name: fyntra-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - fyntra-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    command: redis-server --appendonly yes
+
   # Backend FastAPI
   backend:
     build:
@@ -30,10 +47,12 @@ services:
     container_name: fyntra-backend
     environment:
       - DATABASE_URL=postgresql://fyntra_user:fyntra_password@postgres:5432/fyntra
+      - REDIS_URL=redis://redis:6379/0
       - SECRET_KEY=your-secret-key-change-in-production
       - ALGORITHM=HS256
       - ACCESS_TOKEN_EXPIRE_MINUTES=30
       - CORS_ORIGINS=http://localhost:4200,http://localhost:80
+      - WORKERS=4
     volumes:
       - ./backend:/app
       - backend_uploads:/app/uploads
@@ -42,9 +61,20 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     networks:
       - fyntra-network
-    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    # Usar Gunicorn con Uvicorn workers para producción (mejor rendimiento con múltiples workers)
+    # En desarrollo, usar --reload para auto-recarga
+    command: >
+      sh -c "
+      if [ \"$$WORKERS\" = \"1\" ] || [ -z \"$$WORKERS\" ]; then
+        uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+      else
+        gunicorn main:app -w $$WORKERS -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000
+      fi
+      "
 
   # Frontend Angular
   frontend:
@@ -81,9 +111,33 @@ services:
     networks:
       - fyntra-network
 
+  # Contenedor de testing con Locust (opcional, solo para pruebas de carga)
+  loadtest:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.test
+    container_name: fyntra-loadtest
+    volumes:
+      - ./backend/scripts:/app/scripts
+      - ./backend/scripts/reports:/app/reports
+    ports:
+      - "8089:8089"  # Interfaz web de Locust
+    depends_on:
+      - backend
+    networks:
+      - fyntra-network
+    profiles:
+      - testing  # Solo se inicia con: docker-compose --profile testing up loadtest
+    environment:
+      - HOST=http://backend:8000
+      - USERS=100
+      - SPAWN_RATE=10
+      - RUN_TIME=5m
+
 volumes:
   postgres_data:
   backend_uploads:
+  redis_data:
 
 networks:
   fyntra-network:

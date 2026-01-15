@@ -275,12 +275,6 @@ async def eliminar_incidencia(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user)
 ):
-    if current_user.rol not in ["super_admin", "admin_fincas"]:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="No tiene permisos para eliminar incidencias"
-        )
-    
     incidencia = db.query(Incidencia).filter(Incidencia.id == incidencia_id).first()
     if not incidencia:
         raise HTTPException(
@@ -288,6 +282,31 @@ async def eliminar_incidencia(
             detail="Incidencia no encontrada"
         )
     
+    # Permisos: super_admin, admin_fincas, o el propietario que creó la incidencia
+    puede_eliminar = False
+    
+    if current_user.rol in ["super_admin", "admin_fincas"]:
+        puede_eliminar = True
+    elif current_user.rol == "propietario":
+        # El propietario puede eliminar si es el creador de la incidencia
+        if incidencia.creador_usuario_id == current_user.id:
+            puede_eliminar = True
+        else:
+            # También puede eliminar si la incidencia es de uno de sus inmuebles
+            inmueble_ids = get_inmuebles_propietario(db, current_user.id)
+            if incidencia.inmueble_id in inmueble_ids:
+                puede_eliminar = True
+    
+    if not puede_eliminar:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tiene permisos para eliminar esta incidencia"
+        )
+    
+    # Eliminar historial asociado primero (no tiene cascade configurado)
+    db.query(HistorialIncidencia).filter(HistorialIncidencia.incidencia_id == incidencia_id).delete()
+    
+    # Eliminar la incidencia (las relaciones con cascade se eliminarán automáticamente)
     db.delete(incidencia)
     db.commit()
     return None

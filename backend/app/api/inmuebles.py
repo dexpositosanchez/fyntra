@@ -6,7 +6,7 @@ from app.models.inmueble import Inmueble
 from app.models.comunidad import Comunidad
 from app.models.propietario import Propietario
 from app.models.usuario import Usuario
-from app.schemas.inmueble import InmuebleCreate, InmuebleUpdate, InmuebleResponse
+from app.schemas.inmueble import InmuebleCreate, InmuebleUpdate, InmuebleResponse, InmuebleSimple
 from app.api.dependencies import get_current_user
 
 router = APIRouter(prefix="/inmuebles", tags=["inmuebles"])
@@ -14,6 +14,26 @@ router = APIRouter(prefix="/inmuebles", tags=["inmuebles"])
 def get_propietario_by_usuario(db: Session, usuario_id: int) -> Optional[Propietario]:
     """Obtiene el propietario asociado al usuario"""
     return db.query(Propietario).filter(Propietario.usuario_id == usuario_id).first()
+
+@router.get("/mis-inmuebles", response_model=List[InmuebleSimple])
+async def listar_mis_inmuebles(
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user)
+):
+    """Lista los inmuebles del propietario actual (versión simplificada para móvil)"""
+    if current_user.rol != "propietario":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Solo los propietarios pueden acceder a este endpoint"
+        )
+    
+    propietario = get_propietario_by_usuario(db, current_user.id)
+    if not propietario:
+        return []
+    
+    inmuebles = db.query(Inmueble).filter(Inmueble.id.in_([i.id for i in propietario.inmuebles])).all()
+    
+    return [InmuebleSimple(id=inm.id, referencia=inm.referencia, direccion=inm.direccion) for inm in inmuebles]
 
 @router.get("/", response_model=List[InmuebleResponse])
 async def listar_inmuebles(

@@ -6,6 +6,7 @@ from app.models.proveedor import Proveedor
 from app.models.incidencia import Incidencia
 from app.models.actuacion import Actuacion
 from app.models.documento import Documento
+from app.models.mensaje import Mensaje
 from app.models.vehiculo import Vehiculo
 from app.models.conductor import Conductor
 from app.models.pedido import Pedido
@@ -22,6 +23,7 @@ __all__ = [
     "Incidencia",
     "Actuacion",
     "Documento",
+    "Mensaje",
     "Vehiculo",
     "Conductor",
     "Pedido",

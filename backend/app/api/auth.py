@@ -11,9 +11,32 @@ router = APIRouter(prefix="/auth", tags=["autenticación"])
 
 @router.post("/login", response_model=Token)
 async def login(credentials: UsuarioLogin, db: Session = Depends(get_db)):
-    user = db.query(Usuario).filter(Usuario.email == credentials.email).first()
+    """
+    Endpoint de login optimizado para rendimiento.
     
-    if not user or not verify_password(credentials.password, user.hash_password):
+    Optimizaciones implementadas:
+    1. Índice en usuarios.email (idx_usuarios_email) acelera la búsqueda
+    2. Verificación de existencia antes de operación costosa (bcrypt)
+    3. Creación de token sin acceso adicional a BD
+    
+    Nota: La verificación de contraseña con bcrypt es intencionalmente lenta
+    por seguridad (protección contra fuerza bruta). Esto es normal y deseable.
+    """
+    # Consulta optimizada: el índice idx_usuarios_email acelera esta búsqueda
+    user = db.query(Usuario).filter(
+        Usuario.email == credentials.email
+    ).first()
+    
+    if not user:
+        # No revelar si el email existe o no por seguridad
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Email o contraseña incorrectos",
+        )
+    
+    # Verificar contraseña (operación más costosa del login debido a bcrypt)
+    # bcrypt es intencionalmente lento por seguridad (protección contra fuerza bruta)
+    if not verify_password(credentials.password, user.hash_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Email o contraseña incorrectos",
@@ -25,6 +48,7 @@ async def login(credentials: UsuarioLogin, db: Session = Depends(get_db)):
             detail="Usuario inactivo",
         )
     
+    # Crear token (operación rápida, no requiere acceso a BD)
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": user.email, "rol": user.rol},

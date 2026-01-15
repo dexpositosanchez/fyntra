@@ -303,8 +303,11 @@
                     (click)="abrirChat(incidencia, $event)" title="Chat">
               <span class="app-icon">chat</span>
             </button>
-            <!-- Eliminar solo para admin -->
-            <button class="action-btn delete-btn" *ngIf="!esPropietario && !esProveedor" (click)="eliminarIncidencia(incidencia, $event)" title="Eliminar">
+            <!-- Eliminar: admin o propietario que creó la incidencia -->
+            <button class="action-btn delete-btn" 
+                    *ngIf="puedeEliminarIncidencia(incidencia)" 
+                    (click)="eliminarIncidencia(incidencia, $event)" 
+                    title="Eliminar">
               <span class="app-icon">delete</span>
             </button>
           </div>

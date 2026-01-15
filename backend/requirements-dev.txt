@@ -1,0 +1,10 @@
+# Dependencias de desarrollo y testing
+# Estas dependencias NO son necesarias para producción
+
+# Herramienta de pruebas de carga
+locust==2.17.0
+
+# Otras herramientas de testing (opcional)
+# pytest==7.4.3
+# pytest-asyncio==0.21.1
+# httpx==0.25.0

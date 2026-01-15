@@ -2,15 +2,17 @@
 Script para inicializar datos de prueba en la base de datos
 """
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 from app.database import SessionLocal, engine, Base
-from app.models.usuario import Usuario
-from app.models.comunidad import Comunidad
-from app.models.inmueble import Inmueble
-from app.models.propietario import Propietario
-from app.models.proveedor import Proveedor
-from app.models.vehiculo import Vehiculo, EstadoVehiculo, TipoCombustible
-from app.models.conductor import Conductor
-from app.models.pedido import Pedido, EstadoPedido
+# Importar todos los modelos para que SQLAlchemy pueda resolver las relaciones
+from app.models import (
+    Usuario, Comunidad, Inmueble, Propietario, Proveedor,
+    Incidencia, Actuacion, Documento, Mensaje,
+    Vehiculo, Conductor, Pedido, Ruta, RutaParada,
+    Mantenimiento, HistorialIncidencia
+)
+from app.models.vehiculo import EstadoVehiculo, TipoCombustible
+from app.models.pedido import EstadoPedido
 from app.core.security import get_password_hash
 
 def init_db():
@@ -123,6 +125,51 @@ def create_initial_data():
                 tipo="vivienda"
             )
             db.add(inmueble)
+            db.flush()  # Flush para obtener el ID del inmueble
+            
+            # Crear incidencia de prueba con ID 1 (para pruebas de carga)
+            from app.models.incidencia import EstadoIncidencia, PrioridadIncidencia
+            admin_user = db.query(Usuario).filter(Usuario.email == "admin@fyntra.com").first()
+            if admin_user:
+                # Verificar si ya existe una incidencia con ID 1
+                incidencia_existente = db.query(Incidencia).filter(Incidencia.id == 1).first()
+                if not incidencia_existente:
+                    # Obtener el valor actual de la secuencia
+                    result = db.execute(text("SELECT last_value FROM incidencias_id_seq"))
+                    current_seq = result.scalar()
+                    
+                    # Si la secuencia está en 0 o menos, resetearla a 1
+                    if current_seq < 1:
+                        db.execute(text("SELECT setval('incidencias_id_seq', 1, false)"))
+                    
+                    # Crear incidencia con ID 1
+                    incidencia_test = Incidencia(
+                        id=1,  # Forzar ID 1
+                        inmueble_id=inmueble.id,
+                        creador_usuario_id=admin_user.id,
+                        titulo="Incidencia de Prueba para Load Testing",
+                        descripcion="Esta incidencia se crea para pruebas de carga del sistema. Puede ser utilizada para verificar el rendimiento del endpoint GET /api/incidencias/1",
+                        estado=EstadoIncidencia.ABIERTA,
+                        prioridad=PrioridadIncidencia.MEDIA
+                    )
+                    db.add(incidencia_test)
+                    db.flush()
+                    
+                    # Ajustar la secuencia después de crear el registro con ID 1
+                    # para que las siguientes incidencias tengan IDs incrementales
+                    max_id_result = db.execute(text("SELECT MAX(id) FROM incidencias"))
+                    max_id = max_id_result.scalar() or 1
+                    db.execute(text(f"SELECT setval('incidencias_id_seq', {max_id})"))
+                    
+                    # Registrar en historial
+                    historial = HistorialIncidencia(
+                        incidencia_id=incidencia_test.id,
+                        usuario_id=admin_user.id,
+                        estado_anterior=None,
+                        estado_nuevo=EstadoIncidencia.ABIERTA.value,
+                        comentario="Incidencia creada para pruebas de carga"
+                    )
+                    db.add(historial)
         
         # Crear vehículos de prueba
         vehiculos = [
@@ -251,6 +298,47 @@ def create_initial_data():
         for pedido in pedidos:
             # No hay campo único para verificar duplicados, así que simplemente añadimos
             db.add(pedido)
+        
+        # Crear incidencia de prueba con ID 1 (para pruebas de carga)
+        # Esto se hace después de crear los pedidos para asegurar que tenemos todos los datos necesarios
+        from app.models.incidencia import EstadoIncidencia, PrioridadIncidencia
+        admin_user = db.query(Usuario).filter(Usuario.email == "admin@fyntra.com").first()
+        inmueble = db.query(Inmueble).filter(Inmueble.referencia == "PROP-001").first()
+        
+        if admin_user and inmueble:
+            # Verificar si ya existe una incidencia con ID 1
+            incidencia_existente = db.query(Incidencia).filter(Incidencia.id == 1).first()
+            if not incidencia_existente:
+                # Resetear secuencia a 1
+                db.execute(text("SELECT setval('incidencias_id_seq', 1, false)"))
+                
+                # Crear incidencia con ID 1
+                incidencia_test = Incidencia(
+                    id=1,  # Forzar ID 1
+                    inmueble_id=inmueble.id,
+                    creador_usuario_id=admin_user.id,
+                    titulo="Incidencia de Prueba para Load Testing",
+                    descripcion="Esta incidencia se crea para pruebas de carga del sistema. Puede ser utilizada para verificar el rendimiento del endpoint GET /api/incidencias/1",
+                    estado=EstadoIncidencia.ABIERTA,
+                    prioridad=PrioridadIncidencia.MEDIA
+                )
+                db.add(incidencia_test)
+                db.flush()
+                
+                # Registrar en historial
+                historial = HistorialIncidencia(
+                    incidencia_id=incidencia_test.id,
+                    usuario_id=admin_user.id,
+                    estado_anterior=None,
+                    estado_nuevo=EstadoIncidencia.ABIERTA.value,
+                    comentario="Incidencia creada para pruebas de carga"
+                )
+                db.add(historial)
+                
+                # Ajustar secuencia después de crear el registro con ID 1
+                max_id_result = db.execute(text("SELECT MAX(id) FROM incidencias"))
+                max_id = max_id_result.scalar() or 1
+                db.execute(text(f"SELECT setval('incidencias_id_seq', {max_id})"))
         
         db.commit()
         print("✅ Datos iniciales creados correctamente")

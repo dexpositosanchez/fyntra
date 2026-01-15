@@ -1,0 +1,29 @@
+# Dockerfile para contenedor de testing con Locust
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Instalar dependencias del sistema necesarias para Locust
+RUN apt-get update && apt-get install -y \
+    gcc \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copiar requirements de desarrollo (incluye Locust)
+COPY requirements-dev.txt .
+
+# Instalar Locust y dependencias de testing
+RUN pip install --no-cache-dir -r requirements-dev.txt
+
+# Copiar scripts de testing
+COPY scripts/load_test.py /app/load_test.py
+COPY scripts/run_load_test.sh /app/run_load_test.sh
+
+# Hacer ejecutable el script
+RUN chmod +x /app/run_load_test.sh
+
+# Exponer puerto de Locust (interfaz web)
+EXPOSE 8089
+
+# Comando por defecto: mostrar ayuda
+CMD ["locust", "--help"]

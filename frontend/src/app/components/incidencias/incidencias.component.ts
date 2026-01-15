@@ -261,12 +261,31 @@ export class IncidenciasComponent implements OnInit, OnDestroy {
     }
   }
 
+  puedeEliminarIncidencia(incidencia: any): boolean {
+    // Admin siempre puede eliminar
+    if (!this.esPropietario && !this.esProveedor) {
+      return true;
+    }
+    // Propietario solo puede eliminar si es el creador
+    if (this.esPropietario && this.usuario && incidencia.creador_usuario_id === this.usuario.id) {
+      return true;
+    }
+    return false;
+  }
+
   eliminarIncidencia(incidencia: any, event: Event): void {
     event.stopPropagation();
     if (confirm(`¿Eliminar incidencia "${incidencia.titulo}"?`)) {
+      this.loading = true;
       this.apiService.deleteIncidencia(incidencia.id).subscribe({
-        next: () => this.cargarIncidencias(),
-        error: (err) => this.error = err.error?.detail || 'Error al eliminar'
+        next: () => {
+          this.loading = false;
+          this.cargarIncidencias();
+        },
+        error: (err) => {
+          this.loading = false;
+          this.error = err.error?.detail || 'Error al eliminar';
+        }
       });
     }
   }

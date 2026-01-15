@@ -1,0 +1,21 @@
+# Entorno virtual de testing
+venv_test/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Reportes de pruebas
+scripts/reports/
+scripts/*.html
+scripts/results*.csv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
