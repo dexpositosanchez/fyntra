@@ -8,6 +8,10 @@ from app.models.usuario import Usuario
 from app.schemas.propietario import PropietarioCreate, PropietarioUpdate, PropietarioResponse
 from app.api.dependencies import get_current_user
 from app.core.security import get_password_hash
+from app.core.cache import (
+    get_from_cache, set_to_cache, generate_cache_key,
+    invalidate_propietarios_cache, delete_from_cache
+)
 
 router = APIRouter(prefix="/propietarios", tags=["propietarios"])
 
@@ -33,10 +37,23 @@ async def listar_propietarios(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user)
 ):
+    # Generar clave de caché
+    cache_key = generate_cache_key("propietarios:list", skip=skip, limit=limit)
+    
+    # Intentar obtener de caché
+    cached_result = get_from_cache(cache_key)
+    if cached_result is not None:
+        return cached_result
+    
     propietarios = db.query(Propietario).options(
         joinedload(Propietario.inmuebles)
     ).offset(skip).limit(limit).all()
-    return [PropietarioResponse.model_validate(propietario_to_response(p)) for p in propietarios]
+    result = [PropietarioResponse.model_validate(propietario_to_response(p)).model_dump() for p in propietarios]
+    
+    # Almacenar en caché (5 minutos)
+    set_to_cache(cache_key, result, expire=300)
+    
+    return result
 
 @router.get("/{propietario_id}", response_model=PropietarioResponse)
 async def obtener_propietario(
@@ -44,6 +61,14 @@ async def obtener_propietario(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user)
 ):
+    # Generar clave de caché
+    cache_key = generate_cache_key("propietarios:item", id=propietario_id)
+    
+    # Intentar obtener de caché
+    cached_result = get_from_cache(cache_key)
+    if cached_result is not None:
+        return cached_result
+    
     propietario = db.query(Propietario).options(
         joinedload(Propietario.inmuebles)
     ).filter(Propietario.id == propietario_id).first()
@@ -53,7 +78,13 @@ async def obtener_propietario(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Propietario no encontrado"
         )
-    return PropietarioResponse.model_validate(propietario_to_response(propietario))
+    
+    result = PropietarioResponse.model_validate(propietario_to_response(propietario))
+    
+    # Almacenar en caché (5 minutos)
+    set_to_cache(cache_key, result.model_dump(), expire=300)
+    
+    return result
 
 @router.post("/", response_model=PropietarioResponse, status_code=status.HTTP_201_CREATED)
 async def crear_propietario(
@@ -124,6 +155,10 @@ async def crear_propietario(
     db.add(nuevo_propietario)
     db.commit()
     db.refresh(nuevo_propietario)
+    
+    # Invalidar caché de propietarios
+    invalidate_propietarios_cache()
+    
     return PropietarioResponse.model_validate(propietario_to_response(nuevo_propietario))
 
 @router.put("/{propietario_id}", response_model=PropietarioResponse)
@@ -174,6 +209,10 @@ async def actualizar_propietario(
     
     db.commit()
     db.refresh(propietario)
+    
+    # Invalidar caché de propietarios
+    invalidate_propietarios_cache()
+    
     return PropietarioResponse.model_validate(propietario_to_response(propietario))
 
 @router.delete("/{propietario_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -197,5 +236,9 @@ async def eliminar_propietario(
     
     db.delete(propietario)
     db.commit()
+    
+    # Invalidar caché de propietarios
+    invalidate_propietarios_cache()
+    
     return None
 

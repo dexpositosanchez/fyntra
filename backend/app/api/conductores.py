@@ -8,6 +8,10 @@ from app.models.usuario import Usuario
 from app.schemas.conductor import ConductorCreate, ConductorUpdate, ConductorResponse
 from app.api.dependencies import get_current_user
 from app.core.security import get_password_hash
+from app.core.cache import (
+    get_from_cache, set_to_cache, generate_cache_key,
+    invalidate_conductores_cache, delete_from_cache
+)
 
 router = APIRouter(prefix="/conductores", tags=["conductores"])
 
@@ -30,6 +34,20 @@ async def listar_conductores(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user)
 ):
+    # Generar clave de caché
+    cache_key = generate_cache_key(
+        "conductores:list",
+        activo=activo,
+        licencias_proximas_caducar=licencias_proximas_caducar,
+        skip=skip,
+        limit=limit
+    )
+    
+    # Intentar obtener de caché
+    cached_result = get_from_cache(cache_key)
+    if cached_result is not None:
+        return cached_result
+    
     query = db.query(Conductor)
     
     if activo is not None:
@@ -64,6 +82,12 @@ async def listar_conductores(
         }
         resultados.append(ConductorResponse(**conductor_data))
     
+    # Convertir a dict para caché
+    result_dicts = [r.model_dump() if hasattr(r, 'model_dump') else r for r in resultados]
+    
+    # Almacenar en caché (5 minutos)
+    set_to_cache(cache_key, result_dicts, expire=300)
+    
     return resultados
 
 @router.get("/alertas", response_model=List[ConductorResponse])
@@ -73,6 +97,14 @@ async def obtener_alertas_licencias(
     current_user: Usuario = Depends(get_current_user)
 ):
     """Obtener conductores con licencias próximas a caducar"""
+    # Generar clave de caché
+    cache_key = generate_cache_key("conductores:alertas", dias_alerta=dias_alerta)
+    
+    # Intentar obtener de caché
+    cached_result = get_from_cache(cache_key)
+    if cached_result is not None:
+        return cached_result
+    
     hoy = date.today()
     fecha_limite = hoy + timedelta(days=dias_alerta)
     
@@ -83,6 +115,12 @@ async def obtener_alertas_licencias(
     ).all()
     
     resultados = []
+    
+    # Intentar obtener de caché
+    cached_result = get_from_cache(cache_key)
+    if cached_result is not None:
+        return cached_result
+    
     for conductor in conductores:
         dias_restantes = calcular_dias_restantes(conductor.fecha_caducidad_licencia)
         conductor_data = {
@@ -102,6 +140,12 @@ async def obtener_alertas_licencias(
         }
         resultados.append(ConductorResponse(**conductor_data))
     
+    # Convertir a dict para caché
+    result_dicts = [r.model_dump() if hasattr(r, 'model_dump') else r for r in resultados]
+    
+    # Almacenar en caché (2 minutos - alertas cambian más frecuentemente)
+    set_to_cache(cache_key, result_dicts, expire=120)
+    
     return resultados
 
 @router.get("/{conductor_id}", response_model=ConductorResponse)
@@ -110,6 +154,14 @@ async def obtener_conductor(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user)
 ):
+    # Generar clave de caché
+    cache_key = generate_cache_key("conductores:item", id=conductor_id)
+    
+    # Intentar obtener de caché
+    cached_result = get_from_cache(cache_key)
+    if cached_result is not None:
+        return cached_result
+    
     conductor = db.query(Conductor).filter(Conductor.id == conductor_id).first()
     if not conductor:
         raise HTTPException(
@@ -207,6 +259,9 @@ async def crear_conductor(
     db.add(nuevo_conductor)
     db.commit()
     db.refresh(nuevo_conductor)
+    
+    # Invalidar caché de conductores
+    invalidate_conductores_cache()
     
     dias_restantes = calcular_dias_restantes(nuevo_conductor.fecha_caducidad_licencia)
     proxima_caducar = licencia_proxima_caducar(nuevo_conductor.fecha_caducidad_licencia)
@@ -339,6 +394,9 @@ async def actualizar_conductor(
     db.commit()
     db.refresh(conductor)
     
+    # Invalidar caché de conductores
+    invalidate_conductores_cache()
+    
     dias_restantes = calcular_dias_restantes(conductor.fecha_caducidad_licencia)
     proxima_caducar = licencia_proxima_caducar(conductor.fecha_caducidad_licencia)
     conductor_data = {
@@ -380,5 +438,9 @@ async def eliminar_conductor(
     
     db.delete(conductor)
     db.commit()
+    
+    # Invalidar caché de conductores
+    invalidate_conductores_cache()
+    
     return None
 

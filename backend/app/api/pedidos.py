@@ -6,6 +6,10 @@ from app.models.pedido import Pedido, EstadoPedido
 from app.models.usuario import Usuario
 from app.schemas.pedido import PedidoCreate, PedidoUpdate, PedidoResponse
 from app.api.dependencies import get_current_user
+from app.core.cache import (
+    get_from_cache, set_to_cache, generate_cache_key,
+    invalidate_pedidos_cache, delete_from_cache
+)
 
 router = APIRouter(prefix="/pedidos", tags=["pedidos"])
 
@@ -25,13 +29,31 @@ async def listar_pedidos(
             detail="No tiene permisos para ver pedidos"
         )
     
+    # Generar clave de caché
+    cache_key = generate_cache_key(
+        "pedidos:list",
+        estado=estado.value if estado else None,
+        skip=skip,
+        limit=limit
+    )
+    
+    # Intentar obtener de caché
+    cached_result = get_from_cache(cache_key)
+    if cached_result is not None:
+        return cached_result
+    
     query = db.query(Pedido)
     
     if estado:
         query = query.filter(Pedido.estado == estado)
     
     pedidos = query.order_by(Pedido.creado_en.desc()).offset(skip).limit(limit).all()
-    return [PedidoResponse.model_validate(ped) for ped in pedidos]
+    result = [PedidoResponse.model_validate(ped).model_dump() for ped in pedidos]
+    
+    # Almacenar en caché (5 minutos)
+    set_to_cache(cache_key, result, expire=300)
+    
+    return result
 
 @router.get("/{pedido_id}", response_model=PedidoResponse)
 async def obtener_pedido(
@@ -47,6 +69,14 @@ async def obtener_pedido(
             detail="No tiene permisos para ver pedidos"
         )
     
+    # Generar clave de caché
+    cache_key = generate_cache_key("pedidos:item", id=pedido_id)
+    
+    # Intentar obtener de caché
+    cached_result = get_from_cache(cache_key)
+    if cached_result is not None:
+        return cached_result
+    
     pedido = db.query(Pedido).filter(Pedido.id == pedido_id).first()
     if not pedido:
         raise HTTPException(
@@ -54,7 +84,12 @@ async def obtener_pedido(
             detail="Pedido no encontrado"
         )
     
-    return PedidoResponse.model_validate(pedido)
+    result = PedidoResponse.model_validate(pedido)
+    
+    # Almacenar en caché (5 minutos)
+    set_to_cache(cache_key, result.model_dump(), expire=300)
+    
+    return result
 
 @router.post("/", response_model=PedidoResponse, status_code=status.HTTP_201_CREATED)
 async def crear_pedido(
@@ -74,6 +109,9 @@ async def crear_pedido(
     db.add(nuevo_pedido)
     db.commit()
     db.refresh(nuevo_pedido)
+    
+    # Invalidar caché de pedidos
+    invalidate_pedidos_cache()
     
     return PedidoResponse.model_validate(nuevo_pedido)
 
@@ -107,6 +145,9 @@ async def actualizar_pedido(
     db.commit()
     db.refresh(pedido)
     
+    # Invalidar caché de pedidos
+    invalidate_pedidos_cache()
+    
     return PedidoResponse.model_validate(pedido)
 
 @router.delete("/{pedido_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -132,6 +173,9 @@ async def eliminar_pedido(
     
     db.delete(pedido)
     db.commit()
+    
+    # Invalidar caché de pedidos
+    invalidate_pedidos_cache()
     
     return None
 

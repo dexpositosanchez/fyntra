@@ -6,6 +6,10 @@ from app.models.comunidad import Comunidad
 from app.models.usuario import Usuario
 from app.schemas.comunidad import ComunidadCreate, ComunidadUpdate, ComunidadResponse
 from app.api.dependencies import get_current_user
+from app.core.cache import (
+    get_from_cache, set_to_cache, generate_cache_key,
+    invalidate_comunidades_cache, delete_from_cache
+)
 
 router = APIRouter(prefix="/comunidades", tags=["comunidades"])
 
@@ -16,8 +20,21 @@ async def listar_comunidades(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user)
 ):
+    # Generar clave de caché
+    cache_key = generate_cache_key("comunidades:list", skip=skip, limit=limit)
+    
+    # Intentar obtener de caché
+    cached_result = get_from_cache(cache_key)
+    if cached_result is not None:
+        return cached_result
+    
     comunidades = db.query(Comunidad).offset(skip).limit(limit).all()
-    return [ComunidadResponse.model_validate(com) for com in comunidades]
+    result = [ComunidadResponse.model_validate(com).model_dump() for com in comunidades]
+    
+    # Almacenar en caché (5 minutos)
+    set_to_cache(cache_key, result, expire=300)
+    
+    return result
 
 @router.get("/{comunidad_id}", response_model=ComunidadResponse)
 async def obtener_comunidad(
@@ -25,13 +42,27 @@ async def obtener_comunidad(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user)
 ):
+    # Generar clave de caché
+    cache_key = generate_cache_key("comunidades:item", id=comunidad_id)
+    
+    # Intentar obtener de caché
+    cached_result = get_from_cache(cache_key)
+    if cached_result is not None:
+        return cached_result
+    
     comunidad = db.query(Comunidad).filter(Comunidad.id == comunidad_id).first()
     if not comunidad:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Comunidad no encontrada"
         )
-    return ComunidadResponse.model_validate(comunidad)
+    
+    result = ComunidadResponse.model_validate(comunidad)
+    
+    # Almacenar en caché (5 minutos)
+    set_to_cache(cache_key, result.model_dump(), expire=300)
+    
+    return result
 
 @router.post("/", response_model=ComunidadResponse, status_code=status.HTTP_201_CREATED)
 async def crear_comunidad(
@@ -49,6 +80,10 @@ async def crear_comunidad(
     db.add(nueva_comunidad)
     db.commit()
     db.refresh(nueva_comunidad)
+    
+    # Invalidar caché de comunidades
+    invalidate_comunidades_cache()
+    
     return ComunidadResponse.model_validate(nueva_comunidad)
 
 @router.put("/{comunidad_id}", response_model=ComunidadResponse)
@@ -100,5 +135,9 @@ async def eliminar_comunidad(
     
     db.delete(comunidad)
     db.commit()
+    
+    # Invalidar caché de comunidades
+    invalidate_comunidades_cache()
+    
     return None
 

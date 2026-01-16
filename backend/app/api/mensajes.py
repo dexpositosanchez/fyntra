@@ -9,6 +9,10 @@ from app.models.proveedor import Proveedor
 from app.models.propietario import Propietario
 from app.schemas.mensaje import MensajeCreate, MensajeResponse
 from app.api.dependencies import get_current_user
+from app.core.cache import (
+    get_from_cache, set_to_cache, generate_cache_key,
+    invalidate_mensajes_cache, delete_from_cache
+)
 
 router = APIRouter(prefix="/mensajes", tags=["mensajes"])
 
@@ -85,6 +89,10 @@ async def crear_mensaje(
     db.commit()
     db.refresh(nuevo_mensaje)
     
+    # Invalidar caché de mensajes de esta incidencia
+    invalidate_mensajes_cache()
+    delete_from_cache(generate_cache_key("mensajes:incidencia", incidencia_id=incidencia_id))
+    
     return mensaje_to_response(nuevo_mensaje, db)
 
 @router.delete("/{mensaje_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -110,7 +118,13 @@ async def eliminar_mensaje(
     if ultimo_mensaje.id != mensaje.id:
         raise HTTPException(status_code=403, detail="Solo puedes eliminar tu último mensaje")
     
+    incidencia_id = mensaje.incidencia_id
     db.delete(mensaje)
     db.commit()
+    
+    # Invalidar caché de mensajes de esta incidencia
+    invalidate_mensajes_cache()
+    delete_from_cache(generate_cache_key("mensajes:incidencia", incidencia_id=incidencia_id))
+    
     return None
 

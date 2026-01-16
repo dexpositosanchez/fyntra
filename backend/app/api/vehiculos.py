@@ -6,6 +6,10 @@ from app.models.vehiculo import Vehiculo, EstadoVehiculo
 from app.models.usuario import Usuario
 from app.schemas.vehiculo import VehiculoCreate, VehiculoUpdate, VehiculoResponse
 from app.api.dependencies import get_current_user
+from app.core.cache import (
+    get_from_cache, set_to_cache, generate_cache_key,
+    invalidate_vehiculos_cache, delete_from_cache
+)
 
 router = APIRouter(prefix="/vehiculos", tags=["vehículos"])
 
@@ -17,13 +21,32 @@ async def listar_vehiculos(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user)
 ):
+    # Generar clave de caché
+    cache_key = generate_cache_key(
+        "vehiculos:list",
+        estado=estado.value if estado else None,
+        skip=skip,
+        limit=limit
+    )
+    
+    # Intentar obtener de caché
+    cached_result = get_from_cache(cache_key)
+    if cached_result is not None:
+        return cached_result
+    
+    # Consultar base de datos
     query = db.query(Vehiculo)
     
     if estado:
         query = query.filter(Vehiculo.estado == estado)
     
     vehiculos = query.offset(skip).limit(limit).all()
-    return [VehiculoResponse.model_validate(veh) for veh in vehiculos]
+    result = [VehiculoResponse.model_validate(veh).model_dump() for veh in vehiculos]
+    
+    # Almacenar en caché (5 minutos)
+    set_to_cache(cache_key, result, expire=300)
+    
+    return result
 
 @router.get("/{vehiculo_id}/historial", response_model=dict)
 async def obtener_historial_vehiculo(
@@ -60,13 +83,27 @@ async def obtener_vehiculo(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user)
 ):
+    # Generar clave de caché
+    cache_key = generate_cache_key("vehiculos:item", id=vehiculo_id)
+    
+    # Intentar obtener de caché
+    cached_result = get_from_cache(cache_key)
+    if cached_result is not None:
+        return cached_result
+    
     vehiculo = db.query(Vehiculo).filter(Vehiculo.id == vehiculo_id).first()
     if not vehiculo:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Vehículo no encontrado"
         )
-    return VehiculoResponse.model_validate(vehiculo)
+    
+    result = VehiculoResponse.model_validate(vehiculo)
+    
+    # Almacenar en caché (5 minutos)
+    set_to_cache(cache_key, result.model_dump(), expire=300)
+    
+    return result
 
 @router.post("/", response_model=VehiculoResponse, status_code=status.HTTP_201_CREATED)
 async def crear_vehiculo(
@@ -93,6 +130,10 @@ async def crear_vehiculo(
     db.add(nuevo_vehiculo)
     db.commit()
     db.refresh(nuevo_vehiculo)
+    
+    # Invalidar caché de vehículos
+    invalidate_vehiculos_cache()
+    
     return VehiculoResponse.model_validate(nuevo_vehiculo)
 
 @router.put("/{vehiculo_id}", response_model=VehiculoResponse)
@@ -157,5 +198,10 @@ async def eliminar_vehiculo(
     
     db.delete(vehiculo)
     db.commit()
+    
+    # Invalidar caché de vehículos (incluye listados e items individuales)
+    invalidate_vehiculos_cache()
+    delete_from_cache(generate_cache_key("vehiculos:item", id=vehiculo_id))
+    
     return None
 

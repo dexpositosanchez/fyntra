@@ -123,39 +123,42 @@ def on_test_stop(environment, **kwargs):
     total_requests = stats.total.num_requests
     
     if total_requests > 0:
-        # Calcular percentil 95
-        response_times_list = []
-        for entry in stats.entries.values():
-            if entry.num_requests > 0:
-                response_times_list.extend([entry.median_response_time] * entry.num_requests)
+        # Obtener percentil 95 del total agregado
+        # Locust calcula percentiles automáticamente, usar el del total agregado
+        percentile_95 = stats.total.get_response_time_percentile(0.95)
         
-        if response_times_list:
-            response_times_list.sort()
-            percentile_95_index = int(len(response_times_list) * 0.95)
-            percentile_95 = response_times_list[percentile_95_index] if percentile_95_index < len(response_times_list) else response_times_list[-1]
-            
-            print(f"\nTotal de peticiones: {total_requests}")
-            print(f"Tiempo de respuesta promedio: {stats.total.avg_response_time:.2f} ms")
-            print(f"Tiempo de respuesta mediano: {stats.total.median_response_time:.2f} ms")
-            print(f"Percentil 95: {percentile_95:.2f} ms")
-            print(f"Tiempo máximo: {stats.total.max_response_time:.2f} ms")
-            print(f"Tasa de errores: {(stats.total.num_failures / total_requests * 100):.2f}%")
-            
-            # Verificar cumplimiento del RNF1
-            print("\n" + "-"*60)
-            print("VERIFICACIÓN RNF1:")
-            print("-"*60)
-            rnf1_requirement = 2000  # 2 segundos en milisegundos
-            
-            if percentile_95 < rnf1_requirement:
-                print(f"✅ CUMPLE RNF1: Percentil 95 ({percentile_95:.2f} ms) < {rnf1_requirement} ms")
-            else:
-                print(f"❌ NO CUMPLE RNF1: Percentil 95 ({percentile_95:.2f} ms) >= {rnf1_requirement} ms")
-            
-            if stats.total.num_failures == 0:
-                print("✅ Sin errores en las peticiones")
-            else:
-                print(f"⚠️  {stats.total.num_failures} peticiones fallaron")
+        print(f"\nTotal de peticiones: {total_requests}")
+        print(f"Tiempo de respuesta promedio: {stats.total.avg_response_time:.2f} ms")
+        print(f"Tiempo de respuesta mediano: {stats.total.median_response_time:.2f} ms")
+        print(f"Percentil 95: {percentile_95:.2f} ms")
+        print(f"Tiempo máximo: {stats.total.max_response_time:.2f} ms")
+        print(f"Tasa de errores: {(stats.total.num_failures / total_requests * 100):.2f}%")
+        
+        # Verificar cumplimiento del RNF1
+        print("\n" + "-"*60)
+        print("VERIFICACIÓN RNF1:")
+        print("-"*60)
+        rnf1_requirement = 2000  # 2 segundos en milisegundos
+        
+        if percentile_95 < rnf1_requirement:
+            print(f"✅ CUMPLE RNF1: Percentil 95 ({percentile_95:.2f} ms) < {rnf1_requirement} ms")
+        else:
+            print(f"❌ NO CUMPLE RNF1: Percentil 95 ({percentile_95:.2f} ms) >= {rnf1_requirement} ms")
+        
+        if stats.total.num_failures == 0:
+            print("✅ Sin errores en las peticiones")
+        else:
+            print(f"⚠️  {stats.total.num_failures} peticiones fallaron ({stats.total.num_failures / total_requests * 100:.2f}%)")
+        
+        # Mostrar desglose por endpoint
+        print("\n" + "-"*60)
+        print("DESGLOSE POR ENDPOINT:")
+        print("-"*60)
+        for name, entry in sorted(stats.entries.items()):
+            if entry.num_requests > 0:
+                p95 = entry.get_response_time_percentile(0.95)
+                status = "✅" if p95 < rnf1_requirement else "⚠️"
+                print(f"{status} {name}: {entry.num_requests} reqs, P95: {p95:.2f} ms, Errores: {entry.num_failures}")
     
     print("="*60)
 

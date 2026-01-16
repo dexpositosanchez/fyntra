@@ -14,6 +14,10 @@ from app.models.usuario import Usuario
 from app.schemas.documento import DocumentoResponse
 from app.api.dependencies import get_current_user
 from app.core.security import decode_access_token
+from app.core.cache import (
+    get_from_cache, set_to_cache, generate_cache_key,
+    invalidate_documentos_cache, delete_from_cache
+)
 
 router = APIRouter(prefix="/documentos", tags=["documentos"])
 
@@ -82,11 +86,24 @@ async def listar_documentos(
     """Lista todos los documentos de una incidencia"""
     verificar_acceso_incidencia(db, incidencia_id, current_user)
     
+    # Generar clave de caché
+    cache_key = generate_cache_key("documentos:incidencia", incidencia_id=incidencia_id)
+    
+    # Intentar obtener de caché
+    cached_result = get_from_cache(cache_key)
+    if cached_result is not None:
+        return cached_result
+    
     documentos = db.query(Documento).filter(
         Documento.incidencia_id == incidencia_id
     ).order_by(Documento.creado_en.desc()).all()
     
-    return [documento_to_response(doc, db) for doc in documentos]
+    result = [documento_to_response(doc, db) for doc in documentos]
+    
+    # Almacenar en caché (5 minutos)
+    set_to_cache(cache_key, result, expire=300)
+    
+    return result
 
 @router.post("/", response_model=DocumentoResponse, status_code=status.HTTP_201_CREATED)
 async def subir_documento(
@@ -137,6 +154,10 @@ async def subir_documento(
     db.add(nuevo_documento)
     db.commit()
     db.refresh(nuevo_documento)
+    
+    # Invalidar caché de documentos de esta incidencia
+    invalidate_documentos_cache()
+    delete_from_cache(generate_cache_key("documentos:incidencia", incidencia_id=incidencia_id))
     
     return documento_to_response(nuevo_documento, db)
 
@@ -215,8 +236,13 @@ async def eliminar_documento(
         os.remove(documento.ruta_archivo)
     
     # Eliminar registro
+    incidencia_id = documento.incidencia_id
     db.delete(documento)
     db.commit()
+    
+    # Invalidar caché de documentos de esta incidencia
+    invalidate_documentos_cache()
+    delete_from_cache(generate_cache_key("documentos:incidencia", incidencia_id=incidencia_id))
     
     return None
 

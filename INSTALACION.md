@@ -44,6 +44,108 @@ docker-compose exec backend python scripts/init_data.py
 - **API Docs (Swagger)**: http://localhost:8000/docs
 - **A través de Nginx**: http://localhost
 
+## Servicios Disponibles
+
+### Redis (Caché)
+
+Redis está configurado y disponible automáticamente cuando despliegas el proyecto con Docker Compose.
+
+**Configuración automática**:
+- ✅ Redis se inicia automáticamente con `docker-compose up`
+- ✅ Puerto expuesto: `6379` (host) → `6379` (contenedor)
+- ✅ URL de conexión: `redis://redis:6379/0` (desde otros contenedores)
+- ✅ URL de conexión local: `redis://localhost:6379/0` (desde el host)
+- ✅ Persistencia habilitada (AOF - Append Only File)
+- ✅ Volumen persistente: `redis_data`
+
+**Acceso desde el backend**:
+El backend ya está configurado con la variable de entorno `REDIS_URL=redis://redis:6379/0`. Puedes usar Redis en tu código Python:
+
+```python
+import os
+import redis
+
+# Obtener URL de Redis desde variables de entorno
+redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+redis_client = redis.from_url(redis_url)
+
+# Ejemplo de uso
+redis_client.set("clave", "valor", ex=3600)  # Expira en 1 hora
+valor = redis_client.get("clave")
+```
+
+**Acceso directo desde el host**:
+```bash
+# Conectar a Redis desde tu máquina local
+docker exec -it fyntra-redis redis-cli
+
+# O usando redis-cli local (si lo tienes instalado)
+redis-cli -h localhost -p 6379
+```
+
+**Comandos útiles de Redis**:
+```bash
+# Ver todas las claves
+KEYS *
+
+# Obtener valor de una clave
+GET mi_clave
+
+# Establecer valor con expiración (segundos)
+SET mi_clave "mi_valor" EX 3600
+
+# Verificar si una clave existe
+EXISTS mi_clave
+
+# Eliminar una clave
+DEL mi_clave
+
+# Ver información del servidor
+INFO
+```
+
+**Verificar que Redis está funcionando**:
+```bash
+# Ver logs de Redis
+docker logs fyntra-redis
+
+# Verificar estado de salud
+docker exec fyntra-redis redis-cli ping
+# Debe responder: PONG
+```
+
+**Estado**: ✅ **Redis está activamente en uso** para caché de respuestas de la API.
+
+**Endpoints con caché implementada** (✅ **TODOS los endpoints**):
+- ✅ **Vehículos**: Listado y GET por ID
+- ✅ **Rutas**: Listado y GET por ID
+- ✅ **Incidencias**: Listado y GET por ID
+- ✅ **Pedidos**: Listado y GET por ID
+- ✅ **Mantenimientos**: Listado, alertas y GET por ID
+- ✅ **Inmuebles**: Listado, GET por ID y mis-inmuebles
+- ✅ **Comunidades**: Listado y GET por ID
+- ✅ **Conductores**: Listado, alertas y GET por ID
+- ✅ **Proveedores**: Listado y GET por ID
+- ✅ **Propietarios**: Listado y GET por ID
+- ✅ **Usuarios**: Listado y GET por ID
+- ✅ **Documentos**: Listado por incidencia
+- ✅ **Actuaciones**: Listado por incidencia y mis-incidencias
+- ✅ **Mensajes**: Listado por incidencia
+
+**Configuración de caché**:
+- Tiempo de expiración: 
+  - **5 minutos (300 segundos)** para la mayoría de endpoints
+  - **2 minutos (120 segundos)** para alertas y mensajes (datos que cambian más frecuentemente)
+- Invalidación automática: La caché se invalida automáticamente cuando se crean, actualizan o eliminan recursos
+- Claves de caché: Se generan automáticamente basadas en los parámetros de la petición (filtros, paginación, usuario, etc.)
+- Caché por usuario: Los endpoints que dependen de permisos incluyen el ID de usuario en la clave de caché
+
+**Beneficios**:
+- ✅ Respuestas más rápidas para peticiones repetidas
+- ✅ Menor carga en la base de datos
+- ✅ Mejor rendimiento general del sistema
+- ✅ Cumplimiento mejorado del RNF1 (tiempo de respuesta)
+
 ## Usuarios de Prueba
 
 Después de ejecutar `init_data.py`, puedes usar estos usuarios:
@@ -178,10 +280,138 @@ Asegúrate de que:
 2. Tu dispositivo Android esté en la misma red que tu máquina
 3. Usas la IP local, no `localhost` o `127.0.0.1`
 
+## Pruebas de Carga con Locust
+
+El proyecto incluye configuración completa para ejecutar pruebas de carga usando Locust.
+
+### Opción 1: Entorno Virtual Local (Recomendado)
+
+**Ubicación**: `backend/venv_test/`
+
+**Primera vez - Configurar entorno**:
+```bash
+cd backend/scripts
+./setup_test_env.sh
+```
+
+**Ejecutar prueba de carga**:
+```bash
+cd backend/scripts
+./run_load_test.sh
+```
+
+El script:
+- ✅ Detecta automáticamente Locust (entorno virtual, global, o Docker)
+- ✅ Verifica que el servidor esté disponible
+- ✅ Ejecuta la prueba con 100 usuarios concurrentes por defecto
+- ✅ Genera reportes HTML y CSV en `backend/scripts/`
+- ✅ Muestra si se cumple el RNF1 (tiempo de respuesta < 2 segundos)
+
+**Configuración personalizada**:
+```bash
+# Variables de entorno opcionales
+export TEST_EMAIL="admin@fyntra.com"
+export TEST_PASSWORD="admin123"
+export USERS=50              # Usuarios concurrentes
+export SPAWN_RATE=5          # Usuarios por segundo
+export RUN_TIME="90s"        # Duración de la prueba
+
+cd backend/scripts
+./run_load_test.sh
+```
+
+### Opción 2: Docker (Sin instalación local)
+
+**Ejecutar con Docker**:
+```bash
+cd backend/scripts
+./run_load_test_docker.sh
+```
+
+**Ventajas**:
+- No requiere instalación local
+- Funciona en cualquier sistema con Docker
+- Aislamiento completo del entorno
+
+**Nota**: El servicio `loadtest` está configurado pero NO se inicia automáticamente. Solo se inicia cuando se especifica el perfil `testing`:
+
+```bash
+# Iniciar servicios normales (sin testing)
+docker-compose up -d
+
+# Iniciar con servicios de testing
+docker-compose --profile testing up -d loadtest
+```
+
+### Verificación de Instalación
+
+**Verificar entorno virtual local**:
+```bash
+backend/venv_test/bin/locust --version
+# Debe mostrar: locust 2.43.1
+```
+
+**Verificar Docker**:
+```bash
+# Construir imagen de testing
+docker-compose --profile testing build loadtest
+
+# Verificar que funciona
+docker-compose --profile testing run --rm loadtest locust --version
+```
+
+### Archivos de Pruebas
+
+- `backend/scripts/load_test.py` - Script principal de Locust
+- `backend/scripts/run_load_test.sh` - Script para ejecutar localmente
+- `backend/scripts/run_load_test_docker.sh` - Script para ejecutar con Docker
+- `backend/scripts/setup_test_env.sh` - Configuración del entorno virtual
+- `backend/Dockerfile.test` - Dockerfile para contenedor de testing
+
+### Resultados de las Pruebas
+
+Después de ejecutar una prueba, encontrarás:
+
+- `backend/scripts/report.html` - Reporte HTML interactivo
+- `backend/scripts/results_stats.csv` - Estadísticas detalladas
+- `backend/scripts/results_failures.csv` - Errores encontrados
+- `backend/scripts/results_stats_history.csv` - Historial de estadísticas
+
+### Troubleshooting de Locust
+
+**Error: "Locust no está instalado"**
+
+Solución 1: Configurar entorno virtual
+```bash
+cd backend/scripts
+./setup_test_env.sh
+```
+
+Solución 2: Usar Docker
+```bash
+cd backend/scripts
+./run_load_test_docker.sh
+```
+
+**Error: "Permission denied" al ejecutar scripts**
+
+```bash
+# Ejecutar con bash directamente
+bash backend/scripts/run_load_test.sh
+```
+
+**Error: "docker-compose: command not found"**
+
+Instala Docker Compose o usa `docker compose` (sin guión):
+```bash
+docker compose --profile testing up -d loadtest
+```
+
 ## Próximos Pasos
 
 1. Configurar migraciones Alembic para cambios en la base de datos
 2. Implementar más endpoints según necesidades
 3. Agregar tests unitarios e integración
 4. Configurar CI/CD
+5. Implementar caché con Redis según necesidades
 

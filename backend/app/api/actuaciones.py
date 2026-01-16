@@ -10,6 +10,10 @@ from app.models.usuario import Usuario
 from app.models.historial_incidencia import HistorialIncidencia
 from app.schemas.actuacion import ActuacionCreate, ActuacionUpdate, ActuacionResponse
 from app.api.dependencies import get_current_user
+from app.core.cache import (
+    get_from_cache, set_to_cache, generate_cache_key,
+    invalidate_actuaciones_cache, delete_from_cache
+)
 
 router = APIRouter(prefix="/actuaciones", tags=["actuaciones"])
 
@@ -63,6 +67,14 @@ async def listar_incidencias_asignadas(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Solo los proveedores pueden acceder a este endpoint"
         )
+    
+    # Generar clave de caché (específica por usuario)
+    cache_key = generate_cache_key("actuaciones:mis-incidencias", usuario_id=current_user.id, estado=estado.value if estado else None)
+    
+    # Intentar obtener de caché
+    cached_result = get_from_cache(cache_key)
+    if cached_result is not None:
+        return cached_result
     
     proveedor = get_proveedor_from_user(db, current_user)
     
@@ -120,6 +132,14 @@ async def listar_actuaciones_incidencia(
     current_user: Usuario = Depends(get_current_user)
 ):
     """Lista las actuaciones de una incidencia específica"""
+    # Generar clave de caché
+    cache_key = generate_cache_key("actuaciones:incidencia", incidencia_id=incidencia_id)
+    
+    # Intentar obtener de caché
+    cached_result = get_from_cache(cache_key)
+    if cached_result is not None:
+        return cached_result
+    
     # Admins pueden ver todas, proveedores solo las suyas
     if current_user.rol == "proveedor":
         proveedor = get_proveedor_from_user(db, current_user)
@@ -294,7 +314,13 @@ async def eliminar_actuacion(
             detail="No tiene permisos para eliminar actuaciones"
         )
     
+    incidencia_id = actuacion.incidencia_id
     db.delete(actuacion)
     db.commit()
+    
+    # Invalidar caché de actuaciones
+    invalidate_actuaciones_cache()
+    delete_from_cache(generate_cache_key("actuaciones:incidencia", incidencia_id=incidencia_id))
+    
     return None
 

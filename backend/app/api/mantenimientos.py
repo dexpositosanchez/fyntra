@@ -8,6 +8,10 @@ from app.models.vehiculo import Vehiculo, EstadoVehiculo
 from app.models.usuario import Usuario
 from app.schemas.mantenimiento import MantenimientoCreate, MantenimientoUpdate, MantenimientoResponse
 from app.api.dependencies import get_current_user
+from app.core.cache import (
+    get_from_cache, set_to_cache, generate_cache_key,
+    invalidate_mantenimientos_cache, delete_from_cache
+)
 
 router = APIRouter(prefix="/mantenimientos", tags=["mantenimientos"])
 
@@ -105,6 +109,23 @@ async def listar_mantenimientos(
             detail="No tiene permisos para ver mantenimientos"
         )
     
+    # Generar clave de caché
+    cache_key = generate_cache_key(
+        "mantenimientos:list",
+        vehiculo_id=vehiculo_id,
+        tipo=tipo.value if tipo else None,
+        estado=estado.value if estado else None,
+        proximos_vencer=proximos_vencer,
+        vencidos=vencidos,
+        skip=skip,
+        limit=limit
+    )
+    
+    # Intentar obtener de caché
+    cached_result = get_from_cache(cache_key)
+    if cached_result is not None:
+        return cached_result
+    
     query = db.query(Mantenimiento).options(joinedload(Mantenimiento.vehiculo))
     
     if vehiculo_id:
@@ -178,6 +199,12 @@ async def listar_mantenimientos(
             mantenimiento_dict["vehiculo"] = None
         resultados.append(MantenimientoResponse(**mantenimiento_dict))
     
+    # Convertir a dict para caché
+    result_dicts = [r.model_dump() if hasattr(r, 'model_dump') else r for r in resultados]
+    
+    # Almacenar en caché (5 minutos)
+    set_to_cache(cache_key, result_dicts, expire=300)
+    
     return resultados
 
 @router.get("/alertas", response_model=List[MantenimientoResponse])
@@ -186,6 +213,13 @@ async def obtener_alertas_mantenimientos(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user)
 ):
+    # Generar clave de caché
+    cache_key = generate_cache_key("mantenimientos:alertas", dias_alerta=dias_alerta)
+    
+    # Intentar obtener de caché
+    cached_result = get_from_cache(cache_key)
+    if cached_result is not None:
+        return cached_result
     """
     Obtener mantenimientos próximos a vencer o vencidos.
     
@@ -320,6 +354,12 @@ async def obtener_alertas_mantenimientos(
     if len(resultados) > 0:
         print(f"[ALERTAS] Primer resultado: ID={resultados[0].id if resultados else 'N/A'}, Tipo={resultados[0].tipo if resultados else 'N/A'}")
     
+    # Convertir a dict para caché
+    result_dicts = [r.model_dump() if hasattr(r, 'model_dump') else r for r in resultados]
+    
+    # Almacenar en caché (2 minutos - alertas cambian más frecuentemente)
+    set_to_cache(cache_key, result_dicts, expire=120)
+    
     return resultados
 
 @router.get("/{mantenimiento_id}", response_model=MantenimientoResponse)
@@ -334,6 +374,14 @@ async def obtener_mantenimiento(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No tiene permisos para ver mantenimientos"
         )
+    
+    # Generar clave de caché
+    cache_key = generate_cache_key("mantenimientos:item", id=mantenimiento_id)
+    
+    # Intentar obtener de caché
+    cached_result = get_from_cache(cache_key)
+    if cached_result is not None:
+        return cached_result
     
     mantenimiento = db.query(Mantenimiento).options(joinedload(Mantenimiento.vehiculo)).filter(Mantenimiento.id == mantenimiento_id).first()
     if not mantenimiento:
@@ -399,6 +447,9 @@ async def crear_mantenimiento(
         db.add(nuevo_mantenimiento)
         db.commit()
         db.refresh(nuevo_mantenimiento)
+        
+        # Invalidar caché de mantenimientos
+        invalidate_mantenimientos_cache()
         
         # Cargar explícitamente el vehículo para evitar problemas con la relación
         # Usar el vehículo que ya tenemos en memoria en lugar de hacer otra consulta
@@ -486,6 +537,9 @@ async def actualizar_mantenimiento(
     db.commit()
     db.refresh(mantenimiento)
     
+    # Invalidar caché de mantenimientos
+    invalidate_mantenimientos_cache()
+    
     # Si el estado cambió, actualizar el estado del vehículo
     # Esto asegura que el vehículo cambie correctamente cuando:
     # - Un mantenimiento pasa a EN_CURSO (vehículo -> en_mantenimiento)
@@ -545,6 +599,9 @@ async def eliminar_mantenimiento(
     
     db.delete(mantenimiento)
     db.commit()
+    
+    # Invalidar caché de mantenimientos
+    invalidate_mantenimientos_cache()
     
     # Si el mantenimiento eliminado estaba en curso, actualizar el estado del vehículo
     if estado_mantenimiento == EstadoMantenimiento.EN_CURSO:

@@ -11,6 +11,10 @@ from app.models.pedido import Pedido, EstadoPedido
 from app.models.usuario import Usuario
 from app.schemas.ruta import RutaCreate, RutaUpdate, RutaResponse, RutaParadaCreate, RutaParadaResponse, RutaParadaUpdate
 from app.api.dependencies import get_current_user
+from app.core.cache import (
+    get_from_cache, set_to_cache, generate_cache_key,
+    invalidate_rutas_cache, delete_from_cache
+)
 
 router = APIRouter(prefix="/rutas", tags=["rutas"])
 
@@ -216,6 +220,22 @@ async def listar_rutas(
             detail="No tiene permisos para ver rutas"
         )
     
+    # Generar clave de caché
+    cache_key = generate_cache_key(
+        "rutas:list",
+        fecha=str(fecha) if fecha else None,
+        estado=estado.value if estado else None,
+        conductor_id=conductor_id,
+        vehiculo_id=vehiculo_id,
+        skip=skip,
+        limit=limit
+    )
+    
+    # Intentar obtener de caché
+    cached_result = get_from_cache(cache_key)
+    if cached_result is not None:
+        return cached_result
+    
     query = db.query(Ruta)
     
     if fecha:
@@ -301,6 +321,12 @@ async def listar_rutas(
         }
         resultados.append(RutaResponse(**ruta_dict))
     
+    # Convertir a dict para caché
+    result_dicts = [r.model_dump() if hasattr(r, 'model_dump') else r for r in resultados]
+    
+    # Almacenar en caché (5 minutos)
+    set_to_cache(cache_key, result_dicts, expire=300)
+    
     return resultados
 
 @router.get("/{ruta_id}", response_model=RutaResponse)
@@ -315,6 +341,14 @@ async def obtener_ruta(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No tiene permisos para ver rutas"
         )
+    
+    # Generar clave de caché
+    cache_key = generate_cache_key("rutas:item", id=ruta_id)
+    
+    # Intentar obtener de caché
+    cached_result = get_from_cache(cache_key)
+    if cached_result is not None:
+        return cached_result
     
     ruta = db.query(Ruta).filter(Ruta.id == ruta_id).first()
     if not ruta:
@@ -392,7 +426,12 @@ async def obtener_ruta(
         } if ruta.vehiculo else None
     }
     
-    return RutaResponse(**ruta_dict)
+    result = RutaResponse(**ruta_dict)
+    
+    # Almacenar en caché (5 minutos)
+    set_to_cache(cache_key, result.model_dump(), expire=300)
+    
+    return result
 
 def crear_paradas_automaticas(pedidos_ids: List[int], db: Session) -> List[dict]:
     """Crea paradas automáticamente: una de carga (origen) y una de descarga (destino) por pedido.
@@ -553,6 +592,9 @@ async def crear_ruta(
     db.commit()
     db.refresh(nueva_ruta)
     
+    # Invalidar caché de rutas
+    invalidate_rutas_cache()
+    
     # Cargar paradas agrupadas por dirección y tipo
     # Agrupar paradas que tienen la misma dirección y tipo de operación
     paradas_agrupadas_respuesta = {}
@@ -670,6 +712,9 @@ async def actualizar_ruta(
     
     db.commit()
     db.refresh(ruta)
+    
+    # Invalidar caché de rutas
+    invalidate_rutas_cache()
     
     # Construir respuesta
     ruta_dict = {
@@ -790,6 +835,9 @@ async def eliminar_ruta(
     
     db.delete(ruta)
     db.commit()
+    
+    # Invalidar caché de rutas
+    invalidate_rutas_cache()
     
     return None
 

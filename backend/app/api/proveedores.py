@@ -7,6 +7,10 @@ from app.models.usuario import Usuario
 from app.schemas.proveedor import ProveedorCreate, ProveedorUpdate, ProveedorResponse
 from app.api.dependencies import get_current_user
 from app.core.security import get_password_hash
+from app.core.cache import (
+    get_from_cache, set_to_cache, generate_cache_key,
+    invalidate_proveedores_cache, delete_from_cache
+)
 
 router = APIRouter(prefix="/proveedores", tags=["proveedores"])
 
@@ -26,6 +30,20 @@ async def listar_proveedores(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user)
 ):
+    # Generar clave de caché
+    cache_key = generate_cache_key(
+        "proveedores:list",
+        activo=activo,
+        especialidad=especialidad,
+        skip=skip,
+        limit=limit
+    )
+    
+    # Intentar obtener de caché
+    cached_result = get_from_cache(cache_key)
+    if cached_result is not None:
+        return cached_result
+    
     query = db.query(Proveedor)
     
     if activo is not None:
@@ -34,7 +52,12 @@ async def listar_proveedores(
         query = query.filter(Proveedor.especialidad.ilike(f"%{especialidad}%"))
     
     proveedores = query.order_by(Proveedor.nombre).offset(skip).limit(limit).all()
-    return [ProveedorResponse.model_validate(p) for p in proveedores]
+    result = [ProveedorResponse.model_validate(p).model_dump() for p in proveedores]
+    
+    # Almacenar en caché (5 minutos)
+    set_to_cache(cache_key, result, expire=300)
+    
+    return result
 
 @router.get("/{proveedor_id}", response_model=ProveedorResponse)
 async def obtener_proveedor(
@@ -42,10 +65,24 @@ async def obtener_proveedor(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user)
 ):
+    # Generar clave de caché
+    cache_key = generate_cache_key("proveedores:item", id=proveedor_id)
+    
+    # Intentar obtener de caché
+    cached_result = get_from_cache(cache_key)
+    if cached_result is not None:
+        return cached_result
+    
     proveedor = db.query(Proveedor).filter(Proveedor.id == proveedor_id).first()
     if not proveedor:
         raise HTTPException(status_code=404, detail="Proveedor no encontrado")
-    return ProveedorResponse.model_validate(proveedor)
+    
+    result = ProveedorResponse.model_validate(proveedor)
+    
+    # Almacenar en caché (5 minutos)
+    set_to_cache(cache_key, result.model_dump(), expire=300)
+    
+    return result
 
 @router.post("/", response_model=ProveedorResponse, status_code=status.HTTP_201_CREATED)
 async def crear_proveedor(
@@ -88,6 +125,10 @@ async def crear_proveedor(
     db.add(nuevo_proveedor)
     db.commit()
     db.refresh(nuevo_proveedor)
+    
+    # Invalidar caché de proveedores
+    invalidate_proveedores_cache()
+    
     return ProveedorResponse.model_validate(nuevo_proveedor)
 
 @router.put("/{proveedor_id}", response_model=ProveedorResponse)
@@ -115,6 +156,10 @@ async def actualizar_proveedor(
     
     db.commit()
     db.refresh(proveedor)
+    
+    # Invalidar caché de proveedores
+    invalidate_proveedores_cache()
+    
     return ProveedorResponse.model_validate(proveedor)
 
 @router.delete("/{proveedor_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -131,6 +176,10 @@ async def eliminar_proveedor(
     
     db.delete(proveedor)
     db.commit()
+    
+    # Invalidar caché de proveedores
+    invalidate_proveedores_cache()
+    
     return None
 
 

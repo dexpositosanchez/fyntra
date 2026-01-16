@@ -8,6 +8,8 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     CORS_ORIGINS: Union[List[str], str] = ["http://localhost:4200", "http://localhost:80", "http://localhost"]
+    REDIS_URL: str = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+    CACHE_EXPIRE_SECONDS: int = 300  # 5 minutos por defecto
     
     class Config:
         env_file = ".env"

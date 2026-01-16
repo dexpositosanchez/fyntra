@@ -8,6 +8,10 @@ from app.models.propietario import Propietario
 from app.models.usuario import Usuario
 from app.schemas.inmueble import InmuebleCreate, InmuebleUpdate, InmuebleResponse, InmuebleSimple
 from app.api.dependencies import get_current_user
+from app.core.cache import (
+    get_from_cache, set_to_cache, generate_cache_key,
+    invalidate_inmuebles_cache, delete_from_cache
+)
 
 router = APIRouter(prefix="/inmuebles", tags=["inmuebles"])
 
@@ -27,13 +31,25 @@ async def listar_mis_inmuebles(
             detail="Solo los propietarios pueden acceder a este endpoint"
         )
     
+    # Generar clave de caché (específica por usuario)
+    cache_key = generate_cache_key("inmuebles:mis-inmuebles", usuario_id=current_user.id)
+    
+    # Intentar obtener de caché
+    cached_result = get_from_cache(cache_key)
+    if cached_result is not None:
+        return cached_result
+    
     propietario = get_propietario_by_usuario(db, current_user.id)
     if not propietario:
         return []
     
     inmuebles = db.query(Inmueble).filter(Inmueble.id.in_([i.id for i in propietario.inmuebles])).all()
+    result = [InmuebleSimple(id=inm.id, referencia=inm.referencia, direccion=inm.direccion).model_dump() for inm in inmuebles]
     
-    return [InmuebleSimple(id=inm.id, referencia=inm.referencia, direccion=inm.direccion) for inm in inmuebles]
+    # Almacenar en caché (5 minutos)
+    set_to_cache(cache_key, result, expire=300)
+    
+    return result
 
 @router.get("/", response_model=List[InmuebleResponse])
 async def listar_inmuebles(
@@ -44,6 +60,20 @@ async def listar_inmuebles(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user)
 ):
+    # Generar clave de caché (incluir rol para diferenciar por usuario)
+    cache_key = generate_cache_key(
+        f"inmuebles:list:{current_user.rol}",
+        comunidad_id=comunidad_id,
+        tipo=tipo,
+        skip=skip,
+        limit=limit
+    )
+    
+    # Intentar obtener de caché
+    cached_result = get_from_cache(cache_key)
+    if cached_result is not None:
+        return cached_result
+    
     query = db.query(Inmueble).options(
         joinedload(Inmueble.comunidad),
         joinedload(Inmueble.propietarios)
@@ -64,7 +94,12 @@ async def listar_inmuebles(
         query = query.filter(Inmueble.tipo == tipo)
     
     inmuebles = query.offset(skip).limit(limit).all()
-    return [InmuebleResponse.model_validate(inm) for inm in inmuebles]
+    result = [InmuebleResponse.model_validate(inm).model_dump() for inm in inmuebles]
+    
+    # Almacenar en caché (5 minutos)
+    set_to_cache(cache_key, result, expire=300)
+    
+    return result
 
 @router.get("/{inmueble_id}", response_model=InmuebleResponse)
 async def obtener_inmueble(
@@ -72,6 +107,14 @@ async def obtener_inmueble(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user)
 ):
+    # Generar clave de caché
+    cache_key = generate_cache_key("inmuebles:item", id=inmueble_id, usuario_id=current_user.id)
+    
+    # Intentar obtener de caché
+    cached_result = get_from_cache(cache_key)
+    if cached_result is not None:
+        return cached_result
+    
     inmueble = db.query(Inmueble).options(
         joinedload(Inmueble.comunidad),
         joinedload(Inmueble.propietarios)
@@ -92,7 +135,12 @@ async def obtener_inmueble(
                 detail="No tiene acceso a este inmueble"
             )
     
-    return InmuebleResponse.model_validate(inmueble)
+    result = InmuebleResponse.model_validate(inmueble)
+    
+    # Almacenar en caché (5 minutos)
+    set_to_cache(cache_key, result.model_dump(), expire=300)
+    
+    return result
 
 @router.post("/", response_model=InmuebleResponse, status_code=status.HTTP_201_CREATED)
 async def crear_inmueble(
@@ -128,6 +176,9 @@ async def crear_inmueble(
     db.add(nuevo_inmueble)
     db.commit()
     db.refresh(nuevo_inmueble)
+    
+    # Invalidar caché de inmuebles
+    invalidate_inmuebles_cache()
     
     # Cargar relaciones
     db.refresh(nuevo_inmueble)
@@ -170,6 +221,10 @@ async def actualizar_inmueble(
     
     db.commit()
     db.refresh(inmueble)
+    
+    # Invalidar caché de inmuebles
+    invalidate_inmuebles_cache()
+    
     return InmuebleResponse.model_validate(inmueble)
 
 @router.delete("/{inmueble_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -193,5 +248,9 @@ async def eliminar_inmueble(
     
     db.delete(inmueble)
     db.commit()
+    
+    # Invalidar caché de inmuebles
+    invalidate_inmuebles_cache()
+    
     return None
 

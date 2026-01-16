@@ -6,6 +6,10 @@ from app.models.usuario import Usuario
 from app.schemas.usuario import UsuarioCreate, UsuarioUpdate, UsuarioResponse, CambiarPassword
 from app.api.dependencies import get_current_user
 from app.core.security import get_password_hash
+from app.core.cache import (
+    get_from_cache, set_to_cache, generate_cache_key,
+    invalidate_usuarios_cache, delete_from_cache
+)
 
 router = APIRouter(prefix="/usuarios", tags=["usuarios"])
 
@@ -34,8 +38,21 @@ async def listar_usuarios(
     """Lista todos los usuarios (solo super_admin)"""
     verificar_super_admin(current_user)
     
+    # Generar clave de caché
+    cache_key = generate_cache_key("usuarios:list", skip=skip, limit=limit)
+    
+    # Intentar obtener de caché
+    cached_result = get_from_cache(cache_key)
+    if cached_result is not None:
+        return cached_result
+    
     usuarios = db.query(Usuario).offset(skip).limit(limit).all()
-    return usuarios
+    result = [UsuarioResponse.model_validate(u).model_dump() for u in usuarios]
+    
+    # Almacenar en caché (5 minutos)
+    set_to_cache(cache_key, result, expire=300)
+    
+    return result
 
 @router.get("/{usuario_id}", response_model=UsuarioResponse)
 async def obtener_usuario(
@@ -46,10 +63,24 @@ async def obtener_usuario(
     """Obtiene un usuario por ID (solo super_admin)"""
     verificar_super_admin(current_user)
     
+    # Generar clave de caché
+    cache_key = generate_cache_key("usuarios:item", id=usuario_id)
+    
+    # Intentar obtener de caché
+    cached_result = get_from_cache(cache_key)
+    if cached_result is not None:
+        return cached_result
+    
     usuario = db.query(Usuario).filter(Usuario.id == usuario_id).first()
     if not usuario:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
-    return usuario
+    
+    result = UsuarioResponse.model_validate(usuario)
+    
+    # Almacenar en caché (5 minutos)
+    set_to_cache(cache_key, result.model_dump(), expire=300)
+    
+    return result
 
 @router.post("/", response_model=UsuarioResponse, status_code=status.HTTP_201_CREATED)
 async def crear_usuario(
@@ -86,6 +117,10 @@ async def crear_usuario(
     db.add(nuevo_usuario)
     db.commit()
     db.refresh(nuevo_usuario)
+    
+    # Invalidar caché de usuarios
+    invalidate_usuarios_cache()
+    
     return nuevo_usuario
 
 @router.put("/{usuario_id}", response_model=UsuarioResponse)
@@ -173,6 +208,10 @@ async def eliminar_usuario(
     
     db.delete(usuario)
     db.commit()
+    
+    # Invalidar caché de usuarios
+    invalidate_usuarios_cache()
+    
     return None
 
 @router.put("/{usuario_id}/password", status_code=status.HTTP_204_NO_CONTENT)

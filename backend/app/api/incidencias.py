@@ -10,6 +10,10 @@ from app.models.inmueble import Inmueble
 from app.models.historial_incidencia import HistorialIncidencia
 from app.schemas.incidencia import IncidenciaCreate, IncidenciaUpdate, IncidenciaResponse, HistorialIncidenciaResponse
 from app.api.dependencies import get_current_user
+from app.core.cache import (
+    get_from_cache, set_to_cache, generate_cache_key,
+    invalidate_incidencias_cache, delete_from_cache
+)
 
 router = APIRouter(prefix="/incidencias", tags=["incidencias"])
 
@@ -81,6 +85,20 @@ async def listar_incidencias(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user)
 ):
+    # Generar clave de caché (incluir rol para diferenciar por usuario)
+    cache_key = generate_cache_key(
+        f"incidencias:list:{current_user.rol}",
+        estado=estado.value if estado else None,
+        prioridad=prioridad.value if prioridad else None,
+        skip=skip,
+        limit=limit
+    )
+    
+    # Intentar obtener de caché
+    cached_result = get_from_cache(cache_key)
+    if cached_result is not None:
+        return cached_result
+    
     query = db.query(Incidencia).options(
         joinedload(Incidencia.inmueble),
         joinedload(Incidencia.historial)
@@ -109,7 +127,12 @@ async def listar_incidencias(
         query = query.filter(Incidencia.prioridad == prioridad)
     
     incidencias = query.order_by(Incidencia.fecha_alta.desc()).offset(skip).limit(limit).all()
-    return [IncidenciaResponse.model_validate(incidencia_to_response(inc, db)) for inc in incidencias]
+    result = [IncidenciaResponse.model_validate(incidencia_to_response(inc, db)).model_dump() for inc in incidencias]
+    
+    # Almacenar en caché (5 minutos)
+    set_to_cache(cache_key, result, expire=300)
+    
+    return result
 
 @router.get("/sin-resolver", response_model=List[IncidenciaResponse])
 async def listar_incidencias_sin_resolver(
@@ -146,6 +169,14 @@ async def obtener_incidencia(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user)
 ):
+    # Generar clave de caché (incluir usuario para diferenciar por permisos)
+    cache_key = generate_cache_key("incidencias:item", id=incidencia_id, usuario_id=current_user.id)
+    
+    # Intentar obtener de caché
+    cached_result = get_from_cache(cache_key)
+    if cached_result is not None:
+        return cached_result
+    
     incidencia = db.query(Incidencia).options(
         joinedload(Incidencia.inmueble),
         joinedload(Incidencia.historial)
@@ -166,7 +197,12 @@ async def obtener_incidencia(
                 detail="No tiene acceso a esta incidencia"
             )
     
-    return IncidenciaResponse.model_validate(incidencia_to_response(incidencia, db))
+    result = IncidenciaResponse.model_validate(incidencia_to_response(incidencia, db))
+    
+    # Almacenar en caché (5 minutos)
+    set_to_cache(cache_key, result.model_dump(), expire=300)
+    
+    return result
 
 @router.post("/", response_model=IncidenciaResponse, status_code=status.HTTP_201_CREATED)
 async def crear_incidencia(
@@ -208,6 +244,10 @@ async def crear_incidencia(
     
     db.commit()
     db.refresh(nueva_incidencia)
+    
+    # Invalidar caché de incidencias
+    invalidate_incidencias_cache()
+    
     return IncidenciaResponse.model_validate(incidencia_to_response(nueva_incidencia, db))
 
 @router.put("/{incidencia_id}", response_model=IncidenciaResponse)
@@ -267,6 +307,10 @@ async def actualizar_incidencia(
     incidencia.version += 1
     db.commit()
     db.refresh(incidencia)
+    
+    # Invalidar caché de incidencias
+    invalidate_incidencias_cache()
+    
     return IncidenciaResponse.model_validate(incidencia_to_response(incidencia, db))
 
 @router.delete("/{incidencia_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -309,5 +353,9 @@ async def eliminar_incidencia(
     # Eliminar la incidencia (las relaciones con cascade se eliminarán automáticamente)
     db.delete(incidencia)
     db.commit()
+    
+    # Invalidar caché de incidencias
+    invalidate_incidencias_cache()
+    
     return None
 
