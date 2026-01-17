@@ -285,16 +285,43 @@
   padding: 20px;
   border: 1px solid #e0e0e0;
   
-  h3 {
-    color: #1b9d8a;
-    font-size: 18px;
-    margin: 0 0 15px 0;
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 15px;
+    
+    h3 {
+      color: #1b9d8a;
+      font-size: 18px;
+      margin: 0;
+      flex: 1;
+    }
   }
   
   p {
     margin: 8px 0;
     color: #5b6270;
     font-size: 14px;
+  }
+}
+
+.delete-button {
+  background: transparent;
+  border: none;
+  color: #d32f2f;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: background 0.2s;
+  flex-shrink: 0;
+  
+  &:hover {
+    background: #ffebee;
+  }
+  
+  .app-icon {
+    font-size: 18px;
   }
 }
 

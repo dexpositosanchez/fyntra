@@ -153,9 +153,14 @@ export class VehiculosComponent implements OnInit, OnDestroy {
     }
 
     // Mapear 'ano' a 'año' para el backend
-    const vehiculoData = {
+    // Convertir cadenas vacías a null para campos opcionales
+    const vehiculoData: any = {
       ...this.vehiculoForm,
-      año: this.vehiculoForm.ano
+      año: this.vehiculoForm.ano || null,
+      capacidad: this.vehiculoForm.capacidad || null,
+      tipo_combustible: this.vehiculoForm.tipo_combustible && this.vehiculoForm.tipo_combustible.trim() !== '' 
+        ? this.vehiculoForm.tipo_combustible 
+        : null
     };
     delete vehiculoData.ano;
 
@@ -173,7 +178,7 @@ export class VehiculosComponent implements OnInit, OnDestroy {
           this.error = '';
         },
         error: (err: HttpErrorResponse) => {
-          this.error = err.error?.detail || err.error?.message || err.message || 'Error al actualizar vehículo';
+          this.error = this.parsearError(err);
           this.loading = false;
           if (err.status === 401) {
             this.authService.logout();
@@ -190,7 +195,7 @@ export class VehiculosComponent implements OnInit, OnDestroy {
           this.error = '';
         },
         error: (err: HttpErrorResponse) => {
-          this.error = err.error?.detail || err.error?.message || err.message || 'Error al crear vehículo';
+          this.error = this.parsearError(err);
           this.loading = false;
           if (err.status === 401) {
             this.authService.logout();
@@ -198,6 +203,76 @@ export class VehiculosComponent implements OnInit, OnDestroy {
         }
       });
     }
+  }
+
+  parsearError(err: HttpErrorResponse): string {
+    // Si hay un detalle directo y es un string, usarlo
+    if (err.error?.detail && typeof err.error.detail === 'string') {
+      // Mejorar mensajes de validación comunes
+      let mensaje = err.error.detail;
+      
+      // Mensajes de validación de Pydantic
+      if (mensaje.includes('tipo_combustible')) {
+        if (mensaje.includes("Input should be")) {
+          return 'El tipo de combustible seleccionado no es válido. Por favor, seleccione una opción válida o deje el campo vacío.';
+        }
+        return 'Error en el tipo de combustible. Por favor, seleccione una opción válida o deje el campo vacío.';
+      }
+      
+      // Otros errores comunes
+      if (mensaje.includes('matricula')) {
+        return 'Ya existe un vehículo con esta matrícula. Por favor, use una matrícula diferente.';
+      }
+      
+      return mensaje;
+    }
+    
+    // Si hay un array de errores (formato de validación de Pydantic)
+    if (Array.isArray(err.error?.detail)) {
+      const errores = err.error.detail.map((e: any) => {
+        const campo = e.loc && e.loc.length > 1 ? e.loc[e.loc.length - 1] : 'campo';
+        let mensajeCampo = '';
+        
+        // Traducir nombres de campos
+        const nombresCampos: { [key: string]: string } = {
+          'tipo_combustible': 'Tipo de combustible',
+          'matricula': 'Matrícula',
+          'nombre': 'Nombre',
+          'marca': 'Marca',
+          'modelo': 'Modelo',
+          'año': 'Año',
+          'capacidad': 'Capacidad',
+          'estado': 'Estado'
+        };
+        
+        const nombreCampo = nombresCampos[campo] || campo;
+        
+        if (e.type === 'enum') {
+          return `${nombreCampo}: Por favor, seleccione una opción válida o deje el campo vacío.`;
+        }
+        
+        if (e.msg) {
+          mensajeCampo = e.msg;
+          // Mejorar mensajes comunes
+          if (mensajeCampo.includes('Input should be')) {
+            return `${nombreCampo}: El valor proporcionado no es válido.`;
+          }
+          return `${nombreCampo}: ${mensajeCampo}`;
+        }
+        
+        return `${nombreCampo}: Error de validación`;
+      });
+      
+      return errores.join(' ');
+    }
+    
+    // Si hay un objeto con mensaje
+    if (err.error?.message) {
+      return err.error.message;
+    }
+    
+    // Mensaje genérico
+    return 'Error al procesar la solicitud. Por favor, verifique los datos e intente nuevamente.';
   }
 
   getEstadoClass(estado: string): string {
@@ -216,6 +291,28 @@ export class VehiculosComponent implements OnInit, OnDestroy {
       'inactivo': 'Inactivo'
     };
     return textos[estado?.toLowerCase()] || estado || 'Inactivo';
+  }
+
+  eliminarVehiculo(vehiculo: any, event: Event): void {
+    event.stopPropagation();
+    const nombreVehiculo = vehiculo.nombre || vehiculo.matricula || 'este vehículo';
+    if (confirm(`¿Está seguro de eliminar el vehículo "${nombreVehiculo}"?`)) {
+      this.loading = true;
+      this.apiService.deleteVehiculo(vehiculo.id).subscribe({
+        next: () => {
+          this.cargarVehiculos();
+          this.loading = false;
+          this.error = '';
+        },
+        error: (err: HttpErrorResponse) => {
+          this.error = err.error?.detail || 'Error al eliminar vehículo';
+          this.loading = false;
+          if (err.status === 401) {
+            this.authService.logout();
+          }
+        }
+      });
+    }
   }
 
   toggleMenuUsuario(): void {
