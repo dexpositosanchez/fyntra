@@ -274,6 +274,24 @@ export class ConductoresComponent implements OnInit, OnDestroy {
     return `${day}/${month}/${year}`;
   }
 
+  eliminarConductor(conductor: any, event: Event): void {
+    event.stopPropagation();
+    const nombreCompleto = `${conductor.nombre} ${conductor.apellidos || ''}`.trim();
+    if (confirm(`¿Está seguro de eliminar al conductor "${nombreCompleto}"?`)) {
+      this.loading = true;
+      this.apiService.deleteConductor(conductor.id).subscribe({
+        next: () => {
+          this.loading = false;
+          this.cargarConductores();
+        },
+        error: (err) => {
+          this.loading = false;
+          this.error = err.error?.detail || 'Error al eliminar conductor';
+        }
+      });
+    }
+  }
+
   toggleMenuUsuario(): void {
     this.mostrarMenuUsuario = !this.mostrarMenuUsuario;
   }

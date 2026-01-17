@@ -216,9 +216,14 @@
           <div class="conductor-card" *ngFor="let conductor of conductores" (click)="editarConductor(conductor)">
             <div class="card-header">
               <h3>{{ conductor.nombre }} {{ conductor.apellidos }}</h3>
-              <span [class]="'status-badge ' + getEstadoClass(conductor.activo)">
-                {{ getEstadoTexto(conductor.activo) }}
-              </span>
+              <div class="header-right">
+                <span [class]="'status-badge ' + getEstadoClass(conductor.activo)">
+                  {{ getEstadoTexto(conductor.activo) }}
+                </span>
+                <button class="delete-button" (click)="eliminarConductor(conductor, $event)" title="Eliminar conductor">
+                  <span class="app-icon">delete</span>
+                </button>
+              </div>
             </div>
             <p *ngIf="conductor.dni"><strong>DNI:</strong> {{ conductor.dni }}</p>
             <p *ngIf="conductor.telefono"><strong>Teléfono:</strong> {{ conductor.telefono }}</p>

@@ -407,6 +407,12 @@
     justify-content: space-between;
     align-items: flex-start;
     margin-bottom: 15px;
+    
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
   }
   
   h3 {
@@ -467,6 +473,27 @@
   &.caducada {
     background: #ffebee;
     color: #d32f2f;
+  }
+}
+
+.delete-button {
+  background: transparent;
+  border: none;
+  color: #d32f2f;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: background 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  
+  &:hover {
+    background: #ffebee;
+  }
+  
+  .app-icon {
+    font-size: 18px;
   }
 }
 
