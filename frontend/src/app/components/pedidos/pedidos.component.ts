@@ -247,6 +247,27 @@ export class PedidosComponent implements OnInit, OnDestroy {
     this.router.navigate(['/usuarios']);
   }
 
+  eliminarPedido(pedido: any, event: Event): void {
+    event.stopPropagation();
+    if (confirm(`¿Está seguro de eliminar el pedido de "${pedido.cliente}"?`)) {
+      this.loading = true;
+      this.apiService.deletePedido(pedido.id).subscribe({
+        next: () => {
+          this.cargarPedidos();
+          this.loading = false;
+          this.error = '';
+        },
+        error: (err: HttpErrorResponse) => {
+          this.error = err.error?.detail || 'Error al eliminar pedido';
+          this.loading = false;
+          if (err.status === 401) {
+            this.authService.logout();
+          }
+        }
+      });
+    }
+  }
+
   logout(): void {
     this.mostrarMenuUsuario = false;
     this.authService.logout();

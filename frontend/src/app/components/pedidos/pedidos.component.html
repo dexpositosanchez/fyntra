@@ -174,7 +174,12 @@
         
         <div class="pedidos-grid" *ngIf="!loading && !error">
           <div class="pedido-card" *ngFor="let pedido of pedidos" (click)="editarPedido(pedido)">
-            <h3>{{ pedido.cliente }}</h3>
+            <div class="card-header">
+              <h3>{{ pedido.cliente }}</h3>
+              <button class="delete-button" (click)="eliminarPedido(pedido, $event)" title="Eliminar pedido">
+                <span class="app-icon">delete</span>
+              </button>
+            </div>
             <p><strong>Origen:</strong> {{ pedido.origen }}</p>
             <p><strong>Destino:</strong> {{ pedido.destino }}</p>
             <div class="pedido-details">

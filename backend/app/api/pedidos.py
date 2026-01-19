@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from app.database import get_db
 from app.models.pedido import Pedido, EstadoPedido
+from app.models.ruta import RutaParada, Ruta, EstadoRuta
 from app.models.usuario import Usuario
 from app.schemas.pedido import PedidoCreate, PedidoUpdate, PedidoResponse
 from app.api.dependencies import get_current_user
@@ -169,6 +170,18 @@ async def eliminar_pedido(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Pedido no encontrado"
+        )
+    
+    # Verificar si el pedido está asociado a alguna ruta activa
+    parada_activa = db.query(RutaParada).join(Ruta).filter(
+        RutaParada.pedido_id == pedido_id,
+        Ruta.estado.in_([EstadoRuta.PLANIFICADA, EstadoRuta.EN_CURSO])
+    ).first()
+    
+    if parada_activa:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No se puede eliminar el pedido porque está asociado a una ruta activa. Debe cancelar o completar la ruta primero."
         )
     
     db.delete(pedido)
