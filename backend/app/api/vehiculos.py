@@ -34,13 +34,18 @@ async def listar_vehiculos(
     if cached_result is not None:
         return cached_result
     
-    # Consultar base de datos
+    # Consultar base de datos directamente (forzar lectura fresca)
     query = db.query(Vehiculo)
     
     if estado:
         query = query.filter(Vehiculo.estado == estado)
     
     vehiculos = query.offset(skip).limit(limit).all()
+    
+    # Forzar refresh de cada vehículo para asegurar que tenemos los datos más recientes
+    for vehiculo in vehiculos:
+        db.refresh(vehiculo)
+    
     result = [VehiculoResponse.model_validate(veh).model_dump() for veh in vehiculos]
     
     # Almacenar en caché (5 minutos)
@@ -170,11 +175,66 @@ async def actualizar_vehiculo(
                 detail="Ya existe un vehículo con esta matrícula"
             )
     
-    for field, value in update_data.items():
-        setattr(vehiculo, field, value)
+    # Si se está actualizando el estado, validar que sea coherente con los mantenimientos
+    if "estado" in update_data:
+        # Convertir el estado a EstadoVehiculo si viene como string
+        estado_value = update_data["estado"]
+        if isinstance(estado_value, str):
+            nuevo_estado = EstadoVehiculo(estado_value)
+        elif isinstance(estado_value, EstadoVehiculo):
+            nuevo_estado = estado_value
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Estado inválido: {estado_value}"
+            )
+        
+        # Verificar si hay mantenimientos en curso
+        from app.models.mantenimiento import Mantenimiento, EstadoMantenimiento
+        mantenimiento_en_curso = db.query(Mantenimiento).filter(
+            Mantenimiento.vehiculo_id == vehiculo_id,
+            Mantenimiento.estado == EstadoMantenimiento.EN_CURSO
+        ).first()
+        
+        # Si el usuario intenta poner el vehículo en "activo" pero hay un mantenimiento EN_CURSO,
+        # no permitirlo (debe estar en "en_mantenimiento")
+        if nuevo_estado == EstadoVehiculo.ACTIVO and mantenimiento_en_curso:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No se puede cambiar el vehículo a 'activo' mientras tiene un mantenimiento en curso. Complete o cancele el mantenimiento primero."
+            )
+        
+        # Actualizar update_data con el estado convertido para que se use en el setattr
+        update_data["estado"] = nuevo_estado
     
+    # Actualizar campos, manejando el estado explícitamente
+    for field, value in update_data.items():
+        if field == "estado":
+            # Asegurar que el estado se asigne correctamente como Enum
+            vehiculo.estado = value
+        else:
+            setattr(vehiculo, field, value)
+    
+    # Forzar flush para asegurar que los cambios se escriban antes del commit
+    db.flush()
     db.commit()
+    # Hacer refresh para obtener el estado real de la BD
     db.refresh(vehiculo)
+    
+    # Verificar que el estado se guardó correctamente consultando directamente de la BD
+    vehiculo_verificado = db.query(Vehiculo).filter(Vehiculo.id == vehiculo_id).first()
+    if vehiculo_verificado:
+        # Asegurar que el estado en memoria coincide con el de la BD
+        vehiculo.estado = vehiculo_verificado.estado
+    
+    # Invalidar TODA la caché de vehículos de forma más agresiva
+    invalidate_vehiculos_cache()
+    # También eliminar la clave específica del item
+    delete_from_cache(generate_cache_key("vehiculos:item", id=vehiculo_id))
+    # Eliminar todas las posibles claves de listado
+    from app.core.cache import invalidate_cache_pattern
+    invalidate_cache_pattern("vehiculos:list*")
+    
     return VehiculoResponse.model_validate(vehiculo)
 
 @router.delete("/{vehiculo_id}", status_code=status.HTTP_204_NO_CONTENT)

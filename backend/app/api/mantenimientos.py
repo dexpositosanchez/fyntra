@@ -21,11 +21,18 @@ def actualizar_estado_vehiculo(vehiculo_id: int, db: Session):
     
     Reglas:
     - Si hay un mantenimiento EN_CURSO, el vehículo pasa a estado "en_mantenimiento"
-    - Si no hay mantenimientos EN_CURSO, el vehículo vuelve a estado "activo" (disponible)
-    - No cambia el estado si el vehículo está manualmente en "inactivo"
+      (solo si no está manualmente marcado como "inactivo")
+    - Si no hay mantenimientos EN_CURSO, el vehículo puede volver a estado "activo"
+      (solo si estaba en "en_mantenimiento" y no está manualmente marcado como "inactivo")
+    - Si el vehículo está en "activo" y no hay mantenimientos EN_CURSO, no hacer nada (respetar cambio manual)
+    - NUNCA cambia el estado si el vehículo está manualmente en "inactivo"
     """
     vehiculo = db.query(Vehiculo).filter(Vehiculo.id == vehiculo_id).first()
     if not vehiculo:
+        return
+    
+    # Si el vehículo está manualmente marcado como inactivo, no cambiar su estado
+    if vehiculo.estado == EstadoVehiculo.INACTIVO:
         return
     
     # Verificar si hay algún mantenimiento en curso
@@ -36,15 +43,20 @@ def actualizar_estado_vehiculo(vehiculo_id: int, db: Session):
     
     if mantenimiento_en_curso:
         # Si hay un mantenimiento en curso, el vehículo debe estar en mantenimiento
+        # (solo si no está en inactivo, que ya verificamos arriba)
+        # Solo cambiar si no está ya en "en_mantenimiento"
         if vehiculo.estado != EstadoVehiculo.EN_MANTENIMIENTO:
             vehiculo.estado = EstadoVehiculo.EN_MANTENIMIENTO
             db.commit()
     else:
-        # Si no hay mantenimientos en curso, el vehículo puede volver a activo (disponible)
-        # Solo si no está manualmente marcado como inactivo
+        # Si no hay mantenimientos en curso:
+        # - Si el vehículo está en "en_mantenimiento", cambiarlo a "activo"
+        # - Si el vehículo está en "activo", dejarlo así (respetar cambio manual)
+        # - Si el vehículo está en "inactivo", ya retornamos arriba
         if vehiculo.estado == EstadoVehiculo.EN_MANTENIMIENTO:
             vehiculo.estado = EstadoVehiculo.ACTIVO
             db.commit()
+        # Si está en "activo", no hacer nada (respetar el cambio manual del usuario)
 
 def calcular_dias_restantes(fecha: Optional[datetime]) -> Optional[int]:
     """

@@ -42,6 +42,7 @@ docker-compose exec backend python scripts/init_data.py
 - **Frontend Web**: http://localhost:4200
 - **Backend API**: http://localhost:8000
 - **API Docs (Swagger)**: http://localhost:8000/docs
+- **pgAdmin (Gestor BD)**: http://localhost:5050
 - **A través de Nginx**: http://localhost
 
 ## Servicios Disponibles
@@ -266,6 +267,33 @@ make shell-db
 # Dentro del shell:
 psql -U fyntra_user -d fyntra
 ```
+
+### Acceder a pgAdmin (Gestor de Base de Datos)
+
+pgAdmin está disponible en **http://localhost:5050**
+
+**Credenciales de acceso a pgAdmin**:
+- **Email**: `admin@fyntra.com`
+- **Contraseña**: `admin123`
+
+**Una vez dentro de pgAdmin**:
+1. El servidor "Fyntra PostgreSQL" debería aparecer automáticamente configurado
+2. Si no aparece, haz clic derecho en "Servers" → "Register" → "Server"
+3. En la pestaña "General":
+   - **Name**: `Fyntra PostgreSQL`
+4. En la pestaña "Connection":
+   - **Host name/address**: `postgres` (o `localhost` si accedes desde fuera de Docker)
+   - **Port**: `5432`
+   - **Maintenance database**: `fyntra`
+   - **Username**: `fyntra_user`
+   - **Password**: `fyntra_password`
+5. Guarda la contraseña marcando "Save password"
+6. Haz clic en "Save"
+
+**Consultar el estado de los vehículos**:
+1. Expande "Fyntra PostgreSQL" → "Databases" → "fyntra" → "Schemas" → "public" → "Tables"
+2. Haz clic derecho en "vehiculos" → "View/Edit Data" → "All Rows"
+3. O ejecuta una consulta SQL: Click derecho en "fyntra" → "Query Tool" → Escribe: `SELECT id, nombre, estado FROM vehiculos;`
 
 ### El frontend no carga
 

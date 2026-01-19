@@ -1,0 +1,15 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "Fyntra PostgreSQL",
+      "Group": "Servers",
+      "Host": "postgres",
+      "Port": 5432,
+      "MaintenanceDB": "fyntra",
+      "Username": "fyntra_user",
+      "Password": "fyntra_password",
+      "SSLMode": "prefer",
+      "Comment": "Base de datos Fyntra"
+    }
+  }
+}
