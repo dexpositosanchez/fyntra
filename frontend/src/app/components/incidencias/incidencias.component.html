@@ -260,27 +260,40 @@
       <div *ngIf="loading" class="loading">Cargando...</div>
       <div *ngIf="error && !mostrarFormulario" class="error">{{ error }}</div>
       
-      <div class="incidencias-grid" *ngIf="!loading">
-        <div class="incidencia-card" *ngFor="let incidencia of incidencias" 
-             (click)="esProveedor ? verActuaciones(incidencia, $event) : editarIncidencia(incidencia)">
-          <div class="card-header">
-            <span [class]="'prioridad-badge ' + getPrioridadClass(incidencia.prioridad)">
-              {{ getPrioridadTexto(incidencia.prioridad) }}
-            </span>
-            <span [class]="'estado-badge ' + getEstadoClass(incidencia.estado)">
-              {{ getEstadoLabel(incidencia.estado) }}
-            </span>
+      <div *ngIf="!loading && !error">
+        <!-- Pestañas por estado -->
+        <div class="tabs-container" *ngIf="tabs.length > 0">
+          <div class="tabs">
+            <button 
+              *ngFor="let tab of tabs"
+              class="tab-button"
+              [class.active]="tabActiva === tab.estado"
+              (click)="cambiarTab(tab.estado)">
+              {{ tab.label }} ({{ tab.count }})
+            </button>
           </div>
-          <h3 class="incidencia-titulo">{{ incidencia.titulo }}</h3>
-          <p class="incidencia-inmueble" *ngIf="incidencia.inmueble">
-            <span class="app-icon">home</span>
-            {{ incidencia.inmueble.referencia }} - {{ incidencia.inmueble.direccion }}
-          </p>
-          <p class="incidencia-fecha">
-            <span class="app-icon">calendar_today</span>
-            {{ formatearFecha(incidencia.fecha_alta) }}
-          </p>
-          <div class="card-actions">
+        </div>
+
+        <!-- Contenido de la pestaña activa -->
+        <div *ngIf="tabActiva && tabs.length > 0">
+          <div class="incidencias-grid" *ngIf="getIncidenciasTabActiva().length > 0">
+            <div class="incidencia-card" *ngFor="let incidencia of getIncidenciasTabActiva()"
+             (click)="esProveedor ? verActuaciones(incidencia, $event) : editarIncidencia(incidencia)">
+              <div class="card-header">
+                <span [class]="'prioridad-badge ' + getPrioridadClass(incidencia.prioridad)">
+                  {{ getPrioridadTexto(incidencia.prioridad) }}
+                </span>
+              </div>
+              <h3 class="incidencia-titulo">{{ incidencia.titulo }}</h3>
+              <p class="incidencia-inmueble" *ngIf="incidencia.inmueble">
+                <span class="app-icon">home</span>
+                {{ incidencia.inmueble.referencia }} - {{ incidencia.inmueble.direccion }}
+              </p>
+              <p class="incidencia-fecha">
+                <span class="app-icon">calendar_today</span>
+                {{ formatearFecha(incidencia.fecha_alta) }}
+              </p>
+              <div class="card-actions">
             <!-- Historial para todos -->
             <button class="action-btn history-btn" (click)="verHistorial(incidencia, $event)" title="Ver historial">
               <span class="app-icon">history</span>
@@ -312,11 +325,10 @@
             </button>
           </div>
         </div>
-        
-        <div class="empty-state" *ngIf="incidencias.length === 0">
-          <span class="app-icon empty-icon">inbox</span>
-          <p>{{ esProveedor ? 'No tiene incidencias asignadas' : (esPropietario ? 'No hay incidencias registradas' : 'No hay incidencias sin resolver') }}</p>
-          <button class="add-button" *ngIf="!esProveedor" (click)="mostrarForm()">Crear primera incidencia</button>
+          </div>
+          <div *ngIf="getIncidenciasTabActiva().length === 0" class="no-items">
+            <p>No hay incidencias registradas.</p>
+          </div>
         </div>
       </div>
     </div>

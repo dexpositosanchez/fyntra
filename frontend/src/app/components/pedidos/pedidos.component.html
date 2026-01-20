@@ -169,11 +169,27 @@
           <button class="add-button" (click)="mostrarForm()">+ Nuevo Pedido</button>
         </div>
         
-        <div *ngIf="loading" class="loading">Cargando...</div>
-        <div *ngIf="error" class="error">{{ error }}</div>
-        
-        <div class="pedidos-grid" *ngIf="!loading && !error">
-          <div class="pedido-card" *ngFor="let pedido of pedidos" (click)="editarPedido(pedido)">
+      <div *ngIf="loading" class="loading">Cargando...</div>
+      <div *ngIf="error" class="error">{{ error }}</div>
+      
+      <div *ngIf="!loading && !error">
+        <!-- Pestañas por estado -->
+        <div class="tabs-container" *ngIf="tabs.length > 0">
+          <div class="tabs">
+            <button 
+              *ngFor="let tab of tabs"
+              class="tab-button"
+              [class.active]="tabActiva === tab.estado"
+              (click)="cambiarTab(tab.estado)">
+              {{ tab.label }} ({{ tab.count }})
+            </button>
+          </div>
+        </div>
+
+        <!-- Contenido de la pestaña activa -->
+        <div *ngIf="tabActiva && tabs.length > 0">
+          <div class="pedidos-grid" *ngIf="getPedidosTabActiva().length > 0">
+            <div class="pedido-card" *ngFor="let pedido of getPedidosTabActiva()" (click)="editarPedido(pedido)">
             <div class="card-header">
               <h3>{{ pedido.cliente }}</h3>
               <button class="delete-button" (click)="eliminarPedido(pedido, $event)" title="Eliminar pedido">
@@ -188,9 +204,11 @@
               <p *ngIf="pedido.tipo_mercancia"><strong>Tipo:</strong> {{ pedido.tipo_mercancia }}</p>
               <p><strong>Entrega:</strong> {{ formatearFecha(pedido.fecha_entrega_deseada) }}</p>
             </div>
-            <span [class]="'status-badge ' + getEstadoClass(pedido.estado)">
-              {{ getEstadoTexto(pedido.estado) }}
-            </span>
+          </div>
+        </div>
+          </div>
+          <div *ngIf="getPedidosTabActiva().length === 0" class="no-items">
+            <p>No hay pedidos registrados.</p>
           </div>
         </div>
       </div>

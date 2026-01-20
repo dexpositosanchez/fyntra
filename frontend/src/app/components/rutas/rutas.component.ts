@@ -39,6 +39,10 @@ export class RutasComponent implements OnInit, OnDestroy {
   currentRoute: string = '';
   mostrarMenuUsuario: boolean = false;
   usuario: any = null;
+  // Pestañas por estado
+  rutasPorEstado: { [key: string]: any[] } = {};
+  tabs: { estado: string, label: string, count: number }[] = [];
+  tabActiva: string = '';
   private routerSubscription?: Subscription;
   
   estados = [
@@ -91,6 +95,7 @@ export class RutasComponent implements OnInit, OnDestroy {
     this.apiService.getRutas().subscribe({
       next: (data) => {
         this.rutas = data;
+        this.agruparPorEstado();
         this.loading = false;
       },
       error: (err: HttpErrorResponse) => {
@@ -101,6 +106,62 @@ export class RutasComponent implements OnInit, OnDestroy {
         }
       }
     });
+  }
+
+  agruparPorEstado(): void {
+    // Inicializar objeto de agrupación
+    this.rutasPorEstado = {};
+    
+    // Agrupar rutas por estado
+    this.rutas.forEach(ruta => {
+      const estado = ruta.estado || 'planificada';
+      if (!this.rutasPorEstado[estado]) {
+        this.rutasPorEstado[estado] = [];
+      }
+      this.rutasPorEstado[estado].push(ruta);
+    });
+
+    // Crear array de tabs con contadores, excluyendo estados con 0 items
+    this.tabs = this.estados
+      .map(estado => ({
+        estado: estado.value,
+        label: estado.label,
+        count: this.rutasPorEstado[estado.value]?.length || 0
+      }))
+      .filter(tab => tab.count > 0)
+      .sort((a, b) => {
+        // Ordenar: primero "planificada" o similar, al final "cancelada" o similar
+        const ordenEstados: { [key: string]: number } = {
+          'planificada': 1,
+          'en_curso': 2,
+          'completada': 3,
+          'cancelada': 99
+        };
+        const ordenA = ordenEstados[a.estado] || 50;
+        const ordenB = ordenEstados[b.estado] || 50;
+        return ordenA - ordenB;
+      });
+
+    // Establecer la primera tab como activa siempre que haya tabs
+    if (this.tabs.length > 0) {
+      // Verificar si la tab activa actual existe en las nuevas tabs
+      const tabActivaExiste = this.tabs.some(tab => tab.estado === this.tabActiva);
+      // Si no existe o no hay tab activa, establecer la primera
+      if (!tabActivaExiste || !this.tabActiva) {
+        this.tabActiva = this.tabs[0].estado;
+      }
+    } else {
+      // Si no hay tabs, limpiar tabActiva
+      this.tabActiva = '';
+    }
+  }
+
+  cambiarTab(estado: string): void {
+    this.tabActiva = estado;
+  }
+
+  getRutasTabActiva(): any[] {
+    return this.rutasPorEstado[this.tabActiva] || [];
   }
 
   eliminarRuta(rutaId: number, event: Event): void {

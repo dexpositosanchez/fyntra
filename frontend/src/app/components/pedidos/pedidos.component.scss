@@ -236,6 +236,54 @@
   }
 }
 
+// Pestañas por estado
+.tabs-container {
+  margin-bottom: 25px;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.tabs {
+  display: flex;
+  gap: 0;
+  flex-wrap: wrap;
+}
+
+.tab-button {
+  background: transparent;
+  border: none;
+  padding: 12px 24px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #5b6270;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  transition: all 0.2s;
+  position: relative;
+  margin-bottom: -2px;
+  
+  &:hover {
+    color: #1b9d8a;
+    background: #f2f4f7;
+  }
+  
+  &.active {
+    color: #1b9d8a;
+    border-bottom-color: #1b9d8a;
+    font-weight: 600;
+  }
+}
+
+.no-items {
+  text-align: center;
+  padding: 40px;
+  color: #6f7785;
+  
+  p {
+    margin: 0;
+    font-size: 16px;
+  }
+}
+
 .pedidos-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));

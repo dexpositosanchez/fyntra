@@ -249,14 +249,27 @@
           </p>
         </div>
         
-        <div class="mantenimientos-grid" *ngIf="!loading && !error && mantenimientos.length > 0">
-          <div class="mantenimiento-card" *ngFor="let mantenimiento of mantenimientos" (click)="editarMantenimiento(mantenimiento)">
-            <div class="mantenimiento-header">
-              <h3>{{ getTipoTexto(mantenimiento.tipo) }}</h3>
-              <span [class]="'status-badge ' + getEstadoClass(mantenimiento.estado)">
-                {{ getEstadoTexto(mantenimiento.estado) }}
-              </span>
+        <div *ngIf="!loading && !error">
+          <!-- Pestañas por estado -->
+          <div class="tabs-container" *ngIf="tabs.length > 0">
+            <div class="tabs">
+              <button 
+                *ngFor="let tab of tabs"
+                class="tab-button"
+                [class.active]="tabActiva === tab.estado"
+                (click)="cambiarTab(tab.estado)">
+                {{ tab.label }} ({{ tab.count }})
+              </button>
             </div>
+          </div>
+
+          <!-- Contenido de la pestaña activa -->
+          <div *ngIf="tabActiva && tabs.length > 0">
+            <div class="mantenimientos-grid" *ngIf="getMantenimientosTabActiva().length > 0">
+              <div class="mantenimiento-card" *ngFor="let mantenimiento of getMantenimientosTabActiva()" (click)="editarMantenimiento(mantenimiento)">
+                <div class="mantenimiento-header">
+                  <h3>{{ getTipoTexto(mantenimiento.tipo) }}</h3>
+                </div>
             <p *ngIf="mantenimiento.vehiculo"><strong>Vehículo:</strong> {{ mantenimiento.vehiculo.nombre }} ({{ mantenimiento.vehiculo.matricula }})</p>
             <p *ngIf="mantenimiento.descripcion"><strong>Descripción:</strong> {{ mantenimiento.descripcion }}</p>
             <p><strong>📅 Fecha Programada:</strong> {{ formatearFechaHora(mantenimiento.fecha_programada) }}</p>
@@ -273,6 +286,11 @@
             <p *ngIf="mantenimiento.coste"><strong>Coste:</strong> {{ mantenimiento.coste }} €</p>
             <p *ngIf="mantenimiento.kilometraje"><strong>Kilometraje:</strong> {{ mantenimiento.kilometraje }} km</p>
             <p *ngIf="mantenimiento.observaciones" class="observaciones">{{ mantenimiento.observaciones }}</p>
+          </div>
+            </div>
+          </div>
+          <div *ngIf="getMantenimientosTabActiva().length === 0" class="no-items">
+            <p>No hay mantenimientos registrados.</p>
           </div>
         </div>
       </div>

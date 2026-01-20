@@ -38,6 +38,10 @@ export class MantenimientosComponent implements OnInit, OnDestroy {
   mostrarMenuUsuario: boolean = false;
   usuario: any = null;
   numeroAlertas: number = 0;
+  // Pestañas por estado
+  mantenimientosPorEstado: { [key: string]: any[] } = {};
+  tabs: { estado: string, label: string, count: number }[] = [];
+  tabActiva: string = '';
   private routerSubscription?: Subscription;
   
   tipos = [
@@ -161,6 +165,7 @@ export class MantenimientosComponent implements OnInit, OnDestroy {
             });
           }
           
+          this.agruparPorEstado();
           this.loading = false;
           this.error = '';
           // Cargar número de alertas en segundo plano
@@ -610,6 +615,63 @@ export class MantenimientosComponent implements OnInit, OnDestroy {
            this.currentRoute.includes('/rutas') || 
            this.currentRoute.includes('/pedidos') ||
            this.currentRoute.includes('/mantenimientos');
+  }
+
+  agruparPorEstado(): void {
+    // Inicializar objeto de agrupación
+    this.mantenimientosPorEstado = {};
+    
+    // Agrupar mantenimientos por estado
+    this.mantenimientos.forEach(mantenimiento => {
+      const estado = mantenimiento.estado || 'programado';
+      if (!this.mantenimientosPorEstado[estado]) {
+        this.mantenimientosPorEstado[estado] = [];
+      }
+      this.mantenimientosPorEstado[estado].push(mantenimiento);
+    });
+
+    // Crear array de tabs con contadores, excluyendo estados con 0 items
+    this.tabs = this.estados
+      .map(estado => ({
+        estado: estado.value,
+        label: estado.label,
+        count: this.mantenimientosPorEstado[estado.value]?.length || 0
+      }))
+      .filter(tab => tab.count > 0)
+      .sort((a, b) => {
+        // Ordenar: primero "programado" o similar, al final "cancelado" o similar
+        const ordenEstados: { [key: string]: number } = {
+          'programado': 1,
+          'en_curso': 2,
+          'completado': 3,
+          'vencido': 4,
+          'cancelado': 99
+        };
+        const ordenA = ordenEstados[a.estado] || 50;
+        const ordenB = ordenEstados[b.estado] || 50;
+        return ordenA - ordenB;
+      });
+
+    // Establecer la primera tab como activa siempre que haya tabs
+    if (this.tabs.length > 0) {
+      // Verificar si la tab activa actual existe en las nuevas tabs
+      const tabActivaExiste = this.tabs.some(tab => tab.estado === this.tabActiva);
+      // Si no existe o no hay tab activa, establecer la primera
+      if (!tabActivaExiste || !this.tabActiva) {
+        this.tabActiva = this.tabs[0].estado;
+      }
+    } else {
+      // Si no hay tabs, limpiar tabActiva
+      this.tabActiva = '';
+    }
+  }
+
+  cambiarTab(estado: string): void {
+    this.tabActiva = estado;
+  }
+
+  getMantenimientosTabActiva(): any[] {
+    return this.mantenimientosPorEstado[this.tabActiva] || [];
   }
 }
 

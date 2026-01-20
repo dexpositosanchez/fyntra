@@ -13,6 +13,9 @@ import { HttpErrorResponse } from '@angular/common/http';
 })
 export class VehiculosComponent implements OnInit, OnDestroy {
   vehiculos: any[] = [];
+  vehiculosPorEstado: { [key: string]: any[] } = {};
+  tabs: { estado: string, label: string, count: number }[] = [];
+  tabActiva: string = '';
   mostrarFormulario: boolean = false;
   editandoVehiculo: boolean = false;
   vehiculoIdEditando: number | null = null;
@@ -95,6 +98,7 @@ export class VehiculosComponent implements OnInit, OnDestroy {
           ...v,
           ano: v['año'] || v.año // Añadir 'ano' para compatibilidad
         }));
+        this.agruparPorEstado();
         this.loading = false;
       },
       error: (err) => {
@@ -291,6 +295,61 @@ export class VehiculosComponent implements OnInit, OnDestroy {
       'inactivo': 'Inactivo'
     };
     return textos[estado?.toLowerCase()] || estado || 'Inactivo';
+  }
+
+  agruparPorEstado(): void {
+    // Inicializar objeto de agrupación
+    this.vehiculosPorEstado = {};
+    
+    // Agrupar vehículos por estado
+    this.vehiculos.forEach(vehiculo => {
+      const estado = vehiculo.estado || 'inactivo';
+      if (!this.vehiculosPorEstado[estado]) {
+        this.vehiculosPorEstado[estado] = [];
+      }
+      this.vehiculosPorEstado[estado].push(vehiculo);
+    });
+
+    // Crear array de tabs con contadores, excluyendo estados con 0 items
+    this.tabs = this.estados
+      .map(estado => ({
+        estado: estado.value,
+        label: estado.label,
+        count: this.vehiculosPorEstado[estado.value]?.length || 0
+      }))
+      .filter(tab => tab.count > 0)
+      .sort((a, b) => {
+        // Ordenar: primero "activo" o similar, al final "inactivo" o similar
+        const ordenEstados: { [key: string]: number } = {
+          'activo': 1,
+          'en_mantenimiento': 2,
+          'inactivo': 99
+        };
+        const ordenA = ordenEstados[a.estado] || 50;
+        const ordenB = ordenEstados[b.estado] || 50;
+        return ordenA - ordenB;
+      });
+
+    // Establecer la primera tab como activa siempre que haya tabs
+    if (this.tabs.length > 0) {
+      // Verificar si la tab activa actual existe en las nuevas tabs
+      const tabActivaExiste = this.tabs.some(tab => tab.estado === this.tabActiva);
+      // Si no existe o no hay tab activa, establecer la primera
+      if (!tabActivaExiste || !this.tabActiva) {
+        this.tabActiva = this.tabs[0].estado;
+      }
+    } else {
+      // Si no hay tabs, limpiar tabActiva
+      this.tabActiva = '';
+    }
+  }
+
+  cambiarTab(estado: string): void {
+    this.tabActiva = estado;
+  }
+
+  getVehiculosTabActiva(): any[] {
+    return this.vehiculosPorEstado[this.tabActiva] || [];
   }
 
   eliminarVehiculo(vehiculo: any, event: Event): void {

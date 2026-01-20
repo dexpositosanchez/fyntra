@@ -51,6 +51,10 @@ export class IncidenciasComponent implements OnInit, OnDestroy {
   mostrarChatModal: boolean = false;
   nuevoMensaje: string = '';
   cargandoMensajes: boolean = false;
+  // Pestañas por estado
+  incidenciasPorEstado: { [key: string]: any[] } = {};
+  tabs: { estado: string, label: string, count: number }[] = [];
+  tabActiva: string = '';
   private routerSubscription?: Subscription;
 
   incidenciaForm: any = {
@@ -145,6 +149,7 @@ export class IncidenciasComponent implements OnInit, OnDestroy {
     observable.subscribe({
       next: (data) => {
         this.incidencias = data;
+        this.agruparPorEstado();
         this.loading = false;
       },
       error: (err) => {
@@ -153,6 +158,63 @@ export class IncidenciasComponent implements OnInit, OnDestroy {
         this.incidencias = [];
       }
     });
+  }
+
+  agruparPorEstado(): void {
+    // Inicializar objeto de agrupación
+    this.incidenciasPorEstado = {};
+    
+    // Agrupar incidencias por estado
+    this.incidencias.forEach(incidencia => {
+      const estado = incidencia.estado || 'abierta';
+      if (!this.incidenciasPorEstado[estado]) {
+        this.incidenciasPorEstado[estado] = [];
+      }
+      this.incidenciasPorEstado[estado].push(incidencia);
+    });
+
+    // Crear array de tabs con contadores, excluyendo estados con 0 items
+    this.tabs = this.estados
+      .map(estado => ({
+        estado: estado.value,
+        label: estado.label,
+        count: this.incidenciasPorEstado[estado.value]?.length || 0
+      }))
+      .filter(tab => tab.count > 0)
+      .sort((a, b) => {
+        // Ordenar: primero "abierta" o similar, al final "cerrada" o similar
+        const ordenEstados: { [key: string]: number } = {
+          'abierta': 1,
+          'asignada': 2,
+          'en_progreso': 3,
+          'resuelta': 4,
+          'cerrada': 99
+        };
+        const ordenA = ordenEstados[a.estado] || 50;
+        const ordenB = ordenEstados[b.estado] || 50;
+        return ordenA - ordenB;
+      });
+
+    // Establecer la primera tab como activa siempre que haya tabs
+    if (this.tabs.length > 0) {
+      // Verificar si la tab activa actual existe en las nuevas tabs
+      const tabActivaExiste = this.tabs.some(tab => tab.estado === this.tabActiva);
+      // Si no existe o no hay tab activa, establecer la primera
+      if (!tabActivaExiste || !this.tabActiva) {
+        this.tabActiva = this.tabs[0].estado;
+      }
+    } else {
+      // Si no hay tabs, limpiar tabActiva
+      this.tabActiva = '';
+    }
+  }
+
+  cambiarTab(estado: string): void {
+    this.tabActiva = estado;
+  }
+
+  getIncidenciasTabActiva(): any[] {
+    return this.incidenciasPorEstado[this.tabActiva] || [];
   }
 
   getPrioridadClass(prioridad: string): string {

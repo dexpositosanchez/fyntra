@@ -179,23 +179,41 @@
         <div *ngIf="loading" class="loading">Cargando...</div>
         <div *ngIf="error" class="error">{{ error }}</div>
         
-        <div class="vehiculos-grid" *ngIf="!loading && !error">
-          <div class="vehiculo-card" *ngFor="let vehiculo of vehiculos" (click)="editarVehiculo(vehiculo)">
-            <div class="card-header">
-              <h3>{{ vehiculo.nombre || vehiculo.matricula }}</h3>
-              <button class="delete-button" (click)="eliminarVehiculo(vehiculo, $event)" title="Eliminar vehículo">
-                <span class="app-icon">delete</span>
+        <div *ngIf="!loading && !error">
+          <!-- Pestañas por estado -->
+          <div class="tabs-container" *ngIf="tabs.length > 0">
+            <div class="tabs">
+              <button 
+                *ngFor="let tab of tabs"
+                class="tab-button"
+                [class.active]="tabActiva === tab.estado"
+                (click)="cambiarTab(tab.estado)">
+                {{ tab.label }} ({{ tab.count }})
               </button>
             </div>
-            <p><strong>Matrícula:</strong> {{ vehiculo.matricula }}</p>
-            <p><strong>Marca:</strong> {{ vehiculo.marca }}</p>
-            <p><strong>Modelo:</strong> {{ vehiculo.modelo }}</p>
-            <p *ngIf="vehiculo['año']"><strong>Año:</strong> {{ vehiculo['año'] }}</p>
-            <p *ngIf="vehiculo.capacidad"><strong>Capacidad:</strong> {{ vehiculo.capacidad }} kg</p>
-            <p *ngIf="vehiculo.tipo_combustible"><strong>Combustible:</strong> {{ vehiculo.tipo_combustible | titlecase }}</p>
-            <span [class]="'status-badge ' + getEstadoClass(vehiculo.estado)">
-              {{ getEstadoTexto(vehiculo.estado) }}
-            </span>
+          </div>
+
+          <!-- Contenido de la pestaña activa -->
+          <div *ngIf="tabActiva && tabs.length > 0">
+            <div class="vehiculos-grid" *ngIf="getVehiculosTabActiva().length > 0">
+              <div class="vehiculo-card" *ngFor="let vehiculo of getVehiculosTabActiva()" (click)="editarVehiculo(vehiculo)">
+                <div class="card-header">
+                  <h3>{{ vehiculo.nombre || vehiculo.matricula }}</h3>
+                  <button class="delete-button" (click)="eliminarVehiculo(vehiculo, $event)" title="Eliminar vehículo">
+                    <span class="app-icon">delete</span>
+                  </button>
+                </div>
+                <p><strong>Matrícula:</strong> {{ vehiculo.matricula }}</p>
+                <p><strong>Marca:</strong> {{ vehiculo.marca }}</p>
+                <p><strong>Modelo:</strong> {{ vehiculo.modelo }}</p>
+                <p *ngIf="vehiculo.ano"><strong>Año:</strong> {{ vehiculo.ano }}</p>
+                <p *ngIf="vehiculo.capacidad"><strong>Capacidad:</strong> {{ vehiculo.capacidad }} kg</p>
+                <p *ngIf="vehiculo.tipo_combustible"><strong>Combustible:</strong> {{ vehiculo.tipo_combustible | titlecase }}</p>
+              </div>
+            </div>
+            <div *ngIf="getVehiculosTabActiva().length === 0" class="no-items">
+              <p>No hay vehículos registrados.</p>
+            </div>
           </div>
         </div>
       </div>
