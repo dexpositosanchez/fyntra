@@ -7,7 +7,7 @@ from app.models.usuario import Usuario
 from app.schemas.vehiculo import VehiculoCreate, VehiculoUpdate, VehiculoResponse
 from app.api.dependencies import get_current_user
 from app.core.cache import (
-    get_from_cache, set_to_cache, generate_cache_key,
+    get_from_cache_async, set_to_cache_async, generate_cache_key,
     invalidate_vehiculos_cache, delete_from_cache
 )
 
@@ -29,8 +29,8 @@ async def listar_vehiculos(
         limit=limit
     )
     
-    # Intentar obtener de caché
-    cached_result = get_from_cache(cache_key)
+    # Intentar obtener de caché (versión async con hilos - no bloquea el event loop)
+    cached_result = await get_from_cache_async(cache_key)
     if cached_result is not None:
         return cached_result
     
@@ -48,8 +48,8 @@ async def listar_vehiculos(
     
     result = [VehiculoResponse.model_validate(veh).model_dump() for veh in vehiculos]
     
-    # Almacenar en caché (5 minutos)
-    set_to_cache(cache_key, result, expire=300)
+    # Almacenar en caché (5 minutos) - versión async con hilos
+    await set_to_cache_async(cache_key, result, expire=300)
     
     return result
 
@@ -91,8 +91,8 @@ async def obtener_vehiculo(
     # Generar clave de caché
     cache_key = generate_cache_key("vehiculos:item", id=vehiculo_id)
     
-    # Intentar obtener de caché
-    cached_result = get_from_cache(cache_key)
+    # Intentar obtener de caché (versión async con hilos - no bloquea el event loop)
+    cached_result = await get_from_cache_async(cache_key)
     if cached_result is not None:
         return cached_result
     
@@ -105,8 +105,8 @@ async def obtener_vehiculo(
     
     result = VehiculoResponse.model_validate(vehiculo)
     
-    # Almacenar en caché (5 minutos)
-    set_to_cache(cache_key, result.model_dump(), expire=300)
+    # Almacenar en caché (5 minutos) - versión async con hilos
+    await set_to_cache_async(cache_key, result.model_dump(), expire=300)
     
     return result
 

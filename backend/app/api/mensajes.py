@@ -10,7 +10,7 @@ from app.models.propietario import Propietario
 from app.schemas.mensaje import MensajeCreate, MensajeResponse
 from app.api.dependencies import get_current_user
 from app.core.cache import (
-    get_from_cache, set_to_cache, generate_cache_key,
+    get_from_cache_async, set_to_cache_async, generate_cache_key,
     invalidate_mensajes_cache, delete_from_cache
 )
 

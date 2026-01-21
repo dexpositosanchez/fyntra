@@ -8,7 +8,7 @@ from app.schemas.proveedor import ProveedorCreate, ProveedorUpdate, ProveedorRes
 from app.api.dependencies import get_current_user
 from app.core.security import get_password_hash
 from app.core.cache import (
-    get_from_cache, set_to_cache, generate_cache_key,
+    get_from_cache_async, set_to_cache_async, generate_cache_key,
     invalidate_proveedores_cache, delete_from_cache
 )
 
@@ -39,8 +39,8 @@ async def listar_proveedores(
         limit=limit
     )
     
-    # Intentar obtener de caché
-    cached_result = get_from_cache(cache_key)
+    # Intentar obtener de caché (versión async con hilos - no bloquea el event loop)
+    cached_result = await get_from_cache_async(cache_key)
     if cached_result is not None:
         return cached_result
     
@@ -55,7 +55,7 @@ async def listar_proveedores(
     result = [ProveedorResponse.model_validate(p).model_dump() for p in proveedores]
     
     # Almacenar en caché (5 minutos)
-    set_to_cache(cache_key, result, expire=300)
+    await set_to_cache_async(cache_key, result, expire=300)
     
     return result
 
@@ -68,8 +68,8 @@ async def obtener_proveedor(
     # Generar clave de caché
     cache_key = generate_cache_key("proveedores:item", id=proveedor_id)
     
-    # Intentar obtener de caché
-    cached_result = get_from_cache(cache_key)
+    # Intentar obtener de caché (versión async con hilos - no bloquea el event loop)
+    cached_result = await get_from_cache_async(cache_key)
     if cached_result is not None:
         return cached_result
     
@@ -80,7 +80,7 @@ async def obtener_proveedor(
     result = ProveedorResponse.model_validate(proveedor)
     
     # Almacenar en caché (5 minutos)
-    set_to_cache(cache_key, result.model_dump(), expire=300)
+    await set_to_cache_async(cache_key, result.model_dump(), expire=300)
     
     return result
 

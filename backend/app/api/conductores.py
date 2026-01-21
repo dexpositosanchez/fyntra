@@ -9,7 +9,7 @@ from app.schemas.conductor import ConductorCreate, ConductorUpdate, ConductorRes
 from app.api.dependencies import get_current_user
 from app.core.security import get_password_hash
 from app.core.cache import (
-    get_from_cache, set_to_cache, generate_cache_key,
+    get_from_cache_async, set_to_cache_async, generate_cache_key,
     invalidate_conductores_cache, delete_from_cache
 )
 
@@ -44,7 +44,7 @@ async def listar_conductores(
     )
     
     # Intentar obtener de caché
-    cached_result = get_from_cache(cache_key)
+    cached_result = await get_from_cache_async(cache_key)
     if cached_result is not None:
         return cached_result
     
@@ -86,7 +86,7 @@ async def listar_conductores(
     result_dicts = [r.model_dump() if hasattr(r, 'model_dump') else r for r in resultados]
     
     # Almacenar en caché (5 minutos)
-    set_to_cache(cache_key, result_dicts, expire=300)
+    await set_to_cache_async(cache_key, result_dicts, expire=300)
     
     return resultados
 
@@ -101,7 +101,7 @@ async def obtener_alertas_licencias(
     cache_key = generate_cache_key("conductores:alertas", dias_alerta=dias_alerta)
     
     # Intentar obtener de caché
-    cached_result = get_from_cache(cache_key)
+    cached_result = await get_from_cache_async(cache_key)
     if cached_result is not None:
         return cached_result
     
@@ -117,7 +117,7 @@ async def obtener_alertas_licencias(
     resultados = []
     
     # Intentar obtener de caché
-    cached_result = get_from_cache(cache_key)
+    cached_result = await get_from_cache_async(cache_key)
     if cached_result is not None:
         return cached_result
     
@@ -144,7 +144,7 @@ async def obtener_alertas_licencias(
     result_dicts = [r.model_dump() if hasattr(r, 'model_dump') else r for r in resultados]
     
     # Almacenar en caché (2 minutos - alertas cambian más frecuentemente)
-    set_to_cache(cache_key, result_dicts, expire=120)
+    await set_to_cache_async(cache_key, result_dicts, expire=120)
     
     return resultados
 
@@ -158,7 +158,7 @@ async def obtener_conductor(
     cache_key = generate_cache_key("conductores:item", id=conductor_id)
     
     # Intentar obtener de caché
-    cached_result = get_from_cache(cache_key)
+    cached_result = await get_from_cache_async(cache_key)
     if cached_result is not None:
         return cached_result
     

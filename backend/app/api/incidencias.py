@@ -11,7 +11,7 @@ from app.models.historial_incidencia import HistorialIncidencia
 from app.schemas.incidencia import IncidenciaCreate, IncidenciaUpdate, IncidenciaResponse, HistorialIncidenciaResponse
 from app.api.dependencies import get_current_user
 from app.core.cache import (
-    get_from_cache, set_to_cache, generate_cache_key,
+    get_from_cache_async, set_to_cache_async, generate_cache_key,
     invalidate_incidencias_cache, delete_from_cache
 )
 
@@ -94,8 +94,8 @@ async def listar_incidencias(
         limit=limit
     )
     
-    # Intentar obtener de caché
-    cached_result = get_from_cache(cache_key)
+    # Intentar obtener de caché (versión async con hilos - no bloquea el event loop)
+    cached_result = await get_from_cache_async(cache_key)
     if cached_result is not None:
         return cached_result
     
@@ -129,8 +129,8 @@ async def listar_incidencias(
     incidencias = query.order_by(Incidencia.fecha_alta.desc()).offset(skip).limit(limit).all()
     result = [IncidenciaResponse.model_validate(incidencia_to_response(inc, db)).model_dump() for inc in incidencias]
     
-    # Almacenar en caché (5 minutos)
-    set_to_cache(cache_key, result, expire=300)
+    # Almacenar en caché (5 minutos) - versión async con hilos
+    await set_to_cache_async(cache_key, result, expire=300)
     
     return result
 
@@ -172,8 +172,8 @@ async def obtener_incidencia(
     # Generar clave de caché (incluir usuario para diferenciar por permisos)
     cache_key = generate_cache_key("incidencias:item", id=incidencia_id, usuario_id=current_user.id)
     
-    # Intentar obtener de caché
-    cached_result = get_from_cache(cache_key)
+    # Intentar obtener de caché (versión async con hilos - no bloquea el event loop)
+    cached_result = await get_from_cache_async(cache_key)
     if cached_result is not None:
         return cached_result
     
@@ -199,8 +199,8 @@ async def obtener_incidencia(
     
     result = IncidenciaResponse.model_validate(incidencia_to_response(incidencia, db))
     
-    # Almacenar en caché (5 minutos)
-    set_to_cache(cache_key, result.model_dump(), expire=300)
+    # Almacenar en caché (5 minutos) - versión async con hilos
+    await set_to_cache_async(cache_key, result.model_dump(), expire=300)
     
     return result
 

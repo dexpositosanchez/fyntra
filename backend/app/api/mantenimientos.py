@@ -9,7 +9,7 @@ from app.models.usuario import Usuario
 from app.schemas.mantenimiento import MantenimientoCreate, MantenimientoUpdate, MantenimientoResponse
 from app.api.dependencies import get_current_user
 from app.core.cache import (
-    get_from_cache, set_to_cache, generate_cache_key,
+    get_from_cache_async, set_to_cache_async, generate_cache_key,
     invalidate_mantenimientos_cache, delete_from_cache
 )
 
@@ -134,7 +134,7 @@ async def listar_mantenimientos(
     )
     
     # Intentar obtener de caché
-    cached_result = get_from_cache(cache_key)
+    cached_result = await get_from_cache_async(cache_key)
     if cached_result is not None:
         return cached_result
     
@@ -215,7 +215,7 @@ async def listar_mantenimientos(
     result_dicts = [r.model_dump() if hasattr(r, 'model_dump') else r for r in resultados]
     
     # Almacenar en caché (5 minutos)
-    set_to_cache(cache_key, result_dicts, expire=300)
+    await set_to_cache_async(cache_key, result_dicts, expire=300)
     
     return resultados
 
@@ -229,7 +229,7 @@ async def obtener_alertas_mantenimientos(
     cache_key = generate_cache_key("mantenimientos:alertas", dias_alerta=dias_alerta)
     
     # Intentar obtener de caché
-    cached_result = get_from_cache(cache_key)
+    cached_result = await get_from_cache_async(cache_key)
     if cached_result is not None:
         return cached_result
     """
@@ -370,7 +370,7 @@ async def obtener_alertas_mantenimientos(
     result_dicts = [r.model_dump() if hasattr(r, 'model_dump') else r for r in resultados]
     
     # Almacenar en caché (2 minutos - alertas cambian más frecuentemente)
-    set_to_cache(cache_key, result_dicts, expire=120)
+    await set_to_cache_async(cache_key, result_dicts, expire=120)
     
     return resultados
 
@@ -391,7 +391,7 @@ async def obtener_mantenimiento(
     cache_key = generate_cache_key("mantenimientos:item", id=mantenimiento_id)
     
     # Intentar obtener de caché
-    cached_result = get_from_cache(cache_key)
+    cached_result = await get_from_cache_async(cache_key)
     if cached_result is not None:
         return cached_result
     

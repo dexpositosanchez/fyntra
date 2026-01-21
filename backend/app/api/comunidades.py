@@ -7,7 +7,7 @@ from app.models.usuario import Usuario
 from app.schemas.comunidad import ComunidadCreate, ComunidadUpdate, ComunidadResponse
 from app.api.dependencies import get_current_user
 from app.core.cache import (
-    get_from_cache, set_to_cache, generate_cache_key,
+    get_from_cache_async, set_to_cache_async, generate_cache_key,
     invalidate_comunidades_cache, delete_from_cache
 )
 
@@ -23,16 +23,16 @@ async def listar_comunidades(
     # Generar clave de caché
     cache_key = generate_cache_key("comunidades:list", skip=skip, limit=limit)
     
-    # Intentar obtener de caché
-    cached_result = get_from_cache(cache_key)
+    # Intentar obtener de caché (versión async con hilos - no bloquea el event loop)
+    cached_result = await get_from_cache_async(cache_key)
     if cached_result is not None:
         return cached_result
     
     comunidades = db.query(Comunidad).offset(skip).limit(limit).all()
     result = [ComunidadResponse.model_validate(com).model_dump() for com in comunidades]
     
-    # Almacenar en caché (5 minutos)
-    set_to_cache(cache_key, result, expire=300)
+    # Almacenar en caché (5 minutos) - versión async con hilos
+    await set_to_cache_async(cache_key, result, expire=300)
     
     return result
 
@@ -45,8 +45,8 @@ async def obtener_comunidad(
     # Generar clave de caché
     cache_key = generate_cache_key("comunidades:item", id=comunidad_id)
     
-    # Intentar obtener de caché
-    cached_result = get_from_cache(cache_key)
+    # Intentar obtener de caché (versión async con hilos - no bloquea el event loop)
+    cached_result = await get_from_cache_async(cache_key)
     if cached_result is not None:
         return cached_result
     
@@ -59,8 +59,8 @@ async def obtener_comunidad(
     
     result = ComunidadResponse.model_validate(comunidad)
     
-    # Almacenar en caché (5 minutos)
-    set_to_cache(cache_key, result.model_dump(), expire=300)
+    # Almacenar en caché (5 minutos) - versión async con hilos
+    await set_to_cache_async(cache_key, result.model_dump(), expire=300)
     
     return result
 

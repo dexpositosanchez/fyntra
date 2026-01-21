@@ -15,7 +15,7 @@ from app.schemas.documento import DocumentoResponse
 from app.api.dependencies import get_current_user
 from app.core.security import decode_access_token
 from app.core.cache import (
-    get_from_cache, set_to_cache, generate_cache_key,
+    get_from_cache_async, set_to_cache_async, generate_cache_key,
     invalidate_documentos_cache, delete_from_cache
 )
 
@@ -90,7 +90,7 @@ async def listar_documentos(
     cache_key = generate_cache_key("documentos:incidencia", incidencia_id=incidencia_id)
     
     # Intentar obtener de caché
-    cached_result = get_from_cache(cache_key)
+    cached_result = await get_from_cache_async(cache_key)
     if cached_result is not None:
         return cached_result
     
@@ -101,7 +101,7 @@ async def listar_documentos(
     result = [documento_to_response(doc, db) for doc in documentos]
     
     # Almacenar en caché (5 minutos)
-    set_to_cache(cache_key, result, expire=300)
+    await set_to_cache_async(cache_key, result, expire=300)
     
     return result
 
