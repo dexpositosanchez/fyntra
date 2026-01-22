@@ -19,6 +19,7 @@ async def listar_pedidos(
     estado: Optional[EstadoPedido] = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=100),
+    no_cache: bool = Query(False, description="Forzar recarga sin caché"),
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user)
 ):
@@ -38,10 +39,11 @@ async def listar_pedidos(
         limit=limit
     )
     
-    # Intentar obtener de caché (versión async con hilos - no bloquea el event loop)
-    cached_result = await get_from_cache_async(cache_key)
-    if cached_result is not None:
-        return cached_result
+    # Intentar obtener de caché solo si no se fuerza la recarga
+    if not no_cache:
+        cached_result = await get_from_cache_async(cache_key)
+        if cached_result is not None:
+            return cached_result
     
     query = db.query(Pedido)
     

@@ -293,16 +293,37 @@
 .pedido-card {
   cursor: pointer;
   transition: transform 0.2s, box-shadow 0.2s;
+  background: white;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-left: 4px solid #20b2aa; // Verde por defecto (pendiente)
   
   &:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   }
-  
-  background: #f8f8f8;
-  border-radius: 8px;
-  padding: 20px;
-  border: 1px solid #e0e0e0;
+
+  // Bordes dinámicos según el estado
+  &.estado-pendiente {
+    border-left-color: #20b2aa; // Verde - pendiente
+  }
+
+  &.estado-en-ruta {
+    border-left-color: #ff9800; // Naranja - en ruta
+  }
+
+  &.estado-entregado {
+    border-left-color: #1b9d8a; // Verde oscuro - entregado
+  }
+
+  &.estado-incidencia {
+    border-left-color: #f44336; // Rojo - incidencia
+  }
+
+  &.estado-cancelado {
+    border-left-color: #757575; // Gris - cancelado
+  }
   
   .card-header {
     display: flex;

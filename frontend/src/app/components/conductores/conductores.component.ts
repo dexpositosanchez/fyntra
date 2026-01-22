@@ -245,7 +245,8 @@ export class ConductoresComponent implements OnInit, OnDestroy {
   }
 
   getEstadoClass(activo: boolean): string {
-    return activo ? 'activo' : 'inactivo';
+    // Para los bordes dinámicos, usar clases específicas
+    return activo ? 'estado-activo' : 'estado-inactivo';
   }
 
   getEstadoTexto(activo: boolean): string {

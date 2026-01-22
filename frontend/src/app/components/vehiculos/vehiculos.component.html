@@ -196,7 +196,10 @@
           <!-- Contenido de la pestaña activa -->
           <div *ngIf="tabActiva && tabs.length > 0">
             <div class="vehiculos-grid" *ngIf="getVehiculosTabActiva().length > 0">
-              <div class="vehiculo-card" *ngFor="let vehiculo of getVehiculosTabActiva()" (click)="editarVehiculo(vehiculo)">
+              <div class="vehiculo-card" 
+                   *ngFor="let vehiculo of getVehiculosTabActiva()" 
+                   [class]="'vehiculo-card ' + getEstadoClass(vehiculo.estado)"
+                   (click)="editarVehiculo(vehiculo)">
                 <div class="card-header">
                   <h3>{{ vehiculo.nombre || vehiculo.matricula }}</h3>
                   <button class="delete-button" (click)="eliminarVehiculo(vehiculo, $event)" title="Eliminar vehículo">

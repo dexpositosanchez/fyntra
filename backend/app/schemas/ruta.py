@@ -44,9 +44,21 @@ class PedidoConFechas(BaseModel):
     fecha_hora_carga: Optional[datetime] = None  # Fecha/hora aproximada de carga (origen)
     fecha_hora_descarga: Optional[datetime] = None  # Fecha/hora aproximada de descarga (destino)
 
+class ParadaOrden(BaseModel):
+    parada_id: int  # ID de la parada existente
+    orden: int  # Nuevo orden de la parada
+
+class ParadaConFecha(BaseModel):
+    parada_id: Optional[int] = None  # ID de la parada existente (si se está editando)
+    pedido_id: int  # ID del pedido
+    orden: int  # Orden de la parada
+    tipo_operacion: TipoOperacion  # carga o descarga
+    fecha_hora_llegada: Optional[datetime] = None  # Fecha/hora de llegada a la parada
+
 class RutaCreate(RutaBase):
     pedidos_ids: List[int] = []  # Lista de IDs de pedidos, se crearán paradas automáticamente
-    pedidos_con_fechas: Optional[List[PedidoConFechas]] = None  # Fechas/horas aproximadas para cada pedido
+    pedidos_con_fechas: Optional[List[PedidoConFechas]] = None  # Fechas/horas aproximadas para cada pedido (legacy)
+    paradas_con_fechas: Optional[List[ParadaConFecha]] = None  # Paradas con fechas según el orden establecido
 
 class RutaUpdate(BaseModel):
     fecha: Optional[date] = None
@@ -56,6 +68,10 @@ class RutaUpdate(BaseModel):
     vehiculo_id: Optional[int] = None
     observaciones: Optional[str] = None
     estado: Optional[str] = None
+    pedidos_ids: Optional[List[int]] = None  # Lista de IDs de pedidos actualizados
+    pedidos_con_fechas: Optional[List[PedidoConFechas]] = None  # Fechas/horas aproximadas para cada pedido (legacy)
+    paradas_orden: Optional[List[ParadaOrden]] = None  # Orden actualizado de las paradas
+    paradas_con_fechas: Optional[List[ParadaConFecha]] = None  # Paradas con fechas según el orden establecido
 
 class RutaResponse(RutaBase):
     id: int

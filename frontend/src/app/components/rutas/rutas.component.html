@@ -96,6 +96,7 @@
                 [(ngModel)]="rutaForm.vehiculo_id"
                 name="vehiculo_id"
                 class="form-input"
+                (change)="onVehiculoChange()"
                 required
               >
                 <option value="">Seleccionar vehículo...</option>
@@ -135,7 +136,7 @@
                 >
                   <option value="">Seleccionar pedido para añadir...</option>
                   <option *ngFor="let pedido of getPedidosDisponibles()" [ngValue]="pedido.id">
-                    {{ pedido.cliente }} - {{ pedido.origen }} → {{ pedido.destino }} ({{ pedido.peso || 0 }} kg)
+                    {{ pedido.cliente }} - {{ pedido.origen }} → {{ pedido.destino }} ({{ pedido.peso || 0 }} kg) - Entrega: {{ formatearFecha(pedido.fecha_entrega_deseada) }}
                   </option>
                 </select>
                 <button 
@@ -204,18 +205,45 @@
                   (drop)="onDrop($event, i)"
                   [class.dragging]="draggedIndex === i"
                 >
-                  <div class="parada-drag-handle">
-                    <span class="app-icon">drag_handle</span>
-                  </div>
-                  <div class="parada-orden">#{{ parada.orden }}</div>
-                  <div class="parada-detalle">
-                    <div class="parada-tipo" [class.carga]="parada.tipo_operacion === 'carga'" [class.descarga]="parada.tipo_operacion === 'descarga'">
-                      {{ parada.etiqueta }} · {{ parada.tipo_operacion === 'carga' ? 'Carga' : 'Descarga' }}
+                  <!-- Input oculto para el orden -->
+                  <input 
+                    type="hidden" 
+                    [value]="parada.orden" 
+                    [name]="'parada_orden_' + i"
+                    [(ngModel)]="parada.orden"
+                  />
+                  
+                  <div class="parada-header">
+                    <div class="parada-drag-handle">
+                      <span class="app-icon">drag_handle</span>
                     </div>
-                    <div class="parada-direccion">{{ parada.direccion }}</div>
-                    <div class="parada-pedido" *ngIf="parada.pedido_id">Pedido: #{{ parada.pedido_id }}</div>
-                    <div class="parada-fecha" *ngIf="parada.fecha_hora_llegada">
-                      {{ formatearFechaHora(parada.fecha_hora_llegada) }}
+                    <div class="parada-orden">#{{ parada.orden }}</div>
+                    <div class="parada-tipo-badge" [class.carga]="parada.tipo_operacion === 'carga'" [class.descarga]="parada.tipo_operacion === 'descarga'">
+                      {{ parada.tipo_operacion === 'carga' ? 'C' : 'D' }}
+                    </div>
+                  </div>
+                  
+                  <div class="parada-content">
+                    <div class="parada-info">
+                      <div class="parada-direccion">{{ parada.direccion }}</div>
+                      <div class="parada-pedido" *ngIf="parada.pedido_id">Pedido #{{ parada.pedido_id }}</div>
+                      <div class="parada-entrega" *ngIf="parada.fecha_entrega_deseada && parada.tipo_operacion === 'descarga'">
+                        <span class="app-icon">event</span>
+                        Entrega: {{ formatearFecha(parada.fecha_entrega_deseada) }}
+                      </div>
+                    </div>
+                    <div class="parada-peso" [class.exceso]="getPesoAcumuladoEnParada(i) > getCapacidadVehiculo()">
+                      {{ getPesoAcumuladoEnParada(i) }} / {{ getCapacidadVehiculo() }} kg
+                    </div>
+                    <div class="parada-fecha-input">
+                      <input
+                        type="datetime-local"
+                        lang="es-ES"
+                        [value]="getFechaHoraLocal(parada.fecha_hora_llegada)"
+                        (change)="actualizarFechaParada(i, $event)"
+                        class="fecha-parada-input"
+                        placeholder="Fecha y hora"
+                      />
                     </div>
                   </div>
                 </div>
@@ -225,40 +253,34 @@
             <div class="pedidos-seleccionados" *ngIf="pedidosSeleccionados.length > 0">
               <h4>Pedidos Seleccionados ({{ pedidosSeleccionados.length }})</h4>
               <div class="pedidos-list">
-                <div class="pedido-item" *ngFor="let pedido of pedidosSeleccionados">
-                  <div class="pedido-info">
-                    <strong>{{ pedido.cliente }}</strong>
-                    <p class="pedido-ruta">
-                      <span class="app-icon">location_on</span>
-                      {{ pedido.origen }} → {{ pedido.destino }}
-                    </p>
-                    <p class="pedido-peso">
-                      <span class="app-icon">inventory_2</span>
-                      {{ pedido.peso || 0 }} kg | {{ pedido.volumen || 0 }} m³
-                    </p>
-                    <div class="pedido-fechas" *ngIf="pedidosConFechas.has(pedido.id)">
-                      <p class="pedido-fecha" *ngIf="pedidosConFechas.get(pedido.id)?.fechaCarga">
-                        <span class="app-icon">download</span>
-                        Carga: {{ formatearFechaHora(pedidosConFechas.get(pedido.id)!.fechaCarga) }}
-                      </p>
-                      <p class="pedido-fecha" *ngIf="pedidosConFechas.get(pedido.id)?.fechaDescarga">
-                        <span class="app-icon">upload</span>
-                        Descarga: {{ formatearFechaHora(pedidosConFechas.get(pedido.id)!.fechaDescarga) }}
-                      </p>
+                <div class="pedido-item-compact" *ngFor="let pedido of pedidosSeleccionados">
+                  <div class="pedido-header-compact">
+                    <div class="pedido-cliente-compact">{{ pedido.cliente }}</div>
+                    <button type="button" class="remove-pedido-button-compact" (click)="eliminarPedido(pedido.id)">
+                      <span class="app-icon">close</span>
+                    </button>
+                  </div>
+                  <div class="pedido-content-compact">
+                    <div class="pedido-info-compact">
+                      <div class="pedido-ruta-compact">{{ pedido.origen }} → {{ pedido.destino }}</div>
+                      <div class="pedido-peso-compact">{{ pedido.peso || 0 }} kg</div>
+                      <div class="pedido-entrega-compact" *ngIf="pedido.fecha_entrega_deseada">
+                        <span class="app-icon">event</span>
+                        {{ formatearFecha(pedido.fecha_entrega_deseada) }}
+                      </div>
                     </div>
                   </div>
-                  <button type="button" class="remove-pedido-button" (click)="eliminarPedido(pedido.id)">
-                    <span class="app-icon">close</span>
-                  </button>
                 </div>
               </div>
-              <div class="peso-total" *ngIf="rutaForm.vehiculo_id">
-                <p><strong>Peso Total:</strong> {{ calcularPesoTotal() }} kg</p>
-                <p *ngIf="getVehiculoSeleccionado()">
-                  <strong>Capacidad Vehículo:</strong> {{ getCapacidadVehiculo() }} kg
-                  <span [class]="hayExcesoCapacidad() ? 'exceso' : 'ok'">
-                    ({{ hayExcesoCapacidad() ? 'EXCEDE' : 'OK' }})
-                  </span>
+              <div class="peso-info" *ngIf="rutaForm.vehiculo_id && paradasPreview.length > 0">
+                <p><strong>Capacidad Vehículo:</strong> {{ getCapacidadVehiculo() }} kg</p>
+                <p *ngIf="hayExcesoPesoEnAlgunaParada()" class="error-peso">
+                  <span class="app-icon">warning</span>
+                  <strong>¡ATENCIÓN!</strong> El peso acumulado excede la capacidad en alguna parada
+                </p>
+                <p *ngIf="!hayExcesoPesoEnAlgunaParada()" class="ok-peso">
+                  <span class="app-icon">check_circle</span>
+                  El peso acumulado está dentro de la capacidad en todas las paradas
                 </p>
               </div>
             </div>
@@ -304,7 +326,9 @@
         <!-- Contenido de la pestaña activa -->
         <div *ngIf="tabActiva && tabs.length > 0">
           <div class="rutas-grid" *ngIf="getRutasTabActiva().length > 0">
-            <div class="ruta-card" *ngFor="let ruta of getRutasTabActiva()">
+            <div class="ruta-card" 
+                 *ngFor="let ruta of getRutasTabActiva()"
+                 [class]="'ruta-card ' + getEstadoClass(ruta.estado)">
             <div class="ruta-header">
               <h3 (click)="editarRuta(ruta)" style="cursor: pointer;">Ruta #{{ ruta.id }}</h3>
               <div class="ruta-actions">
@@ -329,6 +353,12 @@
             </p>
             <p *ngIf="ruta.vehiculo">
               <strong>Vehículo:</strong> {{ ruta.vehiculo.nombre }} ({{ ruta.vehiculo.matricula }})
+            </p>
+            <p *ngIf="ruta.estado">
+              <strong>Estado:</strong> 
+              <span [class]="'estado-' + getEstadoClass(ruta.estado)">
+                {{ getEstadoTexto(ruta.estado) }}
+              </span>
             </p>
             <p *ngIf="ruta.paradas && ruta.paradas.length > 0">
               <strong>Paradas:</strong> {{ ruta.paradas.length }} ({{ contarParadasCarga(ruta.paradas) }} carga, {{ contarParadasDescarga(ruta.paradas) }} descarga)

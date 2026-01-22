@@ -189,7 +189,10 @@
         <!-- Contenido de la pestaña activa -->
         <div *ngIf="tabActiva && tabs.length > 0">
           <div class="pedidos-grid" *ngIf="getPedidosTabActiva().length > 0">
-            <div class="pedido-card" *ngFor="let pedido of getPedidosTabActiva()" (click)="editarPedido(pedido)">
+            <div class="pedido-card" 
+                 *ngFor="let pedido of getPedidosTabActiva()" 
+                 [class]="'pedido-card ' + getEstadoClass(pedido.estado)"
+                 (click)="editarPedido(pedido)">
             <div class="card-header">
               <h3>{{ pedido.cliente }}</h3>
               <button class="delete-button" (click)="eliminarPedido(pedido, $event)" title="Eliminar pedido">

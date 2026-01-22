@@ -279,15 +279,6 @@ export class VehiculosComponent implements OnInit, OnDestroy {
     return 'Error al procesar la solicitud. Por favor, verifique los datos e intente nuevamente.';
   }
 
-  getEstadoClass(estado: string): string {
-    const clases: { [key: string]: string } = {
-      'activo': 'activo',
-      'en_mantenimiento': 'mantenimiento',
-      'inactivo': 'inactivo'
-    };
-    return clases[estado?.toLowerCase()] || 'inactivo';
-  }
-
   getEstadoTexto(estado: string): string {
     const textos: { [key: string]: string } = {
       'activo': 'Activo',
@@ -403,6 +394,16 @@ export class VehiculosComponent implements OnInit, OnDestroy {
   logout(): void {
     this.mostrarMenuUsuario = false;
     this.authService.logout();
+  }
+
+  getEstadoClass(estado: string): string {
+    // Bordes dinámicos según el estado del vehículo
+    const clases: { [key: string]: string } = {
+      'activo': 'estado-activo',
+      'en_mantenimiento': 'estado-en-mantenimiento',
+      'inactivo': 'estado-inactivo'
+    };
+    return clases[estado?.toLowerCase()] || 'estado-activo';
   }
 }
 

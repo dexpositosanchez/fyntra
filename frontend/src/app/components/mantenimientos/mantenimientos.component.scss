@@ -166,11 +166,32 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   cursor: pointer;
   transition: all 0.3s ease;
-  border-left: 4px solid #20b2aa;
+  border-left: 4px solid #20b2aa; // Verde por defecto (normal/programado)
 
   &:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+
+  // Bordes dinámicos según el estado
+  &.normal {
+    border-left-color: #20b2aa; // Verde - estado normal/programado
+  }
+
+  &.en-curso {
+    border-left-color: #ff9800; // Naranja - en curso
+  }
+
+  &.completado {
+    border-left-color: #1b9d8a; // Verde oscuro - completado
+  }
+
+  &.vencido {
+    border-left-color: #f44336; // Rojo - vencido
+  }
+
+  &.proximo-vencer {
+    border-left-color: #ff9800; // Naranja - próximo a vencer
   }
 
   .mantenimiento-header {
@@ -183,6 +204,29 @@
       margin: 0;
       color: #333;
       font-size: 18px;
+    }
+
+    .delete-button {
+      background: transparent;
+      border: none;
+      color: #f44336;
+      cursor: pointer;
+      padding: 8px;
+      border-radius: 4px;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+
+      &:hover {
+        background: #ffebee;
+        transform: scale(1.1);
+      }
+
+      .app-icon {
+        font-size: 20px;
+      }
     }
   }
 
@@ -262,6 +306,11 @@
   margin-left: 8px;
   text-transform: uppercase;
   animation: pulse 2s infinite;
+
+  &.badge-vencido {
+    background: #d32f2f;
+    animation: pulse 1s infinite;
+  }
 }
 
 .dias-restantes {
@@ -308,6 +357,78 @@
     font-size: 14px;
     color: #999;
     font-style: italic;
+  }
+}
+
+// Modal para seleccionar estado del vehículo
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 8px;
+  padding: 30px;
+  max-width: 500px;
+  width: 90%;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+
+  h3 {
+    margin: 0 0 15px 0;
+    color: #333;
+    font-size: 20px;
+  }
+
+  p {
+    margin: 0 0 20px 0;
+    color: #666;
+    font-size: 14px;
+  }
+
+  .estados-vehiculo-options {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 20px;
+
+    .estado-option {
+      padding: 12px 20px;
+      background: #f5f5f5;
+      border: 2px solid #e0e0e0;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-size: 14px;
+      font-weight: 500;
+      color: #333;
+      text-align: left;
+
+      &:hover {
+        background: #e8f5e9;
+        border-color: #20b2aa;
+      }
+
+      &.selected {
+        background: #20b2aa;
+        border-color: #20b2aa;
+        color: white;
+      }
+    }
+  }
+
+  .modal-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
   }
 }
 

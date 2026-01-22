@@ -252,14 +252,15 @@ export class PedidosComponent implements OnInit, OnDestroy {
   }
 
   getEstadoClass(estado: string): string {
+    // Para los bordes dinámicos, usar clases con prefijo "estado-"
     const clases: { [key: string]: string } = {
-      'pendiente': 'pendiente',
-      'en_ruta': 'en-ruta',
-      'entregado': 'entregado',
-      'incidencia': 'incidencia',
-      'cancelado': 'cancelado'
+      'pendiente': 'estado-pendiente',
+      'en_ruta': 'estado-en-ruta',
+      'entregado': 'estado-entregado',
+      'incidencia': 'estado-incidencia',
+      'cancelado': 'estado-cancelado'
     };
-    return clases[estado?.toLowerCase()] || 'pendiente';
+    return clases[estado?.toLowerCase()] || 'estado-pendiente';
   }
 
   getEstadoTexto(estado: string): string {

@@ -213,7 +213,10 @@
         <div *ngIf="error" class="error">{{ error }}</div>
         
         <div class="conductores-grid" *ngIf="!loading && !error">
-          <div class="conductor-card" *ngFor="let conductor of conductores" (click)="editarConductor(conductor)">
+          <div class="conductor-card" 
+               *ngFor="let conductor of conductores" 
+               [class]="'conductor-card ' + getEstadoClass(conductor.activo)"
+               (click)="editarConductor(conductor)">
             <div class="card-header">
               <h3>{{ conductor.nombre }} {{ conductor.apellidos }}</h3>
               <div class="header-right">

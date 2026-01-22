@@ -43,6 +43,15 @@ export class MantenimientosComponent implements OnInit, OnDestroy {
   tabs: { estado: string, label: string, count: number }[] = [];
   tabActiva: string = '';
   private routerSubscription?: Subscription;
+  // Modal para estado del vehículo
+  mostrarModalEstadoVehiculo: boolean = false;
+  estadoVehiculoSeleccionado: string = '';
+  mantenimientoPendienteActualizacion: any = null;
+  estadosVehiculo = [
+    { value: 'activo', label: 'Activo' },
+    { value: 'en_mantenimiento', label: 'En Mantenimiento' },
+    { value: 'inactivo', label: 'Inactivo' }
+  ];
   
   tipos = [
     { value: 'preventivo', label: 'Preventivo' },
@@ -304,7 +313,12 @@ export class MantenimientosComponent implements OnInit, OnDestroy {
     let fechaProximoMantenimientoFormateada = '';
     if (mantenimiento.fecha_proximo_mantenimiento) {
       const fecha = new Date(mantenimiento.fecha_proximo_mantenimiento);
-      fechaProximoMantenimientoFormateada = new Date(fecha.getTime() - fecha.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+      // Para input type="date", solo necesitamos YYYY-MM-DD
+      // Ajustar para la zona horaria local
+      const year = fecha.getFullYear();
+      const month = ('0' + (fecha.getMonth() + 1)).slice(-2);
+      const day = ('0' + fecha.getDate()).slice(-2);
+      fechaProximoMantenimientoFormateada = `${year}-${month}-${day}`;
     }
     
     this.mantenimientoForm = {
@@ -406,7 +420,9 @@ export class MantenimientosComponent implements OnInit, OnDestroy {
     // Fechas opcionales
     if (this.mantenimientoForm.fecha_proximo_mantenimiento) {
       try {
-        const fechaProximoMantenimiento = new Date(this.mantenimientoForm.fecha_proximo_mantenimiento);
+        // Para input type="date", el valor viene como YYYY-MM-DD
+        // Convertirlo a Date y luego a ISO para mantener la hora a medianoche UTC
+        const fechaProximoMantenimiento = new Date(this.mantenimientoForm.fecha_proximo_mantenimiento + 'T00:00:00');
         if (!isNaN(fechaProximoMantenimiento.getTime())) {
           mantenimientoData.fecha_proximo_mantenimiento = fechaProximoMantenimiento.toISOString();
         }
@@ -438,6 +454,64 @@ export class MantenimientosComponent implements OnInit, OnDestroy {
     }
     
     if (this.editandoMantenimiento && this.mantenimientoIdEditando) {
+      // Verificar si el estado cambió y si necesitamos mostrar el modal
+      const mantenimientoOriginal = this.mantenimientos.find(m => m.id === this.mantenimientoIdEditando);
+      const estadoAnterior = mantenimientoOriginal?.estado;
+      const estadoNuevo = mantenimientoData.estado || this.mantenimientoForm.estado;
+      
+      // Si el estado cambió de "en_curso" a otro estado, mostrar modal para seleccionar estado del vehículo
+      if (estadoAnterior === 'en_curso' && estadoNuevo !== 'en_curso') {
+        // Guardar los datos pendientes y mostrar el modal
+        this.mantenimientoPendienteActualizacion = mantenimientoData;
+        this.mostrarModalEstadoVehiculo = true;
+        this.estadoVehiculoSeleccionado = 'activo'; // Por defecto
+        this.loading = false;
+        return;
+      }
+      
+      // Si el estado cambió a "en_curso", actualizar el vehículo manualmente a "en_mantenimiento"
+      if (estadoNuevo === 'en_curso') {
+        // Primero actualizar el mantenimiento
+        this.apiService.updateMantenimiento(this.mantenimientoIdEditando, mantenimientoData).subscribe({
+          next: () => {
+            // Luego actualizar el estado del vehículo a "en_mantenimiento"
+            const vehiculoId = this.mantenimientoForm.vehiculo_id;
+            this.apiService.updateVehiculo(vehiculoId, { estado: 'en_mantenimiento' }).subscribe({
+              next: () => {
+                this.cargarVehiculos();
+                this.cargarMantenimientos();
+                this.mostrarFormulario = false;
+                this.editandoMantenimiento = false;
+                this.mantenimientoIdEditando = null;
+                this.loading = false;
+                this.error = '';
+              },
+              error: (err: HttpErrorResponse) => {
+                console.error('Error al actualizar estado del vehículo:', err);
+                // Continuar aunque falle la actualización del vehículo
+                this.cargarMantenimientos();
+                this.mostrarFormulario = false;
+                this.editandoMantenimiento = false;
+                this.mantenimientoIdEditando = null;
+                this.loading = false;
+                this.error = '';
+              }
+            });
+          },
+          error: (err: HttpErrorResponse) => {
+            console.error('Error al actualizar mantenimiento:', err);
+            const errorMessage = err.error?.detail || err.message || 'Error al actualizar mantenimiento';
+            this.error = typeof errorMessage === 'string' ? errorMessage : JSON.stringify(errorMessage);
+            this.loading = false;
+            if (err.status === 401) {
+              this.authService.logout();
+            }
+          }
+        });
+        return;
+      }
+      
+      // Si no hay cambio de estado o no es "en_curso", actualizar directamente
       this.apiService.updateMantenimiento(this.mantenimientoIdEditando, mantenimientoData).subscribe({
         next: () => {
           this.cargarMantenimientos();
@@ -458,23 +532,14 @@ export class MantenimientosComponent implements OnInit, OnDestroy {
         }
       });
     } else {
-      this.apiService.createMantenimiento(mantenimientoData).subscribe({
-        next: () => {
-          this.cargarMantenimientos();
-          this.mostrarFormulario = false;
-          this.loading = false;
-          this.error = '';
-        },
-        error: (err: HttpErrorResponse) => {
-          console.error('Error al crear mantenimiento:', err);
-          const errorMessage = err.error?.detail || err.message || 'Error al crear mantenimiento';
-          this.error = typeof errorMessage === 'string' ? errorMessage : JSON.stringify(errorMessage);
-          this.loading = false;
-          if (err.status === 401) {
-            this.authService.logout();
-          }
-        }
-      });
+      // Al crear un nuevo mantenimiento, siempre preguntar en qué estado dejar el vehículo
+      // Guardar los datos pendientes y mostrar el modal
+      this.mantenimientoPendienteActualizacion = mantenimientoData;
+      this.mostrarModalEstadoVehiculo = true;
+      this.estadoVehiculoSeleccionado = mantenimientoData.estado === 'en_curso' ? 'en_mantenimiento' : 'activo'; // Por defecto según el estado
+      this.loading = false;
+      console.log('Mostrando modal para crear mantenimiento. Estado seleccionado:', this.estadoVehiculoSeleccionado);
+      return;
     }
   }
 
@@ -542,12 +607,40 @@ export class MantenimientosComponent implements OnInit, OnDestroy {
     return `${day}/${month}/${year} ${hours}:${minutes}`;
   }
 
+  formatearFecha(fecha: string): string {
+    if (!fecha) return '';
+    try {
+      const d = new Date(fecha);
+      if (isNaN(d.getTime())) {
+        return '';
+      }
+      const day = ('0' + d.getDate()).slice(-2);
+      const month = ('0' + (d.getMonth() + 1)).slice(-2);
+      const year = d.getFullYear();
+      return `${day}/${month}/${year}`;
+    } catch (e) {
+      console.warn('Error al formatear fecha:', e);
+      return '';
+    }
+  }
+
   getMantenimientoStatusClass(mantenimiento: any): string {
-    if (mantenimiento.estado === 'vencido') {
+    // El borde verde (#20b2aa) es el estilo por defecto
+    // Se puede cambiar dinámicamente según el estado:
+    // - Normal/Programado: verde (#20b2aa)
+    // - En curso: naranja (#ff9800)
+    // - Completado: verde oscuro (#1b9d8a)
+    // - Vencido: rojo (#f44336)
+    // - Próximo a vencer: naranja (#ff9800)
+    
+    if (mantenimiento.estado === 'vencido' || this.esVencido(mantenimiento)) {
       return 'vencido';
     }
     if (mantenimiento.estado === 'en_curso') {
       return 'en-curso';
+    }
+    if (mantenimiento.estado === 'completado') {
+      return 'completado';
     }
     // Verificar si está próximo a vencer basándose en fecha de caducidad
     if (this.esProximoAVencer(mantenimiento)) {
@@ -568,8 +661,23 @@ export class MantenimientosComponent implements OnInit, OnDestroy {
     const hoy = new Date();
     const diasRestantes = Math.ceil((fecha.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24));
     
-    // Está próximo a vencer si está entre hoy y 30 días
+    // Está próximo a vencer si está entre hoy y 30 días (pero no vencido)
     return diasRestantes >= 0 && diasRestantes <= 30;
+  }
+
+  esVencido(mantenimiento: any): boolean {
+    // Verifica si la fecha de caducidad ya pasó
+    const fechaCaducidad = mantenimiento.fecha_proximo_mantenimiento;
+    if (!fechaCaducidad) {
+      return false;
+    }
+    
+    const fecha = new Date(fechaCaducidad);
+    const hoy = new Date();
+    const diasRestantes = Math.ceil((fecha.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24));
+    
+    // Está vencido si la fecha ya pasó (días negativos)
+    return diasRestantes < 0;
   }
 
   calcularDiasRestantes(mantenimiento: any): number | null {
@@ -584,6 +692,18 @@ export class MantenimientosComponent implements OnInit, OnDestroy {
     const diasRestantes = Math.ceil((fecha.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24));
     
     return diasRestantes;
+  }
+
+  formatearDiasRestantes(mantenimiento: any): string {
+    const dias = this.calcularDiasRestantes(mantenimiento);
+    if (dias === null) {
+      return '';
+    }
+    if (dias > 0) {
+      return `${dias} días restantes`;
+    } else {
+      return `Vencido hace ${Math.abs(dias)} días`;
+    }
   }
 
   irAUsuarios(): void {
@@ -672,6 +792,101 @@ export class MantenimientosComponent implements OnInit, OnDestroy {
 
   getMantenimientosTabActiva(): any[] {
     return this.mantenimientosPorEstado[this.tabActiva] || [];
+  }
+
+  // Funciones para el modal de estado del vehículo
+  seleccionarEstadoVehiculo(estado: string): void {
+    this.estadoVehiculoSeleccionado = estado;
+  }
+
+  cerrarModalEstadoVehiculo(): void {
+    this.mostrarModalEstadoVehiculo = false;
+    this.estadoVehiculoSeleccionado = '';
+    this.mantenimientoPendienteActualizacion = null;
+  }
+
+  confirmarCambioEstadoVehiculo(): void {
+    if (!this.estadoVehiculoSeleccionado || !this.mantenimientoPendienteActualizacion) {
+      return;
+    }
+
+    this.loading = true;
+    
+    // Si estamos editando, actualizar el mantenimiento primero
+    if (this.editandoMantenimiento && this.mantenimientoIdEditando) {
+      this.apiService.updateMantenimiento(this.mantenimientoIdEditando, this.mantenimientoPendienteActualizacion).subscribe({
+        next: () => {
+          // Luego actualizar el estado del vehículo
+          const vehiculoId = this.mantenimientoForm.vehiculo_id;
+          this.apiService.updateVehiculo(vehiculoId, { estado: this.estadoVehiculoSeleccionado }).subscribe({
+            next: () => {
+              this.cargarVehiculos();
+              this.cargarMantenimientos();
+              this.mostrarFormulario = false;
+              this.editandoMantenimiento = false;
+              this.mantenimientoIdEditando = null;
+              this.loading = false;
+              this.error = '';
+              this.cerrarModalEstadoVehiculo();
+            },
+            error: (err: HttpErrorResponse) => {
+              console.error('Error al actualizar estado del vehículo:', err);
+              const errorMessage = err.error?.detail || err.message || 'Error al actualizar estado del vehículo';
+              this.error = typeof errorMessage === 'string' ? errorMessage : JSON.stringify(errorMessage);
+              this.loading = false;
+              if (err.status === 401) {
+                this.authService.logout();
+              }
+            }
+          });
+        },
+        error: (err: HttpErrorResponse) => {
+          console.error('Error al actualizar mantenimiento:', err);
+          const errorMessage = err.error?.detail || err.message || 'Error al actualizar mantenimiento';
+          this.error = typeof errorMessage === 'string' ? errorMessage : JSON.stringify(errorMessage);
+          this.loading = false;
+          if (err.status === 401) {
+            this.authService.logout();
+          }
+        }
+      });
+    } else {
+      // Si estamos creando, crear el mantenimiento primero
+      this.apiService.createMantenimiento(this.mantenimientoPendienteActualizacion).subscribe({
+        next: () => {
+          // Luego actualizar el estado del vehículo
+          const vehiculoId = this.mantenimientoForm.vehiculo_id;
+          this.apiService.updateVehiculo(vehiculoId, { estado: this.estadoVehiculoSeleccionado }).subscribe({
+            next: () => {
+              this.cargarVehiculos();
+              this.cargarMantenimientos();
+              this.mostrarFormulario = false;
+              this.loading = false;
+              this.error = '';
+              this.cerrarModalEstadoVehiculo();
+            },
+            error: (err: HttpErrorResponse) => {
+              console.error('Error al actualizar estado del vehículo:', err);
+              const errorMessage = err.error?.detail || err.message || 'Error al actualizar estado del vehículo';
+              this.error = typeof errorMessage === 'string' ? errorMessage : JSON.stringify(errorMessage);
+              this.loading = false;
+              if (err.status === 401) {
+                this.authService.logout();
+              }
+            }
+          });
+        },
+        error: (err: HttpErrorResponse) => {
+          console.error('Error al crear mantenimiento:', err);
+          const errorMessage = err.error?.detail || err.message || 'Error al crear mantenimiento';
+          this.error = typeof errorMessage === 'string' ? errorMessage : JSON.stringify(errorMessage);
+          this.loading = false;
+          if (err.status === 401) {
+            this.authService.logout();
+          }
+        }
+      });
+    }
   }
 }
 

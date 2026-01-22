@@ -120,7 +120,7 @@
             <div class="form-group">
               <label>Fecha de Caducidad</label>
               <input
-                type="datetime-local"
+                type="date"
                 lang="es-ES"
                 [(ngModel)]="mantenimientoForm.fecha_proximo_mantenimiento"
                 name="fecha_proximo_mantenimiento"
@@ -266,27 +266,38 @@
           <!-- Contenido de la pestaña activa -->
           <div *ngIf="tabActiva && tabs.length > 0">
             <div class="mantenimientos-grid" *ngIf="getMantenimientosTabActiva().length > 0">
-              <div class="mantenimiento-card" *ngFor="let mantenimiento of getMantenimientosTabActiva()" (click)="editarMantenimiento(mantenimiento)">
+              <div class="mantenimiento-card" 
+                   *ngFor="let mantenimiento of getMantenimientosTabActiva()" 
+                   [class]="'mantenimiento-card ' + getMantenimientoStatusClass(mantenimiento)"
+                   (click)="editarMantenimiento(mantenimiento)">
                 <div class="mantenimiento-header">
                   <h3>{{ getTipoTexto(mantenimiento.tipo) }}</h3>
+                  <button class="delete-button" 
+                          (click)="eliminarMantenimiento(mantenimiento.id, $event)"
+                          title="Eliminar mantenimiento">
+                    <span class="app-icon">delete</span>
+                  </button>
                 </div>
-            <p *ngIf="mantenimiento.vehiculo"><strong>Vehículo:</strong> {{ mantenimiento.vehiculo.nombre }} ({{ mantenimiento.vehiculo.matricula }})</p>
-            <p *ngIf="mantenimiento.descripcion"><strong>Descripción:</strong> {{ mantenimiento.descripcion }}</p>
-            <p><strong>📅 Fecha Programada:</strong> {{ formatearFechaHora(mantenimiento.fecha_programada) }}</p>
-            <p *ngIf="mantenimiento.fecha_inicio"><strong>🔧 Fecha de Asistencia:</strong> {{ formatearFechaHora(mantenimiento.fecha_inicio) }}</p>
-            <p *ngIf="mantenimiento.fecha_proximo_mantenimiento" [class.alerta-caducidad]="esProximoAVencer(mantenimiento)">
-              <strong>⚠️ Fecha de Caducidad:</strong> {{ formatearFechaHora(mantenimiento.fecha_proximo_mantenimiento) }}
-              <span *ngIf="calcularDiasRestantes(mantenimiento) !== null" class="dias-restantes">
-                ({{ calcularDiasRestantes(mantenimiento) }} días restantes)
-              </span>
-              <span *ngIf="esProximoAVencer(mantenimiento)" class="badge-alerta">¡Próximo a vencer!</span>
-            </p>
-            <p *ngIf="mantenimiento.fecha_fin"><strong>✅ Fecha de Fin:</strong> {{ formatearFechaHora(mantenimiento.fecha_fin) }}</p>
-            <p *ngIf="mantenimiento.proveedor"><strong>Proveedor:</strong> {{ mantenimiento.proveedor }}</p>
-            <p *ngIf="mantenimiento.coste"><strong>Coste:</strong> {{ mantenimiento.coste }} €</p>
-            <p *ngIf="mantenimiento.kilometraje"><strong>Kilometraje:</strong> {{ mantenimiento.kilometraje }} km</p>
-            <p *ngIf="mantenimiento.observaciones" class="observaciones">{{ mantenimiento.observaciones }}</p>
-          </div>
+                <p *ngIf="mantenimiento.vehiculo"><strong>Vehículo:</strong> {{ mantenimiento.vehiculo.nombre }} ({{ mantenimiento.vehiculo.matricula }})</p>
+                <p *ngIf="mantenimiento.descripcion"><strong>Descripción:</strong> {{ mantenimiento.descripcion }}</p>
+                <p><strong>📅 Fecha Programada:</strong> {{ formatearFechaHora(mantenimiento.fecha_programada) }}</p>
+                <p *ngIf="mantenimiento.fecha_inicio"><strong>🔧 Fecha de Asistencia:</strong> {{ formatearFechaHora(mantenimiento.fecha_inicio) }}</p>
+                <p *ngIf="mantenimiento.fecha_proximo_mantenimiento" 
+                   [class.alerta-caducidad]="esProximoAVencer(mantenimiento) || esVencido(mantenimiento)"
+                   [class.alerta-caducidad-vencido]="esVencido(mantenimiento)">
+                  <strong>⚠️ Fecha de Caducidad:</strong> {{ formatearFecha(mantenimiento.fecha_proximo_mantenimiento) }}
+                  <span *ngIf="calcularDiasRestantes(mantenimiento) !== null" class="dias-restantes">
+                    ({{ formatearDiasRestantes(mantenimiento) }})
+                  </span>
+                  <span *ngIf="esProximoAVencer(mantenimiento) && !esVencido(mantenimiento)" class="badge-alerta">¡Próximo a vencer!</span>
+                  <span *ngIf="esVencido(mantenimiento)" class="badge-alerta badge-vencido">¡Vencido!</span>
+                </p>
+                <p *ngIf="mantenimiento.fecha_fin"><strong>✅ Fecha de Fin:</strong> {{ formatearFechaHora(mantenimiento.fecha_fin) }}</p>
+                <p *ngIf="mantenimiento.proveedor"><strong>Proveedor:</strong> {{ mantenimiento.proveedor }}</p>
+                <p *ngIf="mantenimiento.coste"><strong>Coste:</strong> {{ mantenimiento.coste }} €</p>
+                <p *ngIf="mantenimiento.kilometraje"><strong>Kilometraje:</strong> {{ mantenimiento.kilometraje }} km</p>
+                <p *ngIf="mantenimiento.observaciones" class="observaciones">{{ mantenimiento.observaciones }}</p>
+              </div>
             </div>
           </div>
           <div *ngIf="getMantenimientosTabActiva().length === 0" class="no-items">
@@ -296,5 +307,28 @@
       </div>
     </div>
   </main>
+</div>
+
+<!-- Modal para seleccionar estado del vehículo -->
+<div class="modal-overlay" *ngIf="mostrarModalEstadoVehiculo" (click)="cerrarModalEstadoVehiculo()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <h3>Seleccionar Estado del Vehículo</h3>
+    <p *ngIf="editandoMantenimiento">El mantenimiento ha cambiado de estado. ¿En qué estado quieres dejar el vehículo?</p>
+    <p *ngIf="!editandoMantenimiento">Se va a crear un nuevo mantenimiento. ¿En qué estado quieres dejar el vehículo?</p>
+    <div class="estados-vehiculo-options">
+      <button *ngFor="let estado of estadosVehiculo" 
+              class="estado-option"
+              [class.selected]="estadoVehiculoSeleccionado === estado.value"
+              (click)="seleccionarEstadoVehiculo(estado.value)">
+        {{ estado.label }}
+      </button>
+    </div>
+    <div class="modal-actions">
+      <button class="cancel-button" (click)="cerrarModalEstadoVehiculo()">Cancelar</button>
+      <button class="submit-button" (click)="confirmarCambioEstadoVehiculo()" [disabled]="!estadoVehiculoSeleccionado">
+        Confirmar
+      </button>
+    </div>
+  </div>
 </div>
 

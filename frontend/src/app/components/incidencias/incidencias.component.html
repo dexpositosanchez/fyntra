@@ -277,8 +277,10 @@
         <!-- Contenido de la pestaña activa -->
         <div *ngIf="tabActiva && tabs.length > 0">
           <div class="incidencias-grid" *ngIf="getIncidenciasTabActiva().length > 0">
-            <div class="incidencia-card" *ngFor="let incidencia of getIncidenciasTabActiva()"
-             (click)="esProveedor ? verActuaciones(incidencia, $event) : editarIncidencia(incidencia)">
+            <div class="incidencia-card" 
+                 *ngFor="let incidencia of getIncidenciasTabActiva()"
+                 [class]="'incidencia-card ' + getPrioridadClass(incidencia.prioridad)"
+                 (click)="esProveedor ? verActuaciones(incidencia, $event) : editarIncidencia(incidencia)">
               <div class="card-header">
                 <span [class]="'prioridad-badge ' + getPrioridadClass(incidencia.prioridad)">
                   {{ getPrioridadTexto(incidencia.prioridad) }}

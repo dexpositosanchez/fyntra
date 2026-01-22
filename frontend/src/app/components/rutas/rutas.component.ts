@@ -5,6 +5,7 @@ import { filter } from 'rxjs/operators';
 import { ApiService } from '../../services/api.service';
 import { AuthService } from '../../services/auth.service';
 import { HttpErrorResponse } from '@angular/common/http';
+import { ChangeDetectorRef } from '@angular/core';
 
 @Component({
   selector: 'app-rutas',
@@ -27,6 +28,7 @@ export class RutasComponent implements OnInit, OnDestroy {
     pedidos_ids: []
   };
   paradasPreview: any[] = [];
+  paradasExistentes: Map<number, any> = new Map(); // Mapeo de parada_id -> parada para rutas existentes
   pedidosDisponibles: any[] = [];
   pedidosSeleccionados: any[] = [];
   pedidoSeleccionado: number | null = null;
@@ -55,7 +57,8 @@ export class RutasComponent implements OnInit, OnDestroy {
   constructor(
     private apiService: ApiService,
     private authService: AuthService,
-    private router: Router
+    private router: Router,
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
@@ -78,7 +81,7 @@ export class RutasComponent implements OnInit, OnDestroy {
     
     if (this.currentRoute.includes('/rutas')) {
       this.cargarRutas();
-      this.cargarPedidos();
+      this.cargarPedidos(); // Recargar pedidos para asegurar datos actualizados
       this.cargarConductores();
       this.cargarVehiculos();
     }
@@ -189,12 +192,13 @@ export class RutasComponent implements OnInit, OnDestroy {
   }
 
   cargarPedidos(): void {
-    this.apiService.getPedidos({ estado: 'pendiente' }).subscribe({
+    // Forzar recarga sin caché para asegurar datos actualizados
+    this.apiService.getPedidos({ estado: 'pendiente', no_cache: true }).subscribe({
       next: (data) => {
-        this.pedidosDisponibles = data;
+        this.pedidosDisponibles = data || [];
       },
       error: (err: HttpErrorResponse) => {
-        console.error('Error al cargar pedidos:', err);
+        this.pedidosDisponibles = [];
       }
     });
   }
@@ -213,7 +217,7 @@ export class RutasComponent implements OnInit, OnDestroy {
         });
       },
       error: (err: HttpErrorResponse) => {
-        console.error('Error al cargar conductores:', err);
+        // Error silencioso
       }
     });
   }
@@ -221,10 +225,10 @@ export class RutasComponent implements OnInit, OnDestroy {
   cargarVehiculos(): void {
     this.apiService.getVehiculos({ estado: 'activo' }).subscribe({
       next: (data) => {
-        this.vehiculos = data;
+        this.vehiculos = data || [];
       },
       error: (err: HttpErrorResponse) => {
-        console.error('Error al cargar vehículos:', err);
+        this.vehiculos = [];
       }
     });
   }
@@ -244,6 +248,7 @@ export class RutasComponent implements OnInit, OnDestroy {
     };
     this.pedidosSeleccionados = [];
     this.paradasPreview = [];
+    this.paradasExistentes.clear();
   }
 
   editarRuta(ruta: any): void {
@@ -267,41 +272,75 @@ export class RutasComponent implements OnInit, OnDestroy {
     // Extraer IDs únicos de pedidos de las paradas
     const pedidosIds = ruta.paradas ? [...new Set(ruta.paradas.map((p: any) => p.pedido_id))] : [];
     
-    // Construir pedidos desde las paradas (porque pueden estar en estado EN_RUTA y no estar en pedidosDisponibles)
+    // Cargar pedidos completos desde el servidor para los pedidos de esta ruta
+    // (pueden estar en estado EN_RUTA y no estar en pedidosDisponibles)
     const pedidosMap = new Map<number, any>();
+    const pedidosIdsACargar: number[] = [];
+    
     if (ruta.paradas) {
       for (const parada of ruta.paradas) {
         if (parada.pedido_id && !pedidosMap.has(parada.pedido_id)) {
           // Buscar el pedido en pedidosDisponibles primero
           let pedido = this.pedidosDisponibles.find(p => p.id === parada.pedido_id);
-          // Si no está disponible, construir desde la parada
-          if (!pedido && parada.pedido) {
-            pedido = {
-              id: parada.pedido_id,
-              cliente: parada.pedido.cliente || 'Cliente desconocido',
-              origen: parada.pedido.origen || parada.direccion,
-              destino: parada.pedido.destino || parada.direccion,
-              peso: 0,
-              volumen: 0
-            };
-          } else if (!pedido) {
-            // Si no hay información del pedido, crear uno básico
-            pedido = {
-              id: parada.pedido_id,
-              cliente: 'Pedido #' + parada.pedido_id,
-              origen: parada.direccion,
-              destino: parada.direccion,
-              peso: 0,
-              volumen: 0
-            };
-          }
           if (pedido) {
             pedidosMap.set(parada.pedido_id, pedido);
+          } else {
+            // Si no está disponible, necesitamos cargarlo del servidor
+            pedidosIdsACargar.push(parada.pedido_id);
           }
         }
       }
     }
-    this.pedidosSeleccionados = Array.from(pedidosMap.values());
+    
+    // Cargar pedidos que no están en pedidosDisponibles (están en EN_RUTA)
+    if (pedidosIdsACargar.length > 0) {
+      let pedidosCargados = 0;
+      pedidosIdsACargar.forEach(pedidoId => {
+        this.apiService.getPedido(pedidoId).subscribe({
+          next: (data) => {
+            pedidosMap.set(pedidoId, data);
+            pedidosCargados++;
+            // Actualizar la lista cuando se carguen todos
+            if (pedidosCargados === pedidosIdsACargar.length) {
+              this.pedidosSeleccionados = Array.from(pedidosMap.values());
+              this.actualizarParadasPreview();
+            }
+          },
+          error: (err) => {
+            // Si falla, construir desde la parada como fallback
+            const parada = ruta.paradas.find((p: any) => p.pedido_id === pedidoId);
+            if (parada && parada.pedido) {
+              const pedidoFallback = {
+                id: parada.pedido_id,
+                cliente: parada.pedido.cliente || 'Cliente desconocido',
+                origen: parada.pedido.origen || parada.direccion,
+                destino: parada.pedido.destino || parada.direccion,
+                peso: parada.pedido.peso || 0,
+                volumen: parada.pedido.volumen || 0,
+                fecha_entrega_deseada: parada.pedido.fecha_entrega_deseada || null
+              };
+              pedidosMap.set(pedidoId, pedidoFallback);
+            }
+            pedidosCargados++;
+            if (pedidosCargados === pedidosIdsACargar.length) {
+              this.pedidosSeleccionados = Array.from(pedidosMap.values());
+              this.actualizarParadasPreview();
+            }
+          }
+        });
+      });
+    } else {
+      // Si todos los pedidos ya están en pedidosDisponibles, establecer directamente
+      this.pedidosSeleccionados = Array.from(pedidosMap.values());
+    }
+    
+    // Almacenar mapeo de paradas existentes (parada_id -> parada)
+    this.paradasExistentes.clear();
+    if (ruta.paradas) {
+      for (const parada of ruta.paradas) {
+        this.paradasExistentes.set(parada.id, parada);
+      }
+    }
     
     // Recuperar fechas/horas de las paradas
     this.pedidosConFechas.clear();
@@ -356,13 +395,12 @@ export class RutasComponent implements OnInit, OnDestroy {
         this.pedidosSeleccionados.push({...pedido});
       } else {
         // Si no se encuentra, obtenerlo del servidor (no debería pasar normalmente)
-        console.warn(`Pedido ${pedidoId} no encontrado, obteniendo del servidor...`);
         this.apiService.getPedido(pedidoId).subscribe({
           next: (data) => {
             this.pedidosSeleccionados.push(data);
           },
           error: (err) => {
-            console.error('Error al obtener pedido:', err);
+            // Error silencioso
           }
         });
       }
@@ -381,7 +419,13 @@ export class RutasComponent implements OnInit, OnDestroy {
   }
 
   getPedidosDisponibles(): any[] {
-    return this.pedidosDisponibles.filter(p => !this.rutaForm.pedidos_ids.includes(p.id));
+    // Filtrar pedidos que:
+    // 1. No estén ya seleccionados en esta ruta
+    // 2. Estén en estado 'pendiente' (los pedidos en 'en_ruta' no deben aparecer a menos que ya estén en esta ruta)
+    return this.pedidosDisponibles.filter(p => 
+      !this.rutaForm.pedidos_ids.includes(p.id) && 
+      p.estado === 'pendiente'
+    );
   }
 
   onAnadirPedido(): void {
@@ -397,6 +441,17 @@ export class RutasComponent implements OnInit, OnDestroy {
   confirmarAnadirPedido(): void {
     const pedidoId = this.pedidoSeleccionado ? Number(this.pedidoSeleccionado) : null;
     if (pedidoId && !this.rutaForm.pedidos_ids.includes(pedidoId)) {
+      // Validar fechas si ambas están definidas
+      if (this.fechaHoraCarga && this.fechaHoraDescarga) {
+        const fechaCarga = new Date(this.fechaHoraCarga);
+        const fechaDescarga = new Date(this.fechaHoraDescarga);
+        
+        if (fechaDescarga < fechaCarga) {
+          this.error = `La fecha de descarga no puede ser anterior a la fecha de carga para este pedido`;
+          return;
+        }
+      }
+      
       // Guardar las fechas si están definidas
       if (this.fechaHoraCarga || this.fechaHoraDescarga) {
         this.pedidosConFechas.set(pedidoId, {
@@ -411,6 +466,7 @@ export class RutasComponent implements OnInit, OnDestroy {
       this.mostrarFechasPedido = false;
       this.fechaHoraCarga = '';
       this.fechaHoraDescarga = '';
+      this.error = ''; // Limpiar error si todo está bien
     }
   }
 
@@ -422,40 +478,171 @@ export class RutasComponent implements OnInit, OnDestroy {
   }
 
   getVehiculoSeleccionado(): any {
-    if (!this.rutaForm.vehiculo_id) return null;
-    return this.vehiculos.find(v => v.id === this.rutaForm.vehiculo_id);
+    if (!this.rutaForm.vehiculo_id) {
+      return null;
+    }
+    // Convertir ambos a número para comparar correctamente (el select devuelve string)
+    const vehiculoId = Number(this.rutaForm.vehiculo_id);
+    return this.vehiculos.find(v => Number(v.id) === vehiculoId);
   }
 
   getCapacidadVehiculo(): number {
     const vehiculo = this.getVehiculoSeleccionado();
-    return vehiculo ? (vehiculo.capacidad || 0) : 0;
+    if (!vehiculo) {
+      return 0;
+    }
+    // Asegurar que capacidad sea un número válido
+    const capacidad = vehiculo.capacidad;
+    if (capacidad === null || capacidad === undefined || isNaN(capacidad)) {
+      return 0;
+    }
+    return Number(capacidad);
+  }
+
+  onVehiculoChange(): void {
+    // Forzar actualización de la vista cuando cambia el vehículo
+    this.cdr.detectChanges();
   }
 
   hayExcesoCapacidad(): boolean {
     return this.calcularPesoTotal() > this.getCapacidadVehiculo();
   }
 
+  getPesoAcumuladoEnParada(index: number): number {
+    if (!this.paradasPreview || this.paradasPreview.length === 0) {
+      return 0;
+    }
+    
+    // Obtener la parada actual por índice
+    const paradaActual = this.paradasPreview[index];
+    if (!paradaActual) {
+      return 0;
+    }
+    
+    // Ordenar paradas por orden para calcular correctamente el peso acumulado
+    const paradasOrdenadas = [...this.paradasPreview].sort((a, b) => (a.orden || 0) - (b.orden || 0));
+    const ordenActual = paradaActual.orden || 0;
+    
+    // Calcular peso acumulado hasta esta parada (incluyéndola)
+    let pesoAcumulado = 0;
+    
+    for (const parada of paradasOrdenadas) {
+      if (!parada || !parada.pedido_id) continue;
+      
+      // Solo considerar paradas hasta la actual (incluyéndola)
+      if ((parada.orden || 0) > ordenActual) {
+        break;
+      }
+      
+      // Buscar el pedido para obtener su peso
+      const pedido = this.pedidosSeleccionados.find(p => p.id === parada.pedido_id);
+      const pesoPedido = pedido ? (pedido.peso || 0) : 0;
+      
+      if (parada.tipo_operacion === 'carga') {
+        // Sumar peso al cargar
+        pesoAcumulado += pesoPedido;
+      } else if (parada.tipo_operacion === 'descarga') {
+        // Restar peso al descargar
+        pesoAcumulado -= pesoPedido;
+      }
+    }
+    
+    return Math.max(0, pesoAcumulado); // No permitir peso negativo
+  }
+
+  hayExcesoPesoEnAlgunaParada(): boolean {
+    if (!this.paradasPreview || this.paradasPreview.length === 0) {
+      return false;
+    }
+    
+    const capacidad = this.getCapacidadVehiculo();
+    if (capacidad === 0) {
+      return false; // Si no hay vehículo seleccionado, no validar
+    }
+    
+    // Verificar cada parada
+    for (let i = 0; i < this.paradasPreview.length; i++) {
+      const pesoAcumulado = this.getPesoAcumuladoEnParada(i);
+      if (pesoAcumulado > capacidad) {
+        return true;
+      }
+    }
+    
+    return false;
+  }
+
   private actualizarParadasPreview(): void {
     const paradas: any[] = [];
-    let orden = 1;
-    for (const pedido of this.pedidosSeleccionados) {
-      const fechas = this.pedidosConFechas.get(pedido.id);
-      paradas.push({
-        orden: orden++,
-        direccion: pedido.origen,
-        tipo_operacion: 'carga',
-        etiqueta: 'Origen',
-        pedido_id: pedido.id,
-        fecha_hora_llegada: fechas?.fechaCarga || ''
-      });
-      paradas.push({
-        orden: orden++,
-        direccion: pedido.destino,
-        tipo_operacion: 'descarga',
-        etiqueta: 'Destino',
-        pedido_id: pedido.id,
-        fecha_hora_llegada: fechas?.fechaDescarga || ''
-      });
+    
+    // Si estamos editando, usar el orden de las paradas existentes
+    if (this.editandoRuta && this.paradasExistentes.size > 0) {
+      // Convertir paradas existentes a array y ordenarlas por orden
+      const paradasExistentesArray = Array.from(this.paradasExistentes.values())
+        .filter(p => this.rutaForm.pedidos_ids.includes(p.pedido_id))
+        .sort((a, b) => a.orden - b.orden);
+      
+      // Crear un mapa de pedido_id -> {carga, descarga} para facilitar el acceso
+      const paradasPorPedido: Map<number, { carga: any, descarga: any }> = new Map();
+      for (const parada of paradasExistentesArray) {
+        if (!paradasPorPedido.has(parada.pedido_id)) {
+          paradasPorPedido.set(parada.pedido_id, { carga: null, descarga: null });
+        }
+        const paradasPedido = paradasPorPedido.get(parada.pedido_id)!;
+        if (parada.tipo_operacion === 'carga') {
+          paradasPedido.carga = parada;
+        } else if (parada.tipo_operacion === 'descarga') {
+          paradasPedido.descarga = parada;
+        }
+      }
+      
+      // Construir paradas manteniendo el orden existente
+      for (const paradaExistente of paradasExistentesArray) {
+        const fechas = this.pedidosConFechas.get(paradaExistente.pedido_id);
+        const pedido = this.pedidosSeleccionados.find(p => p.id === paradaExistente.pedido_id);
+        
+        if (pedido) {
+          paradas.push({
+            id: paradaExistente.id,
+            orden: paradaExistente.orden,
+            direccion: paradaExistente.direccion,
+            tipo_operacion: paradaExistente.tipo_operacion,
+            etiqueta: paradaExistente.tipo_operacion === 'carga' ? 'Origen' : 'Destino',
+            pedido_id: paradaExistente.pedido_id,
+            fecha_hora_llegada: fechas?.fechaCarga && paradaExistente.tipo_operacion === 'carga' 
+              ? fechas.fechaCarga 
+              : (fechas?.fechaDescarga && paradaExistente.tipo_operacion === 'descarga' 
+                ? fechas.fechaDescarga 
+                : (paradaExistente.fecha_hora_llegada ? this.getFechaHoraLocal(paradaExistente.fecha_hora_llegada) : '')),
+            fecha_entrega_deseada: pedido.fecha_entrega_deseada || null
+          });
+        }
+      }
+    } else {
+      // Si es una nueva ruta, crear paradas en el orden de los pedidos
+      let orden = 1;
+      for (const pedido of this.pedidosSeleccionados) {
+        const fechas = this.pedidosConFechas.get(pedido.id);
+        paradas.push({
+          id: null,
+          orden: orden++,
+          direccion: pedido.origen,
+          tipo_operacion: 'carga',
+          etiqueta: 'Origen',
+          pedido_id: pedido.id,
+          fecha_hora_llegada: fechas?.fechaCarga || '',
+          fecha_entrega_deseada: pedido.fecha_entrega_deseada || null
+        });
+        paradas.push({
+          id: null,
+          orden: orden++,
+          direccion: pedido.destino,
+          tipo_operacion: 'descarga',
+          etiqueta: 'Destino',
+          pedido_id: pedido.id,
+          fecha_hora_llegada: fechas?.fechaDescarga || '',
+          fecha_entrega_deseada: pedido.fecha_entrega_deseada || null
+        });
+      }
     }
     this.paradasPreview = paradas;
   }
@@ -469,6 +656,8 @@ export class RutasComponent implements OnInit, OnDestroy {
     // Reasignar orden secuencial
     copia.forEach((p, idx) => p.orden = idx + 1);
     this.paradasPreview = copia;
+    // Sincronizar fechas después de reordenar
+    this.sincronizarFechasConPedidos();
   }
 
   // Drag and Drop
@@ -508,6 +697,7 @@ export class RutasComponent implements OnInit, OnDestroy {
       });
       this.paradasPreview = paradas;
       this.draggedIndex = index;
+      // Sincronizar fechas después de reordenar (solo visual, no se guarda hasta onDrop)
     }
   }
 
@@ -518,11 +708,13 @@ export class RutasComponent implements OnInit, OnDestroy {
       const draggedItem = paradas[this.draggedIndex];
       paradas.splice(this.draggedIndex, 1);
       paradas.splice(index, 0, draggedItem);
-      // Actualizar orden
+      // Actualizar orden secuencialmente desde 1
       paradas.forEach((p, i) => {
         p.orden = i + 1;
       });
       this.paradasPreview = paradas;
+      // Sincronizar fechas después de reordenar
+      this.sincronizarFechasConPedidos();
     }
     this.draggedIndex = null;
   }
@@ -556,7 +748,16 @@ export class RutasComponent implements OnInit, OnDestroy {
 
   getFechaHoraLocal(fechaHora: string | null | undefined): string {
     if (!fechaHora) return '';
+    
+    // Si ya está en formato datetime-local (YYYY-MM-DDTHH:mm), devolverlo directamente
+    if (fechaHora.includes('T') && fechaHora.length <= 16 && !fechaHora.includes('Z') && !fechaHora.includes('+')) {
+      return fechaHora;
+    }
+    
+    // Si viene en formato ISO string, convertir a datetime-local
     const fecha = new Date(fechaHora);
+    if (isNaN(fecha.getTime())) return '';
+    
     // Ajustar por zona horaria local
     const localDate = new Date(fecha.getTime() - fecha.getTimezoneOffset() * 60000);
     return localDate.toISOString().slice(0, 16);
@@ -571,9 +772,86 @@ export class RutasComponent implements OnInit, OnDestroy {
       },
       error: (err: HttpErrorResponse) => {
         this.error = err.error?.detail || 'Error al actualizar fecha de llegada';
-        console.error('Error al actualizar parada:', err);
       }
     });
+  }
+
+  actualizarFechaParada(index: number, event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const nuevaFecha = input.value;
+    
+    // Limpiar errores previos cuando se modifica una fecha
+    this.error = '';
+    
+    if (!nuevaFecha) {
+      // Si se elimina la fecha, limpiarla
+      this.paradasPreview[index].fecha_hora_llegada = '';
+      this.sincronizarFechasConPedidos();
+      return;
+    }
+    
+    // El valor viene en formato datetime-local (YYYY-MM-DDTHH:mm)
+    // Guardarlo directamente en ese formato para mantener consistencia
+    // Se convertirá a ISO string al enviar al backend
+    this.paradasPreview[index].fecha_hora_llegada = nuevaFecha;
+    
+    // Sincronizar con pedidosConFechas para mantener coherencia
+    this.sincronizarFechasConPedidos();
+    
+    // Validación básica en tiempo real (opcional, solo para feedback)
+    // Las validaciones completas se harán al guardar
+  }
+
+  sincronizarFechasConPedidos(): void {
+    // Actualizar pedidosConFechas basándose en las fechas de las paradas según el orden
+    // Para cada pedido, buscar la primera carga y la última descarga según el orden
+    const fechasPorPedido: Map<number, { primeraCarga: string, ultimaDescarga: string }> = new Map();
+    
+    // Ordenar paradas por orden para procesarlas correctamente
+    const paradasOrdenadas = [...this.paradasPreview].sort((a, b) => a.orden - b.orden);
+    
+    for (const parada of paradasOrdenadas) {
+      if (!parada.fecha_hora_llegada) continue;
+      
+      if (!fechasPorPedido.has(parada.pedido_id)) {
+        fechasPorPedido.set(parada.pedido_id, {
+          primeraCarga: '',
+          ultimaDescarga: ''
+        });
+      }
+      
+      const fechas = fechasPorPedido.get(parada.pedido_id)!;
+      
+      if (parada.tipo_operacion === 'carga') {
+        // Usar la primera carga según el orden
+        if (!fechas.primeraCarga) {
+          fechas.primeraCarga = parada.fecha_hora_llegada;
+        }
+      } else if (parada.tipo_operacion === 'descarga') {
+        // Usar la última descarga según el orden
+        if (!fechas.ultimaDescarga || parada.fecha_hora_llegada > fechas.ultimaDescarga) {
+          fechas.ultimaDescarga = parada.fecha_hora_llegada;
+        }
+      }
+    }
+    
+    // Actualizar pedidosConFechas con las fechas encontradas
+    // No limpiar completamente, solo actualizar los que tienen fechas en las paradas
+    for (const [pedidoId, fechas] of fechasPorPedido.entries()) {
+      if (!this.pedidosConFechas.has(pedidoId)) {
+        this.pedidosConFechas.set(pedidoId, {
+          fechaCarga: '',
+          fechaDescarga: ''
+        });
+      }
+      const fechasExistentes = this.pedidosConFechas.get(pedidoId)!;
+      if (fechas.primeraCarga) {
+        fechasExistentes.fechaCarga = fechas.primeraCarga;
+      }
+      if (fechas.ultimaDescarga) {
+        fechasExistentes.fechaDescarga = fechas.ultimaDescarga;
+      }
+    }
   }
 
   onSubmit(): void {
@@ -605,17 +883,189 @@ export class RutasComponent implements OnInit, OnDestroy {
       return;
     }
     
+    // Validar que fecha_fin >= fecha_inicio
+    if (fechaFin < fechaInicio) {
+      this.error = `La fecha de fin (${this.formatearFecha(this.rutaForm.fecha_fin)}) no puede ser anterior a la fecha de inicio (${this.formatearFecha(this.rutaForm.fecha_inicio)})`;
+      this.loading = false;
+      return;
+    }
+    
+    // Validar peso acumulado en cada parada
+    if (this.paradasPreview.length > 0 && this.rutaForm.vehiculo_id) {
+      const capacidad = this.getCapacidadVehiculo();
+      if (capacidad > 0) {
+        const paradasOrdenadas = [...this.paradasPreview].sort((a, b) => (a.orden || 0) - (b.orden || 0));
+        
+        for (let i = 0; i < paradasOrdenadas.length; i++) {
+          const pesoAcumulado = this.getPesoAcumuladoEnParada(i);
+          if (pesoAcumulado > capacidad) {
+            const parada = paradasOrdenadas[i];
+            const pedido = this.pedidosSeleccionados.find(p => p.id === parada.pedido_id);
+            const clienteInfo = pedido ? ` (Cliente: ${pedido.cliente})` : '';
+            this.error = `El peso acumulado en la parada #${parada.orden} (${pesoAcumulado} kg) excede la capacidad del vehículo (${capacidad} kg)${clienteInfo}. Ajuste el orden de las paradas o seleccione un vehículo con mayor capacidad.`;
+            this.loading = false;
+            return;
+          }
+        }
+      }
+    }
+    
+    // Validar fechas según el orden de las paradas (paradasPreview ordenadas)
+    // Ordenar paradas por orden
+    const paradasOrdenadas = [...this.paradasPreview].sort((a, b) => (a.orden || 0) - (b.orden || 0));
+    
+    // Rastrear las últimas cargas por pedido para validar que no se descargue sin haber cargado
+    const ultimasCargasPorPedido: Map<number, Date> = new Map();
+    let ultimaDescarga: Date | null = null;
+    
+    for (const parada of paradasOrdenadas) {
+      if (!parada.fecha_hora_llegada) {
+        continue; // Saltar paradas sin fecha
+      }
+      
+      // Convertir fecha a Date - puede venir en formato datetime-local (YYYY-MM-DDTHH:mm) o ISO string
+      let fechaParada: Date;
+      if (parada.fecha_hora_llegada.includes('T') && parada.fecha_hora_llegada.length <= 16) {
+        // Formato datetime-local: YYYY-MM-DDTHH:mm
+        fechaParada = new Date(parada.fecha_hora_llegada);
+      } else {
+        // Formato ISO string
+        fechaParada = new Date(parada.fecha_hora_llegada);
+      }
+      
+      // Validar que la fecha sea válida
+      if (isNaN(fechaParada.getTime())) {
+        this.error = `La fecha de la parada #${parada.orden} no es válida`;
+        this.loading = false;
+        return;
+      }
+      
+      if (parada.tipo_operacion === 'carga') {
+        // Actualizar última carga para este pedido
+        const ultimaCarga = ultimasCargasPorPedido.get(parada.pedido_id);
+        if (!ultimaCarga || fechaParada > ultimaCarga) {
+          ultimasCargasPorPedido.set(parada.pedido_id, fechaParada);
+        }
+      } else if (parada.tipo_operacion === 'descarga') {
+        // Validar que haya una carga anterior para este pedido
+        const ultimaCarga = ultimasCargasPorPedido.get(parada.pedido_id);
+        if (!ultimaCarga) {
+          const pedido = this.pedidosSeleccionados.find(p => p.id === parada.pedido_id);
+          const clienteInfo = pedido ? ` (Cliente: ${pedido.cliente})` : '';
+          this.error = `No se puede descargar el pedido ${parada.pedido_id}${clienteInfo} en la parada #${parada.orden} sin haber cargado antes. Debe haber una parada de carga anterior para este pedido.`;
+          this.loading = false;
+          return;
+        }
+        
+        // Validar que la descarga sea después de la última carga
+        if (fechaParada < ultimaCarga) {
+          const pedido = this.pedidosSeleccionados.find(p => p.id === parada.pedido_id);
+          const clienteInfo = pedido ? ` (Cliente: ${pedido.cliente})` : '';
+          this.error = `Para el pedido ${parada.pedido_id}${clienteInfo}, la fecha de descarga en la parada #${parada.orden} (${this.formatearFechaHora(parada.fecha_hora_llegada)}) no puede ser anterior a la última carga (${this.formatearFechaHora(ultimaCarga.toISOString())})`;
+          this.loading = false;
+          return;
+        }
+        
+        // Actualizar última descarga global
+        if (!ultimaDescarga || fechaParada > ultimaDescarga) {
+          ultimaDescarga = fechaParada;
+        }
+      }
+      
+      // Validar coherencia con la parada anterior (si existe)
+      const indexActual = paradasOrdenadas.indexOf(parada);
+      if (indexActual > 0) {
+        const paradaAnterior = paradasOrdenadas[indexActual - 1];
+        if (paradaAnterior.fecha_hora_llegada) {
+          // Convertir fecha anterior a Date
+          let fechaAnterior: Date;
+          if (paradaAnterior.fecha_hora_llegada.includes('T') && paradaAnterior.fecha_hora_llegada.length <= 16) {
+            fechaAnterior = new Date(paradaAnterior.fecha_hora_llegada);
+          } else {
+            fechaAnterior = new Date(paradaAnterior.fecha_hora_llegada);
+          }
+          
+          if (isNaN(fechaAnterior.getTime())) {
+            this.error = `La fecha de la parada anterior #${paradaAnterior.orden} no es válida`;
+            this.loading = false;
+            return;
+          }
+          
+          if (fechaParada < fechaAnterior) {
+            this.error = `La fecha de la parada #${parada.orden} (${this.formatearFechaHora(parada.fecha_hora_llegada)}) no puede ser anterior a la parada anterior #${paradaAnterior.orden} (${this.formatearFechaHora(paradaAnterior.fecha_hora_llegada)}) según el orden establecido`;
+            this.loading = false;
+            return;
+          }
+        }
+      }
+    }
+    
+    // Validar que fecha_fin >= última fecha de descarga después de ordenar
+    if (ultimaDescarga && fechaFin < ultimaDescarga) {
+      this.error = `La fecha de fin de la ruta (${this.formatearFecha(this.rutaForm.fecha_fin)}) no puede ser anterior a la última fecha de descarga (${this.formatearFechaHora(ultimaDescarga.toISOString())}) después de ordenar las paradas`;
+      this.loading = false;
+      return;
+    }
+    
+    // Sincronizar fechas antes de guardar para asegurar coherencia
+    this.sincronizarFechasConPedidos();
+    
     const rutaData: any = {
       fecha_inicio: fechaInicio.toISOString(),
       fecha_fin: fechaFin.toISOString(),
       conductor_id: this.rutaForm.conductor_id,
       vehiculo_id: this.rutaForm.vehiculo_id,
       observaciones: this.rutaForm.observaciones || '',
-      pedidos_ids: this.rutaForm.pedidos_ids
+      pedidos_ids: this.rutaForm.pedidos_ids,
+      paradas_con_fechas: null // Inicializar como null, se asignará después si hay paradas
     };
     
-    // Añadir fechas/horas aproximadas para cada pedido
-    if (this.pedidosConFechas.size > 0) {
+    // Añadir paradas con fechas según el orden establecido (tiene prioridad)
+    // IMPORTANTE: Siempre enviar paradas si existen, para que el backend valide por peso acumulado
+    // Enviar todas las paradas según el orden, para que el backend pueda validar coherencia
+    // Las fechas en paradasPreview tienen prioridad sobre pedidosConFechas
+    if (this.paradasPreview && this.paradasPreview.length > 0) {
+      // Ordenar paradas por orden antes de enviar
+      const paradasOrdenadas = [...this.paradasPreview].sort((a, b) => (a.orden || 0) - (b.orden || 0));
+      
+      const paradasConFechas = paradasOrdenadas
+        .map((p, i) => {
+          // Asegurar que la fecha esté en formato correcto
+          let fechaHora = p.fecha_hora_llegada;
+          
+          // Si no hay fecha en la parada pero existe en pedidosConFechas, usarla
+          if (!fechaHora) {
+            const fechas = this.pedidosConFechas.get(p.pedido_id);
+            if (fechas) {
+              if (p.tipo_operacion === 'carga' && fechas.fechaCarga) {
+                fechaHora = fechas.fechaCarga;
+              } else if (p.tipo_operacion === 'descarga' && fechas.fechaDescarga) {
+                fechaHora = fechas.fechaDescarga;
+              }
+            }
+          }
+          
+          // Asegurar que el orden sea correcto (usar el orden de la parada o el índice + 1)
+          const ordenFinal = p.orden ? parseInt(String(p.orden)) : (i + 1);
+          
+          return {
+            parada_id: p.id || null, // ID si es parada existente
+            pedido_id: p.pedido_id,
+            orden: ordenFinal,
+            tipo_operacion: p.tipo_operacion,
+            fecha_hora_llegada: fechaHora ? new Date(fechaHora).toISOString() : null
+          };
+        });
+      
+      // SIEMPRE asignar paradas_con_fechas si hay paradas
+      rutaData.paradas_con_fechas = paradasConFechas;
+    } else {
+      // Si no hay paradas, asegurar que paradas_con_fechas sea null/undefined
+      rutaData.paradas_con_fechas = null;
+    }
+    
+    // Añadir fechas/horas aproximadas para cada pedido (legacy, para compatibilidad si no hay paradas_con_fechas)
+    if (this.pedidosConFechas.size > 0 && (!rutaData.paradas_con_fechas || rutaData.paradas_con_fechas.length === 0)) {
       rutaData.pedidos_con_fechas = [];
       this.pedidosConFechas.forEach((fechas, pedidoId) => {
         if (this.rutaForm.pedidos_ids.includes(pedidoId)) {
@@ -632,6 +1082,7 @@ export class RutasComponent implements OnInit, OnDestroy {
       this.apiService.updateRuta(this.rutaIdEditando, rutaData).subscribe({
         next: () => {
           this.cargarRutas();
+          this.cargarPedidos(); // Recargar pedidos para actualizar disponibilidad
           this.mostrarFormulario = false;
           this.editandoRuta = false;
           this.rutaIdEditando = null;
@@ -666,7 +1117,6 @@ export class RutasComponent implements OnInit, OnDestroy {
           this.error = '';
         },
         error: (err: HttpErrorResponse) => {
-          console.error('Error al crear ruta:', err);
           if (err.error?.detail) {
             if (typeof err.error.detail === 'object' && err.error.detail.error) {
               // Error de capacidad con detalles
@@ -688,13 +1138,14 @@ export class RutasComponent implements OnInit, OnDestroy {
   }
 
   getEstadoClass(estado: string): string {
+    // Para los bordes dinámicos, usar clases con prefijo "estado-"
     const clases: { [key: string]: string } = {
-      'planificada': 'planificada',
-      'en_curso': 'en-curso',
-      'completada': 'completada',
-      'cancelada': 'cancelada'
+      'planificada': 'estado-planificada',
+      'en_curso': 'estado-en-curso',
+      'completada': 'estado-completada',
+      'cancelada': 'estado-cancelada'
     };
-    return clases[estado?.toLowerCase()] || 'planificada';
+    return clases[estado?.toLowerCase()] || 'estado-planificada';
   }
 
   getEstadoTexto(estado: string): string {
