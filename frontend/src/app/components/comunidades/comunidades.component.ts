@@ -70,6 +70,7 @@ export class ComunidadesComponent implements OnInit, OnDestroy {
     
     this.apiService.getComunidades().subscribe({
       next: (data) => {
+        console.log('Comunidades recibidas:', data);
         this.comunidades = data;
         this.loading = false;
       },
@@ -158,7 +159,19 @@ export class ComunidadesComponent implements OnInit, OnDestroy {
 
   eliminarComunidad(comunidad: any, event: Event): void {
     event.stopPropagation();
-    if (confirm(`¿Está seguro de eliminar la comunidad "${comunidad.nombre}"?`)) {
+    
+    console.log('Comunidad a eliminar:', comunidad);
+    console.log('Inmuebles de la comunidad:', comunidad.inmuebles);
+    
+    const numInmuebles = comunidad.inmuebles?.length || 0;
+    let mensaje = `¿Está seguro de eliminar la comunidad "${comunidad.nombre}"?`;
+    
+    if (numInmuebles > 0) {
+      mensaje += `\n\n⚠️ ADVERTENCIA: Al eliminar esta comunidad, se eliminarán también todos sus ${numInmuebles} inmueble(s) asociado(s).`;
+      mensaje += `\n\nLos propietarios NO se eliminarán, solo se quitará su relación con los inmuebles.`;
+    }
+    
+    if (confirm(mensaje)) {
       this.apiService.deleteComunidad(comunidad.id).subscribe({
         next: () => {
           this.cargarComunidades();

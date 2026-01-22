@@ -8,13 +8,15 @@
         <a routerLink="/incidencias" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">
           {{ esProveedor ? 'MIS INCIDENCIAS' : 'INCIDENCIAS' }}
         </a>
+        <ng-container *ngIf="!esProveedor && !esPropietario">
+          <a routerLink="/comunidades" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">COMUNIDADES</a>
+        </ng-container>
         <ng-container *ngIf="!esProveedor">
           <a routerLink="/inmuebles" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">{{ esPropietario ? 'MIS INMUEBLES' : 'INMUEBLES' }}</a>
-          <ng-container *ngIf="!esPropietario">
-            <a routerLink="/comunidades" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">COMUNIDADES</a>
-            <a routerLink="/propietarios" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">PROPIETARIOS</a>
-            <a routerLink="/proveedores" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">PROVEEDORES</a>
-          </ng-container>
+        </ng-container>
+        <ng-container *ngIf="!esProveedor && !esPropietario">
+          <a routerLink="/propietarios" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">PROPIETARIOS</a>
+          <a routerLink="/proveedores" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">PROVEEDORES</a>
         </ng-container>
       </nav>
     </div>

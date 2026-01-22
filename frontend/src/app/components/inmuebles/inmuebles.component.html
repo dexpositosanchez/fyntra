@@ -6,9 +6,11 @@
       </div>
       <nav class="main-nav">
         <a routerLink="/incidencias" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">INCIDENCIAS</a>
-        <a routerLink="/inmuebles" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">{{ esPropietario ? 'MIS INMUEBLES' : 'INMUEBLES' }}</a>
         <ng-container *ngIf="!esPropietario">
           <a routerLink="/comunidades" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">COMUNIDADES</a>
+        </ng-container>
+        <a routerLink="/inmuebles" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">{{ esPropietario ? 'MIS INMUEBLES' : 'INMUEBLES' }}</a>
+        <ng-container *ngIf="!esPropietario">
           <a routerLink="/propietarios" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">PROPIETARIOS</a>
           <a routerLink="/proveedores" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">PROVEEDORES</a>
         </ng-container>
@@ -125,8 +127,10 @@
           <div class="selector-container">
             <div class="selected-items" *ngIf="inmuebleForm.propietario_ids.length > 0">
               <span class="selected-chip" *ngFor="let propId of inmuebleForm.propietario_ids">
-                {{ getPropietarioNombre(propId) }}
-                <button type="button" class="remove-chip" (click)="togglePropietario(propId)">×</button>
+                <ng-container *ngIf="getPropietarioNombre(propId)">
+                  {{ getPropietarioNombre(propId) }}
+                  <button type="button" class="remove-chip" (click)="togglePropietario(propId)">×</button>
+                </ng-container>
               </span>
             </div>
             <div class="selector-dropdown">

@@ -13,9 +13,9 @@
 | RF8. Informes de Operaciones | Informes de entregas, tiempos de ruta, eficiencia de conductores, costes de mantenimiento y rendimiento de la flota. | ⬜ | ⬜ / ✅ / ❌ |  |
 | RF9. Historial de Rutas | Historial completo de rutas realizadas con fecha, conductor, vehículo, pedidos entregados y tiempos. | ⬜ | ⬜ / ✅ / ❌ |  |
 | **FINCAS** |  |  |  |  |
-| RF10. Gestión de Comunidades | El sistema debe permitir a los administradores crear, editar, eliminar y consultar comunidades de propietarios, con información básica y asociación a múltiples inmuebles. | ✅ | ⬜ / ✅ / ❌ |  |
-| RF11. Gestión de Inmuebles | Registro de inmuebles asociados a comunidades, con datos como referencia catastral, dirección, metros cuadrados, tipo y múltiples propietarios asociados. | ✅ | ⬜ / ✅ / ❌ |  |
-| RF12. Gestión de Propietarios | Registro de propietarios con datos de contacto, asociación a inmuebles y acceso para consultar sus propiedades y crear incidencias. | ✅ | ⬜ / ✅ / ❌ |  |
+| RF10. Gestión de Comunidades | El sistema debe permitir a los administradores crear, editar, eliminar y consultar comunidades de propietarios, con información básica y asociación a múltiples inmuebles. | ✅ | ✅ |  |
+| RF11. Gestión de Inmuebles | Registro de inmuebles asociados a comunidades, con datos como referencia catastral, dirección, metros cuadrados, tipo y múltiples propietarios asociados. | ✅ | ✅ |  |
+| RF12. Gestión de Propietarios | Registro de propietarios con datos de contacto, asociación a inmuebles y acceso para consultar sus propiedades y crear incidencias. | ✅ | ✅ |  |
 | RF13. Gestión de Incidencias | Creación y gestión de incidencias asociadas a inmuebles, con título, descripción, prioridad, estados y trazabilidad completa del historial. | ✅ | ⬜ / ✅ / ❌ |  |
 | RF14. Asignación de Proveedores | Asignación de proveedores a incidencias, permitiendo múltiples incidencias por proveedor y múltiples actuaciones por incidencia. | ✅ | ⬜ / ✅ / ❌ |  |
 | RF15. Gestión de Actuaciones | Registro de actuaciones realizadas por proveedores, incluyendo descripción, fecha de realización y coste, y actualización del estado de la incidencia. | ✅ | ⬜ / ✅ / ❌ |  |

@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 
 class ComunidadBase(BaseModel):
@@ -19,9 +19,14 @@ class ComunidadUpdate(BaseModel):
     telefono: Optional[str] = None
     email: Optional[str] = None
 
+class InmuebleSimple(BaseModel):
+    id: int
+    referencia: str
+
 class ComunidadResponse(ComunidadBase):
     id: int
     creado_en: datetime
+    inmuebles: Optional[List[InmuebleSimple]] = None
     
     class Config:
         from_attributes = True

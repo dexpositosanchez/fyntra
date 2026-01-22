@@ -147,13 +147,18 @@ export class InmueblesComponent implements OnInit, OnDestroy {
     this.inmuebleIdEditando = inmueble.id;
     this.mostrarFormulario = true;
     
+    // Filtrar propietarios que realmente existen (por si alguno fue eliminado)
+    const propietariosValidos = inmueble.propietarios?.filter((p: any) => 
+      this.propietarios.some(prop => prop.id === p.id)
+    ) || [];
+    
     this.inmuebleForm = {
       comunidad_id: inmueble.comunidad_id || '',
       referencia: inmueble.referencia || '',
       direccion: inmueble.direccion || '',
       metros: inmueble.metros || null,
       tipo: inmueble.tipo || '',
-      propietario_ids: inmueble.propietarios?.map((p: any) => p.id) || []
+      propietario_ids: propietariosValidos.map((p: any) => p.id)
     };
   }
 
@@ -243,7 +248,8 @@ export class InmueblesComponent implements OnInit, OnDestroy {
 
   getPropietarioNombre(propietarioId: number): string {
     const prop = this.propietarios.find(p => p.id === propietarioId);
-    return prop ? `${prop.nombre} ${prop.apellidos || ''}`.trim() : 'Desconocido';
+    // Si no se encuentra, el propietario fue eliminado - retornar string vacío para que no se muestre
+    return prop ? `${prop.nombre} ${prop.apellidos || ''}`.trim() : '';
   }
 
   getPropietariosDisponibles(): any[] {

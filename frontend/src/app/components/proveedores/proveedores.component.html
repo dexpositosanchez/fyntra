@@ -5,11 +5,11 @@
         <img src="/assets/images/Isotipo.png" alt="Fyntra" class="logo-isotipo" />
       </div>
       <nav class="main-nav">
-        <a routerLink="/incidencias" class="nav-link" routerLinkActive="active">INCIDENCIAS</a>
-        <a routerLink="/inmuebles" class="nav-link" routerLinkActive="active">INMUEBLES</a>
-        <a routerLink="/comunidades" class="nav-link" routerLinkActive="active">COMUNIDADES</a>
-        <a routerLink="/propietarios" class="nav-link" routerLinkActive="active">PROPIETARIOS</a>
-        <a routerLink="/proveedores" class="nav-link" routerLinkActive="active">PROVEEDORES</a>
+        <a routerLink="/incidencias" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">INCIDENCIAS</a>
+        <a routerLink="/comunidades" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">COMUNIDADES</a>
+        <a routerLink="/inmuebles" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">INMUEBLES</a>
+        <a routerLink="/propietarios" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">PROPIETARIOS</a>
+        <a routerLink="/proveedores" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">PROVEEDORES</a>
       </nav>
     </div>
     <div class="user-section">

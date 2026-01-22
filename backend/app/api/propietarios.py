@@ -10,7 +10,7 @@ from app.api.dependencies import get_current_user
 from app.core.security import get_password_hash
 from app.core.cache import (
     get_from_cache_async, set_to_cache_async, generate_cache_key,
-    invalidate_propietarios_cache, delete_from_cache
+    invalidate_propietarios_cache, invalidate_inmuebles_cache, invalidate_usuarios_cache, delete_from_cache
 )
 
 router = APIRouter(prefix="/propietarios", tags=["propietarios"])
@@ -156,8 +156,10 @@ async def crear_propietario(
     db.commit()
     db.refresh(nuevo_propietario)
     
-    # Invalidar caché de propietarios
+    # Invalidar caché de propietarios e inmuebles (si se asignaron inmuebles)
     invalidate_propietarios_cache()
+    if propietario_data.inmueble_ids:
+        invalidate_inmuebles_cache()
     
     return PropietarioResponse.model_validate(propietario_to_response(nuevo_propietario))
 
@@ -210,8 +212,9 @@ async def actualizar_propietario(
     db.commit()
     db.refresh(propietario)
     
-    # Invalidar caché de propietarios
+    # Invalidar caché de propietarios e inmuebles (porque los inmuebles ahora tienen propietarios actualizados)
     invalidate_propietarios_cache()
+    invalidate_inmuebles_cache()
     
     return PropietarioResponse.model_validate(propietario_to_response(propietario))
 
@@ -234,11 +237,28 @@ async def eliminar_propietario(
             detail="Propietario no encontrado"
         )
     
+    # Guardar el ID del usuario antes de eliminar el propietario
+    usuario_id = propietario.usuario_id
+    
+    # Si el propietario tenía un usuario asociado, eliminarlo primero
+    # (antes de eliminar el propietario para evitar problemas de foreign key)
+    if usuario_id:
+        usuario = db.query(Usuario).filter(Usuario.id == usuario_id).first()
+        if usuario:
+            db.delete(usuario)
+            db.flush()  # Hacer flush para aplicar la eliminación del usuario antes de eliminar el propietario
+    
+    # Al eliminar el propietario, las relaciones con inmuebles se eliminarán
+    # automáticamente de la tabla intermedia (inmueble_propietario),
+    # pero los inmuebles NO se eliminarán.
     db.delete(propietario)
     db.commit()
     
-    # Invalidar caché de propietarios
+    # Invalidar caché de propietarios, inmuebles y usuarios
     invalidate_propietarios_cache()
+    invalidate_inmuebles_cache()
+    if usuario_id:
+        invalidate_usuarios_cache()
     
     return None
 

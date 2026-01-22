@@ -10,7 +10,7 @@ from app.schemas.inmueble import InmuebleCreate, InmuebleUpdate, InmuebleRespons
 from app.api.dependencies import get_current_user
 from app.core.cache import (
     get_from_cache_async, set_to_cache_async, generate_cache_key,
-    invalidate_inmuebles_cache, delete_from_cache
+    invalidate_inmuebles_cache, invalidate_comunidades_cache, invalidate_propietarios_cache, delete_from_cache
 )
 
 router = APIRouter(prefix="/inmuebles", tags=["inmuebles"])
@@ -94,10 +94,37 @@ async def listar_inmuebles(
         query = query.filter(Inmueble.tipo == tipo)
     
     inmuebles = query.offset(skip).limit(limit).all()
-    result = [InmuebleResponse.model_validate(inm).model_dump() for inm in inmuebles]
+    
+    # Construir respuesta manualmente para asegurar que las relaciones se incluyan correctamente
+    result = []
+    for inmueble in inmuebles:
+        inmueble_dict = {
+            'id': inmueble.id,
+            'comunidad_id': inmueble.comunidad_id,
+            'referencia': inmueble.referencia,
+            'direccion': inmueble.direccion,
+            'metros': inmueble.metros,
+            'tipo': inmueble.tipo,
+            'creado_en': inmueble.creado_en,
+        }
+        # Agregar comunidad
+        if inmueble.comunidad:
+            inmueble_dict['comunidad'] = {'id': inmueble.comunidad.id, 'nombre': inmueble.comunidad.nombre}
+        else:
+            inmueble_dict['comunidad'] = None
+        # Agregar propietarios
+        if inmueble.propietarios:
+            inmueble_dict['propietarios'] = [
+                {'id': p.id, 'nombre': p.nombre, 'apellidos': p.apellidos} 
+                for p in inmueble.propietarios
+            ]
+        else:
+            inmueble_dict['propietarios'] = []
+        result.append(InmuebleResponse(**inmueble_dict))
     
     # Almacenar en caché (5 minutos) - versión async con hilos
-    await set_to_cache_async(cache_key, result, expire=300)
+    result_dicts = [r.model_dump() for r in result]
+    await set_to_cache_async(cache_key, result_dicts, expire=300)
     
     return result
 
@@ -135,7 +162,30 @@ async def obtener_inmueble(
                 detail="No tiene acceso a este inmueble"
             )
     
-    result = InmuebleResponse.model_validate(inmueble)
+    # Construir respuesta manualmente
+    inmueble_dict = {
+        'id': inmueble.id,
+        'comunidad_id': inmueble.comunidad_id,
+        'referencia': inmueble.referencia,
+        'direccion': inmueble.direccion,
+        'metros': inmueble.metros,
+        'tipo': inmueble.tipo,
+        'creado_en': inmueble.creado_en,
+    }
+    # Agregar comunidad
+    if inmueble.comunidad:
+        inmueble_dict['comunidad'] = {'id': inmueble.comunidad.id, 'nombre': inmueble.comunidad.nombre}
+    else:
+        inmueble_dict['comunidad'] = None
+    # Agregar propietarios
+    if inmueble.propietarios:
+        inmueble_dict['propietarios'] = [
+            {'id': p.id, 'nombre': p.nombre, 'apellidos': p.apellidos} 
+            for p in inmueble.propietarios
+        ]
+    else:
+        inmueble_dict['propietarios'] = []
+    result = InmuebleResponse(**inmueble_dict)
     
     # Almacenar en caché (5 minutos)
     await set_to_cache_async(cache_key, result.model_dump(), expire=300)
@@ -177,12 +227,42 @@ async def crear_inmueble(
     db.commit()
     db.refresh(nuevo_inmueble)
     
-    # Invalidar caché de inmuebles
-    invalidate_inmuebles_cache()
+    # Cargar relaciones con joinedload
+    inmueble_completo = db.query(Inmueble).options(
+        joinedload(Inmueble.comunidad),
+        joinedload(Inmueble.propietarios)
+    ).filter(Inmueble.id == nuevo_inmueble.id).first()
     
-    # Cargar relaciones
-    db.refresh(nuevo_inmueble)
-    return InmuebleResponse.model_validate(nuevo_inmueble)
+    # Invalidar caché de inmuebles, comunidades y propietarios (si se asignaron propietarios)
+    invalidate_inmuebles_cache()
+    invalidate_comunidades_cache()
+    if inmueble_data.propietario_ids:
+        invalidate_propietarios_cache()
+    
+    # Construir respuesta manualmente
+    inmueble_dict = {
+        'id': inmueble_completo.id,
+        'comunidad_id': inmueble_completo.comunidad_id,
+        'referencia': inmueble_completo.referencia,
+        'direccion': inmueble_completo.direccion,
+        'metros': inmueble_completo.metros,
+        'tipo': inmueble_completo.tipo,
+        'creado_en': inmueble_completo.creado_en,
+    }
+    # Agregar comunidad
+    if inmueble_completo.comunidad:
+        inmueble_dict['comunidad'] = {'id': inmueble_completo.comunidad.id, 'nombre': inmueble_completo.comunidad.nombre}
+    else:
+        inmueble_dict['comunidad'] = None
+    # Agregar propietarios
+    if inmueble_completo.propietarios:
+        inmueble_dict['propietarios'] = [
+            {'id': p.id, 'nombre': p.nombre, 'apellidos': p.apellidos} 
+            for p in inmueble_completo.propietarios
+        ]
+    else:
+        inmueble_dict['propietarios'] = []
+    return InmuebleResponse(**inmueble_dict)
 
 @router.put("/{inmueble_id}", response_model=InmuebleResponse)
 async def actualizar_inmueble(
@@ -222,10 +302,41 @@ async def actualizar_inmueble(
     db.commit()
     db.refresh(inmueble)
     
-    # Invalidar caché de inmuebles
-    invalidate_inmuebles_cache()
+    # Recargar con relaciones
+    inmueble_completo = db.query(Inmueble).options(
+        joinedload(Inmueble.comunidad),
+        joinedload(Inmueble.propietarios)
+    ).filter(Inmueble.id == inmueble_id).first()
     
-    return InmuebleResponse.model_validate(inmueble)
+    # Invalidar caché de inmuebles, comunidades y propietarios (porque los propietarios pueden haber cambiado)
+    invalidate_inmuebles_cache()
+    invalidate_comunidades_cache()
+    invalidate_propietarios_cache()
+    
+    # Construir respuesta manualmente
+    inmueble_dict = {
+        'id': inmueble_completo.id,
+        'comunidad_id': inmueble_completo.comunidad_id,
+        'referencia': inmueble_completo.referencia,
+        'direccion': inmueble_completo.direccion,
+        'metros': inmueble_completo.metros,
+        'tipo': inmueble_completo.tipo,
+        'creado_en': inmueble_completo.creado_en,
+    }
+    # Agregar comunidad
+    if inmueble_completo.comunidad:
+        inmueble_dict['comunidad'] = {'id': inmueble_completo.comunidad.id, 'nombre': inmueble_completo.comunidad.nombre}
+    else:
+        inmueble_dict['comunidad'] = None
+    # Agregar propietarios
+    if inmueble_completo.propietarios:
+        inmueble_dict['propietarios'] = [
+            {'id': p.id, 'nombre': p.nombre, 'apellidos': p.apellidos} 
+            for p in inmueble_completo.propietarios
+        ]
+    else:
+        inmueble_dict['propietarios'] = []
+    return InmuebleResponse(**inmueble_dict)
 
 @router.delete("/{inmueble_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def eliminar_inmueble(
@@ -246,11 +357,24 @@ async def eliminar_inmueble(
             detail="Inmueble no encontrado"
         )
     
-    db.delete(inmueble)
+    # Al eliminar el inmueble, las relaciones con propietarios se eliminarán
+    # automáticamente de la tabla intermedia (inmueble_propietario),
+    # pero los propietarios NO se eliminarán.
+    # Cargar propietarios antes de eliminar para invalidar su caché
+    inmueble_con_propietarios = db.query(Inmueble).options(
+        joinedload(Inmueble.propietarios)
+    ).filter(Inmueble.id == inmueble_id).first()
+    
+    tiene_propietarios = inmueble_con_propietarios and len(inmueble_con_propietarios.propietarios) > 0
+    
+    db.delete(inmueble_con_propietarios)
     db.commit()
     
-    # Invalidar caché de inmuebles
+    # Invalidar caché de inmuebles, comunidades y propietarios (si tenía propietarios)
     invalidate_inmuebles_cache()
+    invalidate_comunidades_cache()
+    if tiene_propietarios:
+        invalidate_propietarios_cache()
     
     return None
 
