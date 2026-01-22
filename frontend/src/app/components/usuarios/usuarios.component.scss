@@ -342,6 +342,43 @@
 .password-btn .app-icon { color: #f57c00; }
 .delete-btn { color: #d32f2f; &:hover { background: #ffebee; } }
 
+// Pestañas por estado
+.tabs-container {
+  margin-bottom: 25px;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.tabs {
+  display: flex;
+  gap: 0;
+  flex-wrap: wrap;
+}
+
+.tab-button {
+  background: transparent;
+  border: none;
+  padding: 12px 24px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #5b6270;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  transition: all 0.2s;
+  position: relative;
+  margin-bottom: -2px;
+  
+  &:hover {
+    color: #1b9d8a;
+    background: #f2f4f7;
+  }
+  
+  &.active {
+    color: #1b9d8a;
+    border-bottom-color: #1b9d8a;
+    font-weight: 600;
+  }
+}
+
 .empty-state {
   grid-column: 1 / -1;
   text-align: center;

@@ -12,6 +12,9 @@ import { AuthService } from '../../services/auth.service';
 })
 export class ConductoresComponent implements OnInit, OnDestroy {
   conductores: any[] = [];
+  conductoresPorEstado: { [key: string]: any[] } = {};
+  tabs: { estado: string, label: string, count: number }[] = [];
+  tabActiva: string = '';
   mostrarFormulario: boolean = false;
   editandoConductor: boolean = false;
   conductorIdEditando: number | null = null;
@@ -84,6 +87,7 @@ export class ConductoresComponent implements OnInit, OnDestroy {
     this.apiService.getConductores(params).subscribe({
       next: (data) => {
         this.conductores = data;
+        this.organizarConductoresPorEstado();
         this.loading = false;
       },
       error: (err) => {
@@ -95,6 +99,52 @@ export class ConductoresComponent implements OnInit, OnDestroy {
         this.loading = false;
       }
     });
+  }
+
+  organizarConductoresPorEstado(): void {
+    // Inicializar objetos
+    this.conductoresPorEstado = {
+      'activo': [],
+      'inactivo': []
+    };
+
+    // Organizar por estado
+    this.conductores.forEach(conductor => {
+      const estado = conductor.activo ? 'activo' : 'inactivo';
+      this.conductoresPorEstado[estado].push(conductor);
+    });
+
+    // Crear tabs
+    this.tabs = [
+      {
+        estado: 'activo',
+        label: 'Activos',
+        count: this.conductoresPorEstado['activo'].length
+      },
+      {
+        estado: 'inactivo',
+        label: 'Inactivos',
+        count: this.conductoresPorEstado['inactivo'].length
+      }
+    ].filter(tab => tab.count > 0);
+
+    // Establecer la primera tab como activa
+    if (this.tabs.length > 0) {
+      const tabActivaExiste = this.tabs.some(tab => tab.estado === this.tabActiva);
+      if (!tabActivaExiste || !this.tabActiva) {
+        this.tabActiva = this.tabs[0].estado;
+      }
+    } else {
+      this.tabActiva = '';
+    }
+  }
+
+  cambiarTab(estado: string): void {
+    this.tabActiva = estado;
+  }
+
+  getConductoresTabActiva(): any[] {
+    return this.conductoresPorEstado[this.tabActiva] || [];
   }
 
   toggleAlertas(): void {
@@ -273,6 +323,22 @@ export class ConductoresComponent implements OnInit, OnDestroy {
     const month = (date.getMonth() + 1).toString().padStart(2, '0');
     const year = date.getFullYear().toString().padStart(4, '0');
     return `${day}/${month}/${year}`;
+  }
+
+  toggleActivo(conductor: any, event: Event): void {
+    event.stopPropagation();
+    const nuevoEstado = !conductor.activo;
+    this.apiService.updateConductor(conductor.id, { activo: nuevoEstado }).subscribe({
+      next: () => {
+        // Actualizar el estado localmente
+        conductor.activo = nuevoEstado;
+        this.organizarConductoresPorEstado();
+      },
+      error: (err) => {
+        this.error = err.error?.detail || 'Error al cambiar estado';
+        this.cargarConductores();
+      }
+    });
   }
 
   eliminarConductor(conductor: any, event: Event): void {

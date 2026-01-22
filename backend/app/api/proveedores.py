@@ -9,7 +9,7 @@ from app.api.dependencies import get_current_user
 from app.core.security import get_password_hash
 from app.core.cache import (
     get_from_cache_async, set_to_cache_async, generate_cache_key,
-    invalidate_proveedores_cache, delete_from_cache
+    invalidate_proveedores_cache, invalidate_usuarios_cache, delete_from_cache
 )
 
 router = APIRouter(prefix="/proveedores", tags=["proveedores"])
@@ -118,6 +118,7 @@ async def crear_proveedor(
         db.add(nuevo_usuario)
         db.flush()  # Para obtener el ID
         usuario_id = nuevo_usuario.id
+        invalidate_usuarios_cache()
     
     # Crear proveedor (excluyendo password del dump)
     proveedor_dict = proveedor_data.model_dump(exclude={'password', 'usuario_id'})
@@ -174,7 +175,19 @@ async def eliminar_proveedor(
     if not proveedor:
         raise HTTPException(status_code=404, detail="Proveedor no encontrado")
     
+    # Guardar el usuario_id antes de eliminar el proveedor
+    usuario_id = proveedor.usuario_id
+    
+    # Eliminar el proveedor primero
     db.delete(proveedor)
+    db.flush()  # Asegurar que se elimine el proveedor antes de eliminar el usuario
+    
+    # Si el proveedor tenía un usuario relacionado, eliminarlo también
+    if usuario_id:
+        usuario = db.query(Usuario).filter(Usuario.id == usuario_id).first()
+        if usuario:
+            db.delete(usuario)
+    
     db.commit()
     
     # Invalidar caché de proveedores

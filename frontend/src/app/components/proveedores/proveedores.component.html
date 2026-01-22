@@ -54,8 +54,10 @@
         
         <div class="form-row">
           <div class="form-group">
-            <label for="email">Email</label>
-            <input type="email" id="email" [(ngModel)]="proveedorForm.email" name="email" class="form-input">
+            <label for="email">Email {{ proveedorForm.crearUsuario && !editandoProveedor ? '*' : '' }}</label>
+            <input type="email" id="email" [(ngModel)]="proveedorForm.email" name="email" class="form-input"
+                   [required]="proveedorForm.crearUsuario && !editandoProveedor"
+                   placeholder="Obligatorio si creas acceso al sistema">
           </div>
           <div class="form-group">
             <label for="telefono">Teléfono</label>
@@ -78,6 +80,14 @@
               <option [ngValue]="false">Inactivo</option>
             </select>
           </div>
+        </div>
+        
+        <div class="form-group" *ngIf="proveedorForm.especialidad === 'Otros'">
+          <label for="especialidadOtros">Especificar especialidad *</label>
+          <input type="text" id="especialidadOtros" [(ngModel)]="proveedorForm.especialidadOtros" 
+                 name="especialidadOtros" class="form-input" 
+                 [required]="proveedorForm.especialidad === 'Otros'"
+                 placeholder="Escribe la especialidad">
         </div>
 
         <!-- Sección para crear usuario (solo al crear nuevo proveedor) -->
@@ -125,50 +135,57 @@
             <option *ngFor="let esp of especialidades" [value]="esp">{{ esp }}</option>
           </select>
         </div>
-        <div class="filter-group">
-          <label>Estado</label>
-          <select [(ngModel)]="filtroActivo" (change)="aplicarFiltros()" class="filter-input">
-            <option value="">Todos</option>
-            <option value="true">Activos</option>
-            <option value="false">Inactivos</option>
-          </select>
-        </div>
       </div>
 
       <div *ngIf="loading" class="loading">Cargando...</div>
       <div *ngIf="error && !mostrarFormulario" class="error">{{ error }}</div>
       
-      <div class="proveedores-grid" *ngIf="!loading">
-        <div class="proveedor-card" *ngFor="let proveedor of proveedores" 
-             [class.inactivo]="!proveedor.activo" (click)="editarProveedor(proveedor)">
-          <div class="card-header">
-            <span class="especialidad-badge" *ngIf="proveedor.especialidad">{{ proveedor.especialidad }}</span>
-            <span class="estado-badge" [class.activo]="proveedor.activo" [class.inactivo]="!proveedor.activo">
-              {{ proveedor.activo ? 'Activo' : 'Inactivo' }}
-            </span>
-          </div>
-          <h3 class="proveedor-nombre">{{ proveedor.nombre }}</h3>
-          <p class="proveedor-contacto" *ngIf="proveedor.email">
-            <span class="app-icon">email</span> {{ proveedor.email }}
-          </p>
-          <p class="proveedor-contacto" *ngIf="proveedor.telefono">
-            <span class="app-icon">phone</span> {{ proveedor.telefono }}
-          </p>
-          <div class="card-actions">
-            <button class="action-btn toggle-btn" (click)="toggleActivo(proveedor, $event)" 
-                    [title]="proveedor.activo ? 'Desactivar' : 'Activar'">
-              <span class="app-icon">{{ proveedor.activo ? 'toggle_on' : 'toggle_off' }}</span>
-            </button>
-            <button class="action-btn delete-btn" (click)="eliminarProveedor(proveedor, $event)" title="Eliminar">
-              <span class="app-icon">delete</span>
+      <div *ngIf="!loading && !error">
+        <!-- Pestañas por estado -->
+        <div class="tabs-container" *ngIf="tabs.length > 0">
+          <div class="tabs">
+            <button 
+              *ngFor="let tab of tabs"
+              class="tab-button"
+              [class.active]="tabActiva === tab.estado"
+              (click)="cambiarTab(tab.estado)">
+              {{ tab.label }} ({{ tab.count }})
             </button>
           </div>
         </div>
-        
-        <div class="empty-state" *ngIf="proveedores.length === 0">
-          <span class="app-icon empty-icon">business</span>
-          <p>No hay proveedores registrados</p>
-          <button class="add-button" (click)="mostrarForm()">Crear primer proveedor</button>
+
+        <!-- Contenido de la pestaña activa -->
+        <div *ngIf="tabActiva && tabs.length > 0">
+          <div class="proveedores-grid" *ngIf="getProveedoresTabActiva().length > 0">
+            <div class="proveedor-card" *ngFor="let proveedor of getProveedoresTabActiva()" 
+                 [class.inactivo]="!proveedor.activo" (click)="editarProveedor(proveedor)">
+              <div class="card-header">
+                <span class="especialidad-badge" *ngIf="proveedor.especialidad">{{ proveedor.especialidad }}</span>
+              </div>
+              <h3 class="proveedor-nombre">{{ proveedor.nombre }}</h3>
+              <p class="proveedor-contacto" *ngIf="proveedor.email">
+                <span class="app-icon">email</span> {{ proveedor.email }}
+              </p>
+              <p class="proveedor-contacto" *ngIf="proveedor.telefono">
+                <span class="app-icon">phone</span> {{ proveedor.telefono }}
+              </p>
+              <div class="card-actions">
+                <button class="action-btn toggle-btn" (click)="toggleActivo(proveedor, $event)" 
+                        [title]="proveedor.activo ? 'Desactivar' : 'Activar'">
+                  <span class="app-icon">{{ proveedor.activo ? 'toggle_on' : 'toggle_off' }}</span>
+                </button>
+                <button class="action-btn delete-btn" (click)="eliminarProveedor(proveedor, $event)" title="Eliminar">
+                  <span class="app-icon">delete</span>
+                </button>
+              </div>
+            </div>
+          </div>
+          
+          <div class="empty-state" *ngIf="getProveedoresTabActiva().length === 0">
+            <span class="app-icon empty-icon">business</span>
+            <p>No hay proveedores registrados</p>
+            <button class="add-button" (click)="mostrarForm()">Crear primer proveedor</button>
+          </div>
         </div>
       </div>
     </div>

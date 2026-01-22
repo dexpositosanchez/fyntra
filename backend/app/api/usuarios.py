@@ -174,6 +174,9 @@ async def actualizar_usuario(
     
     db.commit()
     db.refresh(usuario)
+    
+    invalidate_usuarios_cache()
+    
     return usuario
 
 @router.delete("/{usuario_id}", status_code=status.HTTP_204_NO_CONTENT)

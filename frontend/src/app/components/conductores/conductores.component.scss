@@ -486,6 +486,30 @@
   }
 }
 
+.action-btn {
+  padding: 6px 10px;
+  border: none;
+  border-radius: 6px;
+  background: #f5f5f5;
+  cursor: pointer;
+  transition: background 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  
+  &:hover { 
+    background: #e0e0e0; 
+  }
+  
+  .app-icon { 
+    font-size: 16px; 
+  }
+}
+
+.toggle-btn .app-icon { 
+  color: #1b9d8a; 
+}
+
 .delete-button {
   background: transparent;
   border: none;
@@ -504,6 +528,61 @@
   
   .app-icon {
     font-size: 18px;
+  }
+}
+
+// Pestañas por estado
+.tabs-container {
+  margin-bottom: 25px;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.tabs {
+  display: flex;
+  gap: 0;
+  flex-wrap: wrap;
+}
+
+.tab-button {
+  background: transparent;
+  border: none;
+  padding: 12px 24px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #5b6270;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  transition: all 0.2s;
+  position: relative;
+  margin-bottom: -2px;
+  
+  &:hover {
+    color: #1b9d8a;
+    background: #f2f4f7;
+  }
+  
+  &.active {
+    color: #1b9d8a;
+    border-bottom-color: #1b9d8a;
+    font-weight: 600;
+  }
+}
+
+.empty-state {
+  text-align: center;
+  padding: 40px;
+  color: #6f7785;
+  
+  .empty-icon {
+    font-size: 48px;
+    color: #ccc;
+    display: block;
+    margin-bottom: 16px;
+  }
+  
+  p {
+    margin: 0;
+    font-size: 16px;
   }
 }
 

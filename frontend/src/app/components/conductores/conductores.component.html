@@ -212,17 +212,34 @@
         <div *ngIf="loading" class="loading">Cargando...</div>
         <div *ngIf="error" class="error">{{ error }}</div>
         
-        <div class="conductores-grid" *ngIf="!loading && !error">
-          <div class="conductor-card" 
-               *ngFor="let conductor of conductores" 
-               [class]="'conductor-card ' + getEstadoClass(conductor.activo)"
-               (click)="editarConductor(conductor)">
+        <div *ngIf="!loading && !error">
+          <!-- Pestañas por estado -->
+          <div class="tabs-container" *ngIf="tabs.length > 0">
+            <div class="tabs">
+              <button 
+                *ngFor="let tab of tabs"
+                class="tab-button"
+                [class.active]="tabActiva === tab.estado"
+                (click)="cambiarTab(tab.estado)">
+                {{ tab.label }} ({{ tab.count }})
+              </button>
+            </div>
+          </div>
+
+          <!-- Contenido de la pestaña activa -->
+          <div *ngIf="tabActiva && tabs.length > 0">
+            <div class="conductores-grid" *ngIf="getConductoresTabActiva().length > 0">
+              <div class="conductor-card" 
+                   *ngFor="let conductor of getConductoresTabActiva()" 
+                   [class]="'conductor-card ' + getEstadoClass(conductor.activo)"
+                   (click)="editarConductor(conductor)">
             <div class="card-header">
               <h3>{{ conductor.nombre }} {{ conductor.apellidos }}</h3>
               <div class="header-right">
-                <span [class]="'status-badge ' + getEstadoClass(conductor.activo)">
-                  {{ getEstadoTexto(conductor.activo) }}
-                </span>
+                <button class="action-btn toggle-btn" (click)="toggleActivo(conductor, $event)" 
+                        [title]="conductor.activo ? 'Desactivar' : 'Activar'">
+                  <span class="app-icon">{{ conductor.activo ? 'toggle_on' : 'toggle_off' }}</span>
+                </button>
                 <button class="delete-button" (click)="eliminarConductor(conductor, $event)" title="Eliminar conductor">
                   <span class="app-icon">delete</span>
                 </button>
@@ -239,9 +256,16 @@
               </span>
             </div>
           </div>
+          </div>
+            
+          <div class="empty-state" *ngIf="getConductoresTabActiva().length === 0">
+            <span class="app-icon empty-icon">person</span>
+            <p>No hay conductores registrados</p>
+          </div>
         </div>
       </div>
     </div>
+  </div>
 
     <!-- Secciones placeholder para otras rutas -->
     <div *ngIf="currentRoute.includes('/vehiculos')" class="table-container">

@@ -10,6 +10,9 @@ import { AuthService } from '../../services/auth.service';
 })
 export class UsuariosComponent implements OnInit {
   usuarios: any[] = [];
+  usuariosPorEstado: { [key: string]: any[] } = {};
+  tabs: { estado: string, label: string, count: number }[] = [];
+  tabActiva: string = '';
   loading: boolean = false;
   error: string = '';
   mostrarFormulario: boolean = false;
@@ -18,7 +21,6 @@ export class UsuariosComponent implements OnInit {
   mostrarMenuUsuario: boolean = false;
   usuario: any = null;
   filtroRol: string = '';
-  filtroActivo: string = '';
   mostrarCambiarPassword: boolean = false;
   nuevaPassword: string = '';
 
@@ -62,7 +64,7 @@ export class UsuariosComponent implements OnInit {
     this.apiService.getUsuarios().subscribe({
       next: (data) => {
         this.usuarios = data;
-        this.aplicarFiltros();
+        this.organizarUsuariosPorEstado();
         this.loading = false;
       },
       error: (err) => {
@@ -72,8 +74,60 @@ export class UsuariosComponent implements OnInit {
     });
   }
 
+  organizarUsuariosPorEstado(): void {
+    // Inicializar objetos
+    this.usuariosPorEstado = {
+      'activo': [],
+      'inactivo': []
+    };
+
+    // Filtrar por rol si hay filtro
+    let usuariosFiltrados = this.usuarios;
+    if (this.filtroRol) {
+      usuariosFiltrados = this.usuarios.filter(u => u.rol === this.filtroRol);
+    }
+
+    // Organizar por estado
+    usuariosFiltrados.forEach(usuario => {
+      const estado = usuario.activo ? 'activo' : 'inactivo';
+      this.usuariosPorEstado[estado].push(usuario);
+    });
+
+    // Crear tabs
+    this.tabs = [
+      {
+        estado: 'activo',
+        label: 'Activos',
+        count: this.usuariosPorEstado['activo'].length
+      },
+      {
+        estado: 'inactivo',
+        label: 'Inactivos',
+        count: this.usuariosPorEstado['inactivo'].length
+      }
+    ].filter(tab => tab.count > 0);
+
+    // Establecer la primera tab como activa
+    if (this.tabs.length > 0) {
+      const tabActivaExiste = this.tabs.some(tab => tab.estado === this.tabActiva);
+      if (!tabActivaExiste || !this.tabActiva) {
+        this.tabActiva = this.tabs[0].estado;
+      }
+    } else {
+      this.tabActiva = '';
+    }
+  }
+
+  cambiarTab(estado: string): void {
+    this.tabActiva = estado;
+  }
+
+  getUsuariosTabActiva(): any[] {
+    return this.usuariosPorEstado[this.tabActiva] || [];
+  }
+
   aplicarFiltros(): void {
-    // Los filtros se aplican en el template con *ngIf
+    this.organizarUsuariosPorEstado();
   }
 
   mostrarForm(): void {
@@ -167,6 +221,14 @@ export class UsuariosComponent implements OnInit {
     });
   }
 
+  toggleActivo(usuario: any, event: Event): void {
+    event.stopPropagation();
+    this.apiService.actualizarUsuario(usuario.id, { activo: !usuario.activo }).subscribe({
+      next: () => this.cargarUsuarios(),
+      error: (err) => this.error = err.error?.detail || 'Error al cambiar estado'
+    });
+  }
+
   eliminarUsuario(usuario: any): void {
     if (confirm(`¿Eliminar usuario "${usuario.nombre}" (${usuario.email})?`)) {
       this.apiService.eliminarUsuario(usuario.id).subscribe({
@@ -225,20 +287,6 @@ export class UsuariosComponent implements OnInit {
     return rolObj ? rolObj.modulo : '';
   }
 
-  getUsuariosFiltrados(): any[] {
-    let filtrados = [...this.usuarios];
-    
-    if (this.filtroRol) {
-      filtrados = filtrados.filter(u => u.rol === this.filtroRol);
-    }
-    
-    if (this.filtroActivo !== '') {
-      const activo = this.filtroActivo === 'true';
-      filtrados = filtrados.filter(u => u.activo === activo);
-    }
-    
-    return filtrados;
-  }
 
   irAModulos(): void {
     this.router.navigate(['/modulos']);

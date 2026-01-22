@@ -134,65 +134,75 @@
       <div class="filters-section">
         <div class="filter-group">
           <label for="filtroRol">Rol:</label>
-          <select id="filtroRol" [(ngModel)]="filtroRol" name="filtroRol" class="filter-input">
+          <select id="filtroRol" [(ngModel)]="filtroRol" (change)="aplicarFiltros()" name="filtroRol" class="filter-input">
             <option value="">Todos</option>
             <option *ngFor="let rol of roles" [value]="rol.value">{{ rol.label }}</option>
-          </select>
-        </div>
-        <div class="filter-group">
-          <label for="filtroActivo">Estado:</label>
-          <select id="filtroActivo" [(ngModel)]="filtroActivo" name="filtroActivo" class="filter-input">
-            <option value="">Todos</option>
-            <option value="true">Activo</option>
-            <option value="false">Inactivo</option>
           </select>
         </div>
       </div>
 
       <div *ngIf="error && !mostrarFormulario" class="error-message">{{ error }}</div>
 
-      <div class="usuarios-grid" *ngIf="!loading">
-        <div class="usuario-card" *ngFor="let usuario of getUsuariosFiltrados()">
-          <div class="card-header">
-            <div class="usuario-info">
-              <h3>{{ usuario.nombre }}</h3>
-              <span class="usuario-email">{{ usuario.email }}</span>
-            </div>
-            <span class="estado-badge" [class.activo]="usuario.activo" [class.inactivo]="!usuario.activo">
-              {{ usuario.activo ? 'Activo' : 'Inactivo' }}
-            </span>
-          </div>
-          <div class="card-body">
-            <div class="info-row">
-              <span class="label">Rol:</span>
-              <span class="value">{{ getRolLabel(usuario.rol) }}</span>
-            </div>
-            <div class="info-row">
-              <span class="label">Módulo:</span>
-              <span class="value">{{ getModuloLabel(usuario.rol) }}</span>
-            </div>
-            <div class="info-row">
-              <span class="label">Creado:</span>
-              <span class="value">{{ usuario.creado_en | date:'dd/MM/yyyy' }}</span>
-            </div>
-          </div>
-          <div class="card-actions">
-            <button class="action-btn edit-btn" (click)="editarUsuario(usuario)" title="Editar">
-              <span class="app-icon">edit</span>
-            </button>
-            <button class="action-btn password-btn" (click)="abrirCambiarPassword(usuario)" title="Cambiar contraseña">
-              <span class="app-icon">lock</span>
-            </button>
-            <button class="action-btn delete-btn" (click)="eliminarUsuario(usuario)" title="Eliminar">
-              <span class="app-icon">delete</span>
+      <div *ngIf="!loading && !error">
+        <!-- Pestañas por estado -->
+        <div class="tabs-container" *ngIf="tabs.length > 0">
+          <div class="tabs">
+            <button 
+              *ngFor="let tab of tabs"
+              class="tab-button"
+              [class.active]="tabActiva === tab.estado"
+              (click)="cambiarTab(tab.estado)">
+              {{ tab.label }} ({{ tab.count }})
             </button>
           </div>
         </div>
-      </div>
 
-      <div class="empty-state" *ngIf="!loading && getUsuariosFiltrados().length === 0">
-        <span class="app-icon empty-icon">people</span>
-        <p>No hay usuarios que coincidan con los filtros</p>
+        <!-- Contenido de la pestaña activa -->
+        <div *ngIf="tabActiva && tabs.length > 0">
+          <div class="usuarios-grid" *ngIf="getUsuariosTabActiva().length > 0">
+            <div class="usuario-card" *ngFor="let usuario of getUsuariosTabActiva()">
+              <div class="card-header">
+                <div class="usuario-info">
+                  <h3>{{ usuario.nombre }}</h3>
+                  <span class="usuario-email">{{ usuario.email }}</span>
+                </div>
+              </div>
+              <div class="card-body">
+                <div class="info-row">
+                  <span class="label">Rol:</span>
+                  <span class="value">{{ getRolLabel(usuario.rol) }}</span>
+                </div>
+                <div class="info-row">
+                  <span class="label">Módulo:</span>
+                  <span class="value">{{ getModuloLabel(usuario.rol) }}</span>
+                </div>
+                <div class="info-row">
+                  <span class="label">Creado:</span>
+                  <span class="value">{{ usuario.creado_en | date:'dd/MM/yyyy' }}</span>
+                </div>
+              </div>
+              <div class="card-actions">
+                <button class="action-btn toggle-btn" (click)="toggleActivo(usuario, $event)" 
+                        [title]="usuario.activo ? 'Desactivar' : 'Activar'">
+                  <span class="app-icon">{{ usuario.activo ? 'toggle_on' : 'toggle_off' }}</span>
+                </button>
+                <button class="action-btn edit-btn" (click)="editarUsuario(usuario)" title="Editar">
+                  <span class="app-icon">edit</span>
+                </button>
+                <button class="action-btn password-btn" (click)="abrirCambiarPassword(usuario)" title="Cambiar contraseña">
+                  <span class="app-icon">lock</span>
+                </button>
+                <button class="action-btn delete-btn" (click)="eliminarUsuario(usuario)" title="Eliminar">
+                  <span class="app-icon">delete</span>
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="empty-state" *ngIf="getUsuariosTabActiva().length === 0">
+            <span class="app-icon empty-icon">people</span>
+            <p>No hay usuarios registrados</p>
+          </div>
+        </div>
       </div>
 
       <div class="loading-state" *ngIf="loading">

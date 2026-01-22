@@ -10,6 +10,9 @@ import { AuthService } from '../../services/auth.service';
 })
 export class ProveedoresComponent implements OnInit {
   proveedores: any[] = [];
+  proveedoresPorEstado: { [key: string]: any[] } = {};
+  tabs: { estado: string, label: string, count: number }[] = [];
+  tabActiva: string = '';
   loading: boolean = false;
   error: string = '';
   mostrarFormulario: boolean = false;
@@ -18,13 +21,13 @@ export class ProveedoresComponent implements OnInit {
   mostrarMenuUsuario: boolean = false;
   usuario: any = null;
   filtroEspecialidad: string = '';
-  filtroActivo: string = '';
 
   proveedorForm: any = {
     nombre: '',
     email: '',
     telefono: '',
     especialidad: '',
+    especialidadOtros: '',
     activo: true,
     password: '',
     crearUsuario: false
@@ -58,9 +61,6 @@ export class ProveedoresComponent implements OnInit {
   cargarProveedores(): void {
     this.loading = true;
     const params: any = {};
-    if (this.filtroActivo !== '') {
-      params.activo = this.filtroActivo === 'true';
-    }
     if (this.filtroEspecialidad) {
       params.especialidad = this.filtroEspecialidad;
     }
@@ -68,6 +68,7 @@ export class ProveedoresComponent implements OnInit {
     this.apiService.getProveedores(params).subscribe({
       next: (data) => {
         this.proveedores = data;
+        this.organizarProveedoresPorEstado();
         this.loading = false;
       },
       error: (err) => {
@@ -77,8 +78,72 @@ export class ProveedoresComponent implements OnInit {
     });
   }
 
+  organizarProveedoresPorEstado(): void {
+    // Inicializar objetos
+    this.proveedoresPorEstado = {
+      'activo': [],
+      'inactivo': []
+    };
+
+    // Filtrar por especialidad si hay filtro
+    let proveedoresFiltrados = this.proveedores;
+    if (this.filtroEspecialidad) {
+      if (this.filtroEspecialidad === 'Otros') {
+        // Si el filtro es "Otros", mostrar proveedores con especialidad personalizada (no en la lista fija)
+        proveedoresFiltrados = this.proveedores.filter(p => 
+          p.especialidad && 
+          p.especialidad.trim().length > 0 && 
+          !this.especialidades.includes(p.especialidad)
+        );
+      } else {
+        // Para otras especialidades, buscar coincidencia exacta
+        proveedoresFiltrados = this.proveedores.filter(p => 
+          p.especialidad && p.especialidad === this.filtroEspecialidad
+        );
+      }
+    }
+
+    // Organizar por estado
+    proveedoresFiltrados.forEach(proveedor => {
+      const estado = proveedor.activo ? 'activo' : 'inactivo';
+      this.proveedoresPorEstado[estado].push(proveedor);
+    });
+
+    // Crear tabs
+    this.tabs = [
+      {
+        estado: 'activo',
+        label: 'Activos',
+        count: this.proveedoresPorEstado['activo'].length
+      },
+      {
+        estado: 'inactivo',
+        label: 'Inactivos',
+        count: this.proveedoresPorEstado['inactivo'].length
+      }
+    ].filter(tab => tab.count > 0);
+
+    // Establecer la primera tab como activa
+    if (this.tabs.length > 0) {
+      const tabActivaExiste = this.tabs.some(tab => tab.estado === this.tabActiva);
+      if (!tabActivaExiste || !this.tabActiva) {
+        this.tabActiva = this.tabs[0].estado;
+      }
+    } else {
+      this.tabActiva = '';
+    }
+  }
+
+  cambiarTab(estado: string): void {
+    this.tabActiva = estado;
+  }
+
+  getProveedoresTabActiva(): any[] {
+    return this.proveedoresPorEstado[this.tabActiva] || [];
+  }
+
   aplicarFiltros(): void {
-    this.cargarProveedores();
+    this.organizarProveedoresPorEstado();
   }
 
   mostrarForm(): void {
@@ -90,6 +155,7 @@ export class ProveedoresComponent implements OnInit {
       email: '',
       telefono: '',
       especialidad: '',
+      especialidadOtros: '',
       activo: true,
       password: '',
       crearUsuario: false
@@ -100,11 +166,15 @@ export class ProveedoresComponent implements OnInit {
     this.mostrarFormulario = true;
     this.editandoProveedor = true;
     this.proveedorIdEditando = proveedor.id;
+    // Si la especialidad no está en la lista fija, es "Otros" → mostrar en campo libre
+    const esp = (proveedor.especialidad || '').trim();
+    const esOtros = esp.length > 0 && !this.especialidades.includes(esp);
     this.proveedorForm = {
       nombre: proveedor.nombre,
       email: proveedor.email || '',
       telefono: proveedor.telefono || '',
-      especialidad: proveedor.especialidad || '',
+      especialidad: esOtros ? 'Otros' : esp,
+      especialidadOtros: esOtros ? esp : '',
       activo: proveedor.activo
     };
   }
@@ -120,16 +190,32 @@ export class ProveedoresComponent implements OnInit {
     this.loading = true;
     this.error = '';
 
+    // Si especialidad es "Otros", guardar el texto libre (y mostrarlo en listado/edición)
+    let especialidad = this.proveedorForm.especialidad || null;
+    if (especialidad === 'Otros' && this.proveedorForm.especialidadOtros?.trim()) {
+      especialidad = this.proveedorForm.especialidadOtros.trim();
+    }
+
     const data: any = {
       nombre: this.proveedorForm.nombre,
-      email: this.proveedorForm.email || null,
+      email: this.proveedorForm.email?.trim() || null,
       telefono: this.proveedorForm.telefono || null,
-      especialidad: this.proveedorForm.especialidad || null,
+      especialidad,
       activo: this.proveedorForm.activo
     };
 
-    // Si se quiere crear usuario, añadir contraseña
-    if (this.proveedorForm.crearUsuario && this.proveedorForm.password && !this.editandoProveedor) {
+    // Crear usuario: obligatorio email + contraseña cuando crearUsuario está marcado
+    if (this.proveedorForm.crearUsuario && !this.editandoProveedor) {
+      if (!data.email) {
+        this.error = 'El email es obligatorio para crear acceso al sistema.';
+        this.loading = false;
+        return;
+      }
+      if (!this.proveedorForm.password || !this.proveedorForm.password.trim()) {
+        this.error = 'La contraseña es obligatoria para crear acceso al sistema.';
+        this.loading = false;
+        return;
+      }
       data.password = this.proveedorForm.password;
     }
 
@@ -173,7 +259,9 @@ export class ProveedoresComponent implements OnInit {
   toggleActivo(proveedor: any, event: Event): void {
     event.stopPropagation();
     this.apiService.updateProveedor(proveedor.id, { activo: !proveedor.activo }).subscribe({
-      next: () => this.cargarProveedores(),
+      next: () => {
+        this.cargarProveedores();
+      },
       error: (err) => this.error = err.error?.detail || 'Error al cambiar estado'
     });
   }

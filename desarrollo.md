@@ -48,7 +48,7 @@
 | RNF11. Accesibilidad | El sistema debe cumplir con las pautas de accesibilidad WCAG 2.1 nivel AA para garantizar el acceso a usuarios con discapacidades. | ⬜ | ⬜ / ✅ / ❌ |  |
 | RNF12. Código Limpio y Documentado | El código fuente debe estar bien documentado, seguir estándares de codificación y ser fácilmente mantenible por otros desarrolladores. | ⬜ | ⬜ / ✅ / ❌ |  |
 | RNF13. Arquitectura Modular | El sistema debe estar diseñado con arquitectura modular que permita modificar o añadir funcionalidades sin afectar otras partes del sistema. | ⬜ | ⬜ / ✅ / ❌ |  |
-| RNF14. Versionado | El sistema debe utilizar control de versiones (Git) y mantener un historial completo de cambios. | ⬜ | ⬜ / ✅ / ❌ |  |
+| RNF14. Versionado | El sistema debe utilizar control de versiones (Git) y mantener un historial completo de cambios. | ✅ | ✅ |  |
 | RNF15. Navegadores Soportados | La aplicación web debe funcionar correctamente en los navegadores más utilizados (Chrome, Firefox, Safari, Edge) en sus versiones actuales y anteriores. | ✅ | ✅ |  |
 | RNF16. Plataforma Móvil | La aplicación móvil Android debe funcionar en dispositivos Android con versión 8.0 (API 26) o superior, adaptándose a diferentes tamaños de pantalla y resoluciones y siguiendo Material Design. | ⬜ | ⬜ / ✅ / ❌ |  |
 | RNF17. Rendimiento Móvil | La aplicación móvil debe cargar las pantallas principales en menos de 2 segundos y responder a las interacciones del usuario en menos de 100 ms. | ⬜ | ⬜ / ✅ / ❌ |  |
