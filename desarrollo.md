@@ -36,7 +36,7 @@
 | Nº y nombre de requisito | Explicación | Desarrollado | Revisado | Observaciones |
 | --- | --- | --- | --- | --- |
 | RNF1. Tiempo de Respuesta | El sistema debe responder a las peticiones del usuario en menos de 2 segundos en el 95% de los casos, incluso con 100 usuarios concurrentes. | ✅ | ✅ |  |
-| RNF2. Disponibilidad | El sistema debe tener una disponibilidad del 99.5% (máximo 43 horas de inactividad no planificada al año). | ⬜ | ⬜ / ✅ / ❌ |  |
+| RNF2. Disponibilidad | El sistema debe tener una disponibilidad del 99.5% (máximo 43 horas de inactividad no planificada al año). | ✅ | ✅ | |
 | RNF3. Escalabilidad | El sistema debe poder escalar horizontalmente para soportar el crecimiento de usuarios y datos sin requerir cambios arquitectónicos mayores. | ⬜ | ⬜ / ✅ / ❌ |  |
 | RNF4. Autenticación Segura | Las contraseñas deben almacenarse mediante hash seguro (bcrypt o similar) y nunca en texto plano. Debe implementarse protección contra ataques de fuerza bruta. | ⬜ | ⬜ / ✅ / ❌ |  |
 | RNF5. Autorización Granular | El sistema debe implementar control de acceso basado en roles (RBAC) que restrinja las funcionalidades según el perfil del usuario. | ⬜ | ⬜ / ✅ / ❌ |  |
@@ -49,7 +49,7 @@
 | RNF12. Código Limpio y Documentado | El código fuente debe estar bien documentado, seguir estándares de codificación y ser fácilmente mantenible por otros desarrolladores. | ⬜ | ⬜ / ✅ / ❌ |  |
 | RNF13. Arquitectura Modular | El sistema debe estar diseñado con arquitectura modular que permita modificar o añadir funcionalidades sin afectar otras partes del sistema. | ⬜ | ⬜ / ✅ / ❌ |  |
 | RNF14. Versionado | El sistema debe utilizar control de versiones (Git) y mantener un historial completo de cambios. | ⬜ | ⬜ / ✅ / ❌ |  |
-| RNF15. Navegadores Soportados | La aplicación web debe funcionar correctamente en los navegadores más utilizados (Chrome, Firefox, Safari, Edge) en sus versiones actuales y anteriores. | ⬜ | ⬜ / ✅ / ❌ |  |
+| RNF15. Navegadores Soportados | La aplicación web debe funcionar correctamente en los navegadores más utilizados (Chrome, Firefox, Safari, Edge) en sus versiones actuales y anteriores. | ✅ | ✅ |  |
 | RNF16. Plataforma Móvil | La aplicación móvil Android debe funcionar en dispositivos Android con versión 8.0 (API 26) o superior, adaptándose a diferentes tamaños de pantalla y resoluciones y siguiendo Material Design. | ⬜ | ⬜ / ✅ / ❌ |  |
 | RNF17. Rendimiento Móvil | La aplicación móvil debe cargar las pantallas principales en menos de 2 segundos y responder a las interacciones del usuario en menos de 100 ms. | ⬜ | ⬜ / ✅ / ❌ |  |
 | RNF18. Optimización Móvil | La aplicación móvil debe optimizar el uso de batería y datos (GPS solo cuando sea necesario, compresión de imágenes, sincronización incremental, opción de solo WiFi). | ⬜ | ⬜ / ✅ / ❌ |  |

@@ -63,7 +63,37 @@ async def root():
 
 @app.get("/health")
 async def health_check():
-    return JSONResponse(content={"status": "healthy"})
+    """Health check endpoint que verifica el estado del sistema"""
+    from app.database import SessionLocal
+    from app.core.cache import get_redis_client
+    import redis
+    
+    health_status = {
+        "status": "healthy",
+        "checks": {}
+    }
+    
+    # Verificar conexión a PostgreSQL
+    try:
+        db = SessionLocal()
+        db.execute("SELECT 1")
+        db.close()
+        health_status["checks"]["database"] = "ok"
+    except Exception as e:
+        health_status["status"] = "unhealthy"
+        health_status["checks"]["database"] = f"error: {str(e)}"
+    
+    # Verificar conexión a Redis
+    try:
+        redis_client = get_redis_client()
+        redis_client.ping()
+        health_status["checks"]["redis"] = "ok"
+    except Exception as e:
+        health_status["status"] = "degraded"
+        health_status["checks"]["redis"] = f"error: {str(e)}"
+    
+    status_code = 200 if health_status["status"] == "healthy" else 503
+    return JSONResponse(content=health_status, status_code=status_code)
 
 if __name__ == "__main__":
     import uvicorn

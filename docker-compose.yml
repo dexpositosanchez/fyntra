@@ -12,6 +12,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./backend/scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./backend/scripts/backups:/backups
     ports:
       - "5432:5432"
     networks:
@@ -21,6 +22,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 30s
+    restart: unless-stopped
 
   # Redis para caché
   redis:
@@ -37,7 +40,9 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 10s
     command: redis-server --appendonly yes
+    restart: unless-stopped
 
   # pgAdmin - Gestor de base de datos PostgreSQL
   pgadmin:
@@ -60,12 +65,12 @@ services:
       - fyntra-network
     restart: unless-stopped
 
-  # Backend FastAPI
+  # Backend FastAPI - Instancia 1
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: fyntra-backend
+    container_name: fyntra-backend-1
     environment:
       - DATABASE_URL=postgresql://fyntra_user:fyntra_password@postgres:5432/fyntra
       - REDIS_URL=redis://redis:6379/0
@@ -86,8 +91,57 @@ services:
         condition: service_healthy
     networks:
       - fyntra-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
     # Usar Gunicorn con Uvicorn workers para producción (mejor rendimiento con múltiples workers)
     # En desarrollo, usar --reload para auto-recarga
+    command: >
+      sh -c "
+      if [ \"$$WORKERS\" = \"1\" ] || [ -z \"$$WORKERS\" ]; then
+        uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+      else
+        gunicorn main:app -w $$WORKERS -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000
+      fi
+      "
+
+  # Backend FastAPI - Instancia 2 (Alta Disponibilidad)
+  backend2:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: fyntra-backend-2
+    environment:
+      - DATABASE_URL=postgresql://fyntra_user:fyntra_password@postgres:5432/fyntra
+      - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=your-secret-key-change-in-production
+      - ALGORITHM=HS256
+      - ACCESS_TOKEN_EXPIRE_MINUTES=30
+      - CORS_ORIGINS=http://localhost:4200,http://localhost:80
+      - WORKERS=4
+    volumes:
+      - ./backend:/app
+      - backend_uploads:/app/uploads
+    ports:
+      - "8001:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - fyntra-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
     command: >
       sh -c "
       if [ \"$$WORKERS\" = \"1\" ] || [ -z \"$$WORKERS\" ]; then
@@ -110,13 +164,19 @@ services:
       - "4200:4200"
     depends_on:
       - backend
+      - backend2
     networks:
       - fyntra-network
-    environment:
-      - API_URL=http://backend:8000
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"require('http').get('http://localhost:4200', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)}).on('error', () => process.exit(1))\" || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
     command: npm start
 
-  # Nginx como reverse proxy
+  # Nginx como reverse proxy y balanceador de carga
   nginx:
     image: nginx:alpine
     container_name: fyntra-nginx
@@ -128,9 +188,17 @@ services:
       - "443:443"
     depends_on:
       - backend
+      - backend2
       - frontend
     networks:
       - fyntra-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
 
   # Contenedor de testing con Locust (opcional, solo para pruebas de carga)
   loadtest:
