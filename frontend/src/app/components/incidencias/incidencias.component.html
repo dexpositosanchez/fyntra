@@ -250,13 +250,6 @@
             <option *ngFor="let p of prioridades" [value]="p.value">{{ p.label }}</option>
           </select>
         </div>
-        <div class="filter-group">
-          <label>Estado</label>
-          <select [(ngModel)]="filtroEstado" class="filter-input">
-            <option value="">Todos</option>
-            <option *ngFor="let e of estados" [value]="e.value">{{ e.label }}</option>
-          </select>
-        </div>
       </div>
 
       <div *ngIf="loading" class="loading">Cargando...</div>

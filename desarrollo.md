@@ -16,13 +16,13 @@
 | RF10. Gestión de Comunidades | El sistema debe permitir a los administradores crear, editar, eliminar y consultar comunidades de propietarios, con información básica y asociación a múltiples inmuebles. | ✅ | ✅ |  |
 | RF11. Gestión de Inmuebles | Registro de inmuebles asociados a comunidades, con datos como referencia catastral, dirección, metros cuadrados, tipo y múltiples propietarios asociados. | ✅ | ✅ |  |
 | RF12. Gestión de Propietarios | Registro de propietarios con datos de contacto, asociación a inmuebles y acceso para consultar sus propiedades y crear incidencias. | ✅ | ✅ |  |
-| RF13. Gestión de Incidencias | Creación y gestión de incidencias asociadas a inmuebles, con título, descripción, prioridad, estados y trazabilidad completa del historial. | ✅ | ⬜ / ✅ / ❌ |  |
-| RF14. Asignación de Proveedores | Asignación de proveedores a incidencias, permitiendo múltiples incidencias por proveedor y múltiples actuaciones por incidencia. | ✅ | ⬜ / ✅ / ❌ |  |
-| RF15. Gestión de Actuaciones | Registro de actuaciones realizadas por proveedores, incluyendo descripción, fecha de realización y coste, y actualización del estado de la incidencia. | ✅ | ⬜ / ✅ / ❌ |  |
+| RF13. Gestión de Incidencias | Creación y gestión de incidencias asociadas a inmuebles, con título, descripción, prioridad, estados y trazabilidad completa del historial. | ✅ |✅ |  |
+| RF14. Asignación de Proveedores | Asignación de proveedores a incidencias, permitiendo múltiples incidencias por proveedor y múltiples actuaciones por incidencia. | ✅ | ✅ |  |
+| RF15. Gestión de Actuaciones | Registro de actuaciones realizadas por proveedores, incluyendo descripción, fecha de realización y coste, y actualización del estado de la incidencia. | ✅ | ✅ |  |
 | RF16. Gestión de Documentos | Adjuntar documentos (fotos, facturas, presupuestos) a incidencias, con almacenamiento seguro y control de acceso por permisos. | ✅ | ⬜ / ✅ / ❌ |  |
 | RF17. Sistema de Mensajería | Mensajería interna entre administradores, propietarios y proveedores, vinculada a incidencias específicas. | ✅ | ⬜ / ✅ / ❌ |  |
 | RF18. Generación de Informes | Generación de informes de costes por comunidad, período, proveedor y análisis de incidencias (tiempos medios, tipos frecuentes, etc.). | ⬜ | ⬜ / ✅ / ❌ |  |
-| RF19. Gestión de Proveedores | Gestión de catálogo de proveedores con información de contacto, especialidades y estado (activo/inactivo). | ✅ | ⬜ / ✅ / ❌ |  |
+| RF19. Gestión de Proveedores | Gestión de catálogo de proveedores con información de contacto, especialidades y estado (activo/inactivo). | ✅ | ✅ |  |
 | **COMUNES** |  |  |  |  |
 | RF20. Autenticación y Autorización | Sistema de autenticación segura mediante JWT, con diferentes roles y permisos granulares por módulo. | ⬜ | ⬜ / ✅ / ❌ |  |
 | RF21. Gestión de Usuarios | Gestión de usuarios por parte de super administradores: creación, edición, eliminación, desactivación y asignación de roles. | ✅ | ⬜ / ✅ / ❌ |  |

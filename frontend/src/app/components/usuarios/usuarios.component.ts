@@ -21,8 +21,6 @@ export class UsuariosComponent implements OnInit {
   mostrarMenuUsuario: boolean = false;
   usuario: any = null;
   filtroRol: string = '';
-  mostrarCambiarPassword: boolean = false;
-  nuevaPassword: string = '';
 
   usuarioForm: any = {
     nombre: '',
@@ -162,8 +160,6 @@ export class UsuariosComponent implements OnInit {
     this.mostrarFormulario = false;
     this.editandoUsuario = false;
     this.usuarioIdEditando = null;
-    this.mostrarCambiarPassword = false;
-    this.nuevaPassword = '';
     this.usuarioForm = {
       nombre: '',
       email: '',
@@ -185,6 +181,7 @@ export class UsuariosComponent implements OnInit {
       return;
     }
 
+    // Validar contraseña solo si se proporciona (al crear o al cambiar)
     if (this.usuarioForm.password && this.usuarioForm.password.length < 6) {
       this.error = 'La contraseña debe tener al menos 6 caracteres';
       return;
@@ -204,21 +201,51 @@ export class UsuariosComponent implements OnInit {
       data.password = this.usuarioForm.password;
     }
 
-    const obs = this.editandoUsuario && this.usuarioIdEditando
-      ? this.apiService.actualizarUsuario(this.usuarioIdEditando, data)
-      : this.apiService.crearUsuario(data);
-
-    obs.subscribe({
-      next: () => {
-        this.loading = false;
-        this.cancelarForm();
-        this.cargarUsuarios();
-      },
-      error: (err) => {
-        this.loading = false;
-        this.error = err.error?.detail || 'Error al guardar usuario';
-      }
-    });
+    // Si estamos editando y se proporcionó una contraseña, actualizar primero el usuario
+    // y luego cambiar la contraseña
+    if (this.editandoUsuario && this.usuarioIdEditando) {
+      const usuarioId = this.usuarioIdEditando; // Guardar en variable local para TypeScript
+      this.apiService.actualizarUsuario(usuarioId, data).subscribe({
+        next: () => {
+          // Si se proporcionó una contraseña, cambiarla
+          if (this.usuarioForm.password && this.usuarioForm.password.trim() !== '') {
+            this.apiService.cambiarPasswordUsuario(usuarioId, this.usuarioForm.password).subscribe({
+              next: () => {
+                this.loading = false;
+                this.cancelarForm();
+                this.cargarUsuarios();
+              },
+              error: (err) => {
+                this.loading = false;
+                this.error = err.error?.detail || 'Error al cambiar contraseña';
+              }
+            });
+          } else {
+            // No se cambió la contraseña, solo actualizar datos
+            this.loading = false;
+            this.cancelarForm();
+            this.cargarUsuarios();
+          }
+        },
+        error: (err) => {
+          this.loading = false;
+          this.error = err.error?.detail || 'Error al guardar usuario';
+        }
+      });
+    } else {
+      // Crear nuevo usuario
+      this.apiService.crearUsuario(data).subscribe({
+        next: () => {
+          this.loading = false;
+          this.cancelarForm();
+          this.cargarUsuarios();
+        },
+        error: (err) => {
+          this.loading = false;
+          this.error = err.error?.detail || 'Error al guardar usuario';
+        }
+      });
+    }
   }
 
   toggleActivo(usuario: any, event: Event): void {
@@ -242,40 +269,6 @@ export class UsuariosComponent implements OnInit {
     }
   }
 
-  abrirCambiarPassword(usuario: any): void {
-    this.mostrarCambiarPassword = true;
-    this.usuarioIdEditando = usuario.id;
-    this.nuevaPassword = '';
-    this.error = '';
-  }
-
-  cerrarCambiarPassword(): void {
-    this.mostrarCambiarPassword = false;
-    this.usuarioIdEditando = null;
-    this.nuevaPassword = '';
-  }
-
-  cambiarPassword(): void {
-    if (!this.nuevaPassword || this.nuevaPassword.length < 6) {
-      this.error = 'La contraseña debe tener al menos 6 caracteres';
-      return;
-    }
-
-    if (!this.usuarioIdEditando) return;
-
-    this.loading = true;
-    this.apiService.cambiarPasswordUsuario(this.usuarioIdEditando, this.nuevaPassword).subscribe({
-      next: () => {
-        this.loading = false;
-        this.cerrarCambiarPassword();
-        alert('Contraseña cambiada correctamente');
-      },
-      error: (err) => {
-        this.loading = false;
-        this.error = err.error?.detail || 'Error al cambiar contraseña';
-      }
-    });
-  }
 
   getRolLabel(rol: string): string {
     const rolObj = this.roles.find(r => r.value === rol);

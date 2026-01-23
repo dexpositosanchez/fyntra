@@ -12,7 +12,7 @@ from app.schemas.actuacion import ActuacionCreate, ActuacionUpdate, ActuacionRes
 from app.api.dependencies import get_current_user
 from app.core.cache import (
     get_from_cache_async, set_to_cache_async, generate_cache_key,
-    invalidate_actuaciones_cache, delete_from_cache
+    invalidate_actuaciones_cache, invalidate_incidencias_cache, delete_from_cache
 )
 
 router = APIRouter(prefix="/actuaciones", tags=["actuaciones"])
@@ -279,6 +279,9 @@ async def cambiar_estado_incidencia(
     
     db.commit()
     db.refresh(incidencia)
+    
+    # Invalidar caché de incidencias para que todos los usuarios vean el cambio
+    invalidate_incidencias_cache()
     
     return {
         "id": incidencia.id,

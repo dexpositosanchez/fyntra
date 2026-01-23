@@ -50,6 +50,17 @@ def incidencia_to_response(incidencia: Incidencia, db: Session) -> dict:
     actuaciones_count = db.query(Actuacion).filter(Actuacion.incidencia_id == incidencia.id).count()
     documentos_count = db.query(Documento).filter(Documento.incidencia_id == incidencia.id).count()
     
+    # Preparar datos del proveedor si existe
+    proveedor_data = None
+    if incidencia.proveedor:
+        proveedor_data = {
+            "id": incidencia.proveedor.id,
+            "nombre": incidencia.proveedor.nombre,
+            "email": incidencia.proveedor.email,
+            "telefono": incidencia.proveedor.telefono,
+            "especialidad": incidencia.proveedor.especialidad
+        }
+    
     return {
         "id": incidencia.id,
         "titulo": incidencia.titulo,
@@ -58,12 +69,13 @@ def incidencia_to_response(incidencia: Incidencia, db: Session) -> dict:
         "inmueble_id": incidencia.inmueble_id,
         "creador_usuario_id": incidencia.creador_usuario_id,
         "proveedor_id": incidencia.proveedor_id,
-        "estado": incidencia.estado,
+        "estado": incidencia.estado.value if incidencia.estado else None,
         "fecha_alta": incidencia.fecha_alta,
         "fecha_cierre": incidencia.fecha_cierre,
         "version": incidencia.version,
         "creado_en": incidencia.creado_en,
         "inmueble": incidencia.inmueble,
+        "proveedor": proveedor_data,
         "historial": historial,
         "actuaciones_count": actuaciones_count,
         "documentos_count": documentos_count
@@ -101,7 +113,8 @@ async def listar_incidencias(
     
     query = db.query(Incidencia).options(
         joinedload(Incidencia.inmueble),
-        joinedload(Incidencia.historial)
+        joinedload(Incidencia.historial),
+        joinedload(Incidencia.proveedor)
     )
     
     # Filtros según rol
@@ -142,7 +155,8 @@ async def listar_incidencias_sin_resolver(
     """Lista incidencias que no están cerradas"""
     query = db.query(Incidencia).options(
         joinedload(Incidencia.inmueble),
-        joinedload(Incidencia.historial)
+        joinedload(Incidencia.historial),
+        joinedload(Incidencia.proveedor)
     ).filter(Incidencia.estado != EstadoIncidencia.CERRADA)
     
     # Filtros según rol
@@ -179,7 +193,8 @@ async def obtener_incidencia(
     
     incidencia = db.query(Incidencia).options(
         joinedload(Incidencia.inmueble),
-        joinedload(Incidencia.historial)
+        joinedload(Incidencia.historial),
+        joinedload(Incidencia.proveedor)
     ).filter(Incidencia.id == incidencia_id).first()
     
     if not incidencia:
@@ -259,7 +274,8 @@ async def actualizar_incidencia(
 ):
     incidencia = db.query(Incidencia).options(
         joinedload(Incidencia.inmueble),
-        joinedload(Incidencia.historial)
+        joinedload(Incidencia.historial),
+        joinedload(Incidencia.proveedor)
     ).filter(Incidencia.id == incidencia_id).first()
     
     if not incidencia:

@@ -18,7 +18,6 @@ export class IncidenciasComponent implements OnInit, OnDestroy {
   error: string = '';
   filtroFecha: string = '';
   filtroPrioridad: string = '';
-  filtroEstado: string = '';
   currentRoute: string = '';
   mostrarMenuUsuario: boolean = false;
   mostrarFormulario: boolean = false;
@@ -142,9 +141,18 @@ export class IncidenciasComponent implements OnInit, OnDestroy {
     this.loading = true;
     
     // Proveedores usan endpoint diferente
-    const observable = this.esProveedor 
-      ? this.apiService.getMisIncidencias()
-      : this.apiService.getIncidenciasSinResolver();
+    // Admin y superadmin ven todas las incidencias (incluidas cerradas)
+    // Propietarios ven todas sus incidencias (incluidas cerradas) para conocer el motivo
+    let observable;
+    if (this.esProveedor) {
+      observable = this.apiService.getMisIncidencias();
+    } else if (this.usuario?.rol === 'super_admin' || this.usuario?.rol === 'admin_fincas') {
+      // Admin y superadmin ven todas las incidencias
+      observable = this.apiService.getIncidencias();
+    } else {
+      // Propietarios ven todas sus incidencias (incluidas cerradas)
+      observable = this.apiService.getIncidencias();
+    }
     
     observable.subscribe({
       next: (data) => {
@@ -166,7 +174,8 @@ export class IncidenciasComponent implements OnInit, OnDestroy {
     
     // Agrupar incidencias por estado
     this.incidencias.forEach(incidencia => {
-      const estado = incidencia.estado || 'abierta';
+      // Asegurar que el estado sea un string (puede venir como enum del backend)
+      const estado = (typeof incidencia.estado === 'string' ? incidencia.estado : incidencia.estado?.value || incidencia.estado) || 'abierta';
       if (!this.incidenciasPorEstado[estado]) {
         this.incidenciasPorEstado[estado] = [];
       }
