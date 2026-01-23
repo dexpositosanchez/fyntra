@@ -212,7 +212,7 @@
             <label for="proveedor_id">Proveedor asignado</label>
             <select id="proveedor_id" [(ngModel)]="incidenciaForm.proveedor_id" name="proveedor_id" class="form-input" [disabled]="esPropietario">
               <option [ngValue]="null">Sin asignar</option>
-              <option *ngFor="let prov of proveedores" [value]="prov.id">{{ prov.nombre }}</option>
+              <option *ngFor="let prov of proveedores" [ngValue]="prov.id">{{ prov.nombre }}</option>
             </select>
           </div>
         </div>

@@ -96,7 +96,8 @@ export class IncidenciasComponent implements OnInit, OnDestroy {
     if (!this.esProveedor) {
       this.cargarInmuebles();
     }
-    if (!this.esPropietario && !this.esProveedor) {
+    // Cargar proveedores para admin y propietarios (propietarios necesitan ver el proveedor asignado)
+    if (!this.esProveedor) {
       this.cargarProveedores();
     }
     this.actualizarVista();

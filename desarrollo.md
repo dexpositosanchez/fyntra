@@ -19,8 +19,8 @@
 | RF13. Gestión de Incidencias | Creación y gestión de incidencias asociadas a inmuebles, con título, descripción, prioridad, estados y trazabilidad completa del historial. | ✅ |✅ |  |
 | RF14. Asignación de Proveedores | Asignación de proveedores a incidencias, permitiendo múltiples incidencias por proveedor y múltiples actuaciones por incidencia. | ✅ | ✅ |  |
 | RF15. Gestión de Actuaciones | Registro de actuaciones realizadas por proveedores, incluyendo descripción, fecha de realización y coste, y actualización del estado de la incidencia. | ✅ | ✅ |  |
-| RF16. Gestión de Documentos | Adjuntar documentos (fotos, facturas, presupuestos) a incidencias, con almacenamiento seguro y control de acceso por permisos. | ✅ | ⬜ / ✅ / ❌ |  |
-| RF17. Sistema de Mensajería | Mensajería interna entre administradores, propietarios y proveedores, vinculada a incidencias específicas. | ✅ | ⬜ / ✅ / ❌ |  |
+| RF16. Gestión de Documentos | Adjuntar documentos (fotos, facturas, presupuestos) a incidencias, con almacenamiento seguro y control de acceso por permisos. | ✅ | ✅ |  |
+| RF17. Sistema de Mensajería | Mensajería interna entre administradores, propietarios y proveedores, vinculada a incidencias específicas. | ✅ | ✅ |  |
 | RF18. Generación de Informes | Generación de informes de costes por comunidad, período, proveedor y análisis de incidencias (tiempos medios, tipos frecuentes, etc.). | ⬜ | ⬜ / ✅ / ❌ |  |
 | RF19. Gestión de Proveedores | Gestión de catálogo de proveedores con información de contacto, especialidades y estado (activo/inactivo). | ✅ | ✅ |  |
 | **COMUNES** |  |  |  |  |
