@@ -2,12 +2,14 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session, joinedload
 from typing import List, Optional
 from datetime import datetime, timezone
+import os
 from app.database import get_db
 from app.models.incidencia import Incidencia, EstadoIncidencia, PrioridadIncidencia
 from app.models.usuario import Usuario
 from app.models.propietario import Propietario
 from app.models.inmueble import Inmueble
 from app.models.historial_incidencia import HistorialIncidencia
+from app.models.documento import Documento
 from app.schemas.incidencia import IncidenciaCreate, IncidenciaUpdate, IncidenciaResponse, HistorialIncidenciaResponse
 from app.api.dependencies import get_current_user
 from app.core.cache import (
@@ -362,6 +364,15 @@ async def eliminar_incidencia(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No tiene permisos para eliminar esta incidencia"
         )
+    
+    # Eliminar archivos físicos de documentos asociados antes de eliminar la incidencia
+    documentos = db.query(Documento).filter(Documento.incidencia_id == incidencia_id).all()
+    for documento in documentos:
+        if os.path.exists(documento.ruta_archivo):
+            try:
+                os.remove(documento.ruta_archivo)
+            except OSError:
+                pass  # Si no se puede eliminar, continuar con la eliminación de la BD
     
     # Eliminar historial asociado primero (no tiene cascade configurado)
     db.query(HistorialIncidencia).filter(HistorialIncidencia.incidencia_id == incidencia_id).delete()
