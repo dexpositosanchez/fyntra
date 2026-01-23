@@ -130,28 +130,52 @@
       <div *ngIf="loading" class="loading">Cargando...</div>
       <div *ngIf="error" class="error">{{ error }}</div>
       
-      <div class="comunidades-grid" *ngIf="!loading && !error">
-        <div class="comunidad-card" *ngFor="let comunidad of comunidades" (click)="editarComunidad(comunidad)">
-          <div class="card-header">
-            <h3>{{ comunidad.nombre }}</h3>
-            <button class="delete-button" (click)="eliminarComunidad(comunidad, $event)" title="Eliminar comunidad">
-              <span class="app-icon">delete</span>
+      <div *ngIf="!loading && !error">
+        <!-- Campo de búsqueda -->
+        <div class="search-section">
+          <div class="search-container">
+            <span class="search-icon app-icon">search</span>
+            <input
+              type="text"
+              [(ngModel)]="textoBusqueda"
+              (input)="aplicarFiltroBusqueda()"
+              placeholder="Buscar por nombre, CIF, dirección, teléfono o email..."
+              class="search-input"
+            />
+            <button 
+              *ngIf="textoBusqueda" 
+              class="clear-search-button" 
+              (click)="limpiarBusqueda()"
+              title="Limpiar búsqueda"
+            >
+              <span class="app-icon">close</span>
             </button>
-          </div>
-          <p *ngIf="comunidad.cif"><strong>CIF:</strong> {{ comunidad.cif }}</p>
-          <p *ngIf="comunidad.direccion"><strong>Dirección:</strong> {{ comunidad.direccion }}</p>
-          <p *ngIf="comunidad.telefono"><strong>Teléfono:</strong> {{ comunidad.telefono }}</p>
-          <p *ngIf="comunidad.email"><strong>Email:</strong> {{ comunidad.email }}</p>
-          <div class="inmuebles-count" *ngIf="comunidad.inmuebles">
-            <span class="app-icon">home</span>
-            <span>{{ comunidad.inmuebles.length }} inmuebles</span>
           </div>
         </div>
         
-        <div class="empty-state" *ngIf="comunidades.length === 0">
-          <span class="app-icon empty-icon">apartment</span>
-          <p>No hay comunidades registradas</p>
-          <button class="add-button" (click)="mostrarForm()">Crear primera comunidad</button>
+        <div class="comunidades-grid">
+          <div class="comunidad-card" *ngFor="let comunidad of comunidadesFiltradas" (click)="editarComunidad(comunidad)">
+            <div class="card-header">
+              <h3>{{ comunidad.nombre }}</h3>
+              <button class="delete-button" (click)="eliminarComunidad(comunidad, $event)" title="Eliminar comunidad">
+                <span class="app-icon">delete</span>
+              </button>
+            </div>
+            <p *ngIf="comunidad.cif"><strong>CIF:</strong> {{ comunidad.cif }}</p>
+            <p *ngIf="comunidad.direccion"><strong>Dirección:</strong> {{ comunidad.direccion }}</p>
+            <p *ngIf="comunidad.telefono"><strong>Teléfono:</strong> {{ comunidad.telefono }}</p>
+            <p *ngIf="comunidad.email"><strong>Email:</strong> {{ comunidad.email }}</p>
+            <div class="inmuebles-count" *ngIf="comunidad.inmuebles">
+              <span class="app-icon">home</span>
+              <span>{{ comunidad.inmuebles.length }} inmuebles</span>
+            </div>
+          </div>
+          
+          <div class="empty-state" *ngIf="comunidadesFiltradas.length === 0">
+            <span class="app-icon empty-icon">apartment</span>
+            <p>No hay comunidades registradas</p>
+            <button class="add-button" (click)="mostrarForm()">Crear primera comunidad</button>
+          </div>
         </div>
       </div>
     </div>

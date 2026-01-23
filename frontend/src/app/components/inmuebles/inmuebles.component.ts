@@ -32,6 +32,8 @@ export class InmueblesComponent implements OnInit, OnDestroy {
   usuario: any = null;
   filtroComunidad: string = '';
   filtroTipo: string = '';
+  textoBusqueda: string = '';
+  inmueblesFiltrados: any[] = [];
   esPropietario: boolean = false;
   private routerSubscription?: Subscription;
 
@@ -105,6 +107,7 @@ export class InmueblesComponent implements OnInit, OnDestroy {
     this.apiService.getInmuebles(params).subscribe({
       next: (data) => {
         this.inmuebles = data;
+        this.aplicarFiltroTexto();
         this.loading = false;
       },
       error: (err) => {
@@ -119,12 +122,40 @@ export class InmueblesComponent implements OnInit, OnDestroy {
   }
 
   aplicarFiltros(): void {
-    this.cargarInmuebles();
+    // Si hay filtros de comunidad o tipo, recargar desde el backend
+    if (this.filtroComunidad || this.filtroTipo) {
+      this.cargarInmuebles();
+    } else {
+      // Si solo hay búsqueda de texto, aplicar filtro local
+      this.aplicarFiltroTexto();
+    }
+  }
+
+  aplicarFiltroTexto(): void {
+    // Aplicar filtro de búsqueda de texto sobre los inmuebles cargados
+    if (!this.textoBusqueda || this.textoBusqueda.trim() === '') {
+      this.inmueblesFiltrados = [...this.inmuebles];
+    } else {
+      const busqueda = this.textoBusqueda.toLowerCase().trim();
+      this.inmueblesFiltrados = this.inmuebles.filter(inmueble => {
+        const referencia = (inmueble.referencia || '').toLowerCase();
+        const direccion = (inmueble.direccion || '').toLowerCase();
+        
+        return referencia.includes(busqueda) ||
+               direccion.includes(busqueda);
+      });
+    }
+  }
+
+  limpiarBusqueda(): void {
+    this.textoBusqueda = '';
+    this.aplicarFiltroTexto();
   }
 
   limpiarFiltros(): void {
     this.filtroComunidad = '';
     this.filtroTipo = '';
+    this.textoBusqueda = '';
     this.cargarInmuebles();
   }
 

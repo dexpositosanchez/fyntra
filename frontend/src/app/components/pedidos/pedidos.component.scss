@@ -518,3 +518,142 @@
   }
 }
 
+// Sección de filtros
+.filters-section {
+  margin-bottom: 25px;
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.filters-row {
+  display: flex;
+  gap: 15px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+// Campo de búsqueda principal
+.search-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: white;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 12px 16px;
+  transition: border-color 0.3s, box-shadow 0.3s;
+  flex: 1;
+  min-width: 300px;
+  
+  &:focus-within {
+    border-color: #1b9d8a;
+    box-shadow: 0 0 0 3px rgba(27, 157, 138, 0.1);
+  }
+  
+  .search-icon {
+    color: #8a94a6;
+    font-size: 20px;
+    margin-right: 12px;
+    flex-shrink: 0;
+  }
+  
+  .search-input {
+    flex: 1;
+    border: none;
+    outline: none;
+    font-size: 16px;
+    color: #2f343d;
+    background: transparent;
+    
+    &::placeholder {
+      color: #8a94a6;
+    }
+  }
+  
+  .clear-search-button {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    margin-left: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #8a94a6;
+    border-radius: 4px;
+    transition: background 0.2s, color 0.2s;
+    flex-shrink: 0;
+    
+    &:hover {
+      background: #f2f4f7;
+      color: #2f343d;
+    }
+    
+    .app-icon {
+      font-size: 18px;
+    }
+  }
+}
+
+.filter-group-date {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 200px;
+  
+  label {
+    font-size: 12px;
+    color: #5b6270;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+}
+
+.filter-input-date {
+  padding: 8px 12px;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  background: white;
+  font-size: 14px;
+  color: #2f343d;
+  outline: none;
+  transition: border-color 0.3s;
+  width: 100%;
+  cursor: pointer;
+  
+  &:focus {
+    border-color: #1b9d8a;
+    box-shadow: 0 0 0 2px rgba(27, 157, 138, 0.1);
+  }
+}
+
+.clear-filters-button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #f2f4f7;
+  color: #5b6270;
+  border: 1px solid #e0e0e0;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s;
+  height: fit-content;
+  white-space: nowrap;
+  
+  &:hover {
+    background: #e0e0e0;
+    border-color: #c8d0db;
+    color: #2f343d;
+  }
+  
+  .app-icon {
+    font-size: 16px;
+  }
+}
+

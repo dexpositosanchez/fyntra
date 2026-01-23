@@ -34,6 +34,11 @@ export class VehiculosComponent implements OnInit, OnDestroy {
   currentRoute: string = '';
   mostrarMenuUsuario: boolean = false;
   usuario: any = null;
+  textoBusqueda: string = '';
+  filtroAno: number | string | null = null;
+  filtroCapacidad: number | string | null = null;
+  filtroCombustible: string = '';
+  vehiculosFiltrados: any[] = [];
   private routerSubscription?: Subscription;
   
   estados = [
@@ -98,7 +103,7 @@ export class VehiculosComponent implements OnInit, OnDestroy {
           ...v,
           ano: v['año'] || v.año // Añadir 'ano' para compatibilidad
         }));
-        this.agruparPorEstado();
+        this.aplicarFiltros();
         this.loading = false;
       },
       error: (err) => {
@@ -288,12 +293,80 @@ export class VehiculosComponent implements OnInit, OnDestroy {
     return textos[estado?.toLowerCase()] || estado || 'Inactivo';
   }
 
+  aplicarFiltros(): void {
+    // Aplicar todos los filtros
+    let resultados = [...this.vehiculos];
+    
+    // Filtro de búsqueda de texto (nombre, matrícula, marca, modelo)
+    if (this.textoBusqueda && this.textoBusqueda.trim() !== '') {
+      const busqueda = this.textoBusqueda.toLowerCase().trim();
+      resultados = resultados.filter(vehiculo => {
+        const nombre = (vehiculo.nombre || '').toLowerCase();
+        const matricula = (vehiculo.matricula || '').toLowerCase();
+        const marca = (vehiculo.marca || '').toLowerCase();
+        const modelo = (vehiculo.modelo || '').toLowerCase();
+        
+        return nombre.includes(busqueda) ||
+               matricula.includes(busqueda) ||
+               marca.includes(busqueda) ||
+               modelo.includes(busqueda);
+      });
+    }
+    
+    // Filtro por año (convertir a número si es string)
+    const anoFiltro = this.filtroAno !== null && this.filtroAno !== undefined 
+      ? (typeof this.filtroAno === 'string' ? parseInt(this.filtroAno, 10) : this.filtroAno)
+      : null;
+    
+    if (anoFiltro !== null && anoFiltro !== undefined && !isNaN(anoFiltro) && anoFiltro > 0) {
+      resultados = resultados.filter(vehiculo => {
+        const ano = vehiculo['año'] || vehiculo.ano;
+        return ano !== null && ano !== undefined && ano === anoFiltro;
+      });
+    }
+    
+    // Filtro por capacidad (convertir a número si es string)
+    const capacidadFiltro = this.filtroCapacidad !== null && this.filtroCapacidad !== undefined
+      ? (typeof this.filtroCapacidad === 'string' ? parseFloat(this.filtroCapacidad) : this.filtroCapacidad)
+      : null;
+    
+    if (capacidadFiltro !== null && capacidadFiltro !== undefined && !isNaN(capacidadFiltro) && capacidadFiltro > 0) {
+      resultados = resultados.filter(vehiculo => {
+        const capacidad = vehiculo.capacidad;
+        return capacidad !== null && capacidad !== undefined && capacidad === capacidadFiltro;
+      });
+    }
+    
+    // Filtro por tipo de combustible
+    if (this.filtroCombustible && this.filtroCombustible.trim() !== '') {
+      resultados = resultados.filter(vehiculo => {
+        return vehiculo.tipo_combustible === this.filtroCombustible;
+      });
+    }
+    
+    this.vehiculosFiltrados = resultados;
+    this.agruparPorEstado();
+  }
+
+  limpiarBusqueda(): void {
+    this.textoBusqueda = '';
+    this.aplicarFiltros();
+  }
+
+  limpiarTodosFiltros(): void {
+    this.textoBusqueda = '';
+    this.filtroAno = null;
+    this.filtroCapacidad = null;
+    this.filtroCombustible = '';
+    this.aplicarFiltros();
+  }
+
   agruparPorEstado(): void {
     // Inicializar objeto de agrupación
     this.vehiculosPorEstado = {};
     
-    // Agrupar vehículos por estado
-    this.vehiculos.forEach(vehiculo => {
+    // Agrupar vehículos filtrados por estado
+    this.vehiculosFiltrados.forEach(vehiculo => {
       const estado = vehiculo.estado || 'inactivo';
       if (!this.vehiculosPorEstado[estado]) {
         this.vehiculosPorEstado[estado] = [];

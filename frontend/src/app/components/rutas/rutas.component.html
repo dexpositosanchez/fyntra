@@ -310,6 +310,49 @@
       <div *ngIf="error" class="error">{{ error }}</div>
       
       <div *ngIf="!loading && !error">
+        <!-- Sección de filtros -->
+        <div class="filters-section">
+          <div class="filters-row">
+            <div class="filter-group">
+              <label>Conductor</label>
+              <select
+                [(ngModel)]="filtroConductor"
+                (change)="aplicarFiltros()"
+                class="filter-select"
+              >
+                <option value="">Todos</option>
+                <option *ngFor="let conductor of conductores" [value]="conductor.id">
+                  {{ conductor.nombre }} {{ conductor.apellidos }} - {{ conductor.licencia }}
+                </option>
+              </select>
+            </div>
+            
+            <div class="filter-group">
+              <label>Vehículo</label>
+              <select
+                [(ngModel)]="filtroVehiculo"
+                (change)="aplicarFiltros()"
+                class="filter-select"
+              >
+                <option value="">Todos</option>
+                <option *ngFor="let vehiculo of vehiculos" [value]="vehiculo.id">
+                  {{ vehiculo.nombre }} - {{ vehiculo.matricula }}
+                </option>
+              </select>
+            </div>
+            
+            <button 
+              *ngIf="filtroConductor || filtroVehiculo" 
+              class="clear-filters-button" 
+              (click)="limpiarTodosFiltros()"
+              title="Limpiar todos los filtros"
+            >
+              <span class="app-icon">clear_all</span>
+              Limpiar filtros
+            </button>
+          </div>
+        </div>
+        
         <!-- Pestañas por estado -->
         <div class="tabs-container" *ngIf="tabs.length > 0">
           <div class="tabs">

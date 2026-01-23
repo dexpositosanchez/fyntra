@@ -25,9 +25,9 @@
 | RF19. Gestión de Proveedores | Gestión de catálogo de proveedores con información de contacto, especialidades y estado (activo/inactivo). | ✅ | ✅ |  |
 | **COMUNES** |  |  |  |  |
 | RF20. Autenticación y Autorización | Sistema de autenticación segura mediante JWT, con diferentes roles y permisos granulares por módulo. | ⬜ | ⬜ / ✅ / ❌ |  |
-| RF21. Gestión de Usuarios | Gestión de usuarios por parte de super administradores: creación, edición, eliminación, desactivación y asignación de roles. | ✅ | ⬜ / ✅ / ❌ |  |
+| RF21. Gestión de Usuarios | Gestión de usuarios por parte de super administradores: creación, edición, eliminación, desactivación y asignación de roles. | ✅ | ✅ |  |
 | RF22. Notificaciones | Envío de notificaciones automáticas (email, push) ante eventos relevantes como incidencias, cambios de estado o mantenimientos próximos. | ⬜ | ⬜ / ✅ / ❌ |  |
-| RF23. Búsqueda y Filtrado | Búsqueda y filtrado avanzado en incidencias, pedidos, rutas, vehículos y otras entidades por múltiples criterios. | ⬜ | ⬜ / ✅ / ❌ |  |
+| RF23. Búsqueda y Filtrado | Búsqueda y filtrado avanzado en incidencias, pedidos, rutas, vehículos y otras entidades por múltiples criterios. | ⬜ | ⬜ / ✅ / ❌ | Estan hechos los filtros en las secciones creadas, pero aún no están todas |
 | RF24. Exportación de Datos | Exportación de informes y listados a formatos estándar como PDF, Excel y CSV. | ⬜ | ⬜ / ✅ / ❌ |  |
 | RF25. Aplicación Móvil Android | App móvil nativa Android en Kotlin con autenticación JWT, sincronización online/offline, integración con Google Maps y soporte desde Android 8.0. | ⬜ | ⬜ / ✅ / ❌ |  |
 

@@ -21,6 +21,8 @@ export class ProveedoresComponent implements OnInit {
   mostrarMenuUsuario: boolean = false;
   usuario: any = null;
   filtroEspecialidad: string = '';
+  textoBusqueda: string = '';
+  proveedoresFiltrados: any[] = [];
 
   proveedorForm: any = {
     nombre: '',
@@ -68,7 +70,7 @@ export class ProveedoresComponent implements OnInit {
     this.apiService.getProveedores(params).subscribe({
       next: (data) => {
         this.proveedores = data;
-        this.organizarProveedoresPorEstado();
+        this.aplicarFiltroTexto();
         this.loading = false;
       },
       error: (err) => {
@@ -78,6 +80,38 @@ export class ProveedoresComponent implements OnInit {
     });
   }
 
+  aplicarFiltroTexto(): void {
+    // Aplicar filtro de búsqueda de texto sobre los proveedores cargados
+    if (!this.textoBusqueda || this.textoBusqueda.trim() === '') {
+      this.proveedoresFiltrados = [...this.proveedores];
+    } else {
+      const busqueda = this.textoBusqueda.toLowerCase().trim();
+      this.proveedoresFiltrados = this.proveedores.filter(proveedor => {
+        const nombre = (proveedor.nombre || '').toLowerCase();
+        const email = (proveedor.email || '').toLowerCase();
+        const telefono = (proveedor.telefono || '').toLowerCase();
+        
+        return nombre.includes(busqueda) ||
+               email.includes(busqueda) ||
+               telefono.includes(busqueda);
+      });
+    }
+    
+    // Organizar los proveedores filtrados por estado
+    this.organizarProveedoresPorEstado();
+  }
+
+  limpiarBusqueda(): void {
+    this.textoBusqueda = '';
+    this.aplicarFiltroTexto();
+  }
+
+  limpiarTodosFiltros(): void {
+    this.filtroEspecialidad = '';
+    this.textoBusqueda = '';
+    this.cargarProveedores();
+  }
+
   organizarProveedoresPorEstado(): void {
     // Inicializar objetos
     this.proveedoresPorEstado = {
@@ -85,26 +119,26 @@ export class ProveedoresComponent implements OnInit {
       'inactivo': []
     };
 
-    // Filtrar por especialidad si hay filtro
-    let proveedoresFiltrados = this.proveedores;
+    // Filtrar por especialidad si hay filtro (sobre los proveedores ya filtrados por texto)
+    let proveedoresParaOrganizar = this.proveedoresFiltrados;
     if (this.filtroEspecialidad) {
       if (this.filtroEspecialidad === 'Otros') {
         // Si el filtro es "Otros", mostrar proveedores con especialidad personalizada (no en la lista fija)
-        proveedoresFiltrados = this.proveedores.filter(p => 
+        proveedoresParaOrganizar = this.proveedoresFiltrados.filter(p => 
           p.especialidad && 
           p.especialidad.trim().length > 0 && 
           !this.especialidades.includes(p.especialidad)
         );
       } else {
         // Para otras especialidades, buscar coincidencia exacta
-        proveedoresFiltrados = this.proveedores.filter(p => 
+        proveedoresParaOrganizar = this.proveedoresFiltrados.filter(p => 
           p.especialidad && p.especialidad === this.filtroEspecialidad
         );
       }
     }
 
     // Organizar por estado
-    proveedoresFiltrados.forEach(proveedor => {
+    proveedoresParaOrganizar.forEach(proveedor => {
       const estado = proveedor.activo ? 'activo' : 'inactivo';
       this.proveedoresPorEstado[estado].push(proveedor);
     });
@@ -143,7 +177,14 @@ export class ProveedoresComponent implements OnInit {
   }
 
   aplicarFiltros(): void {
-    this.organizarProveedoresPorEstado();
+    // Si hay filtro de especialidad, recargar desde el backend
+    // (el filtro de texto se aplicará después de cargar)
+    if (this.filtroEspecialidad) {
+      this.cargarProveedores();
+    } else {
+      // Si no hay filtro de especialidad, aplicar solo el filtro de texto local
+      this.aplicarFiltroTexto();
+    }
   }
 
   mostrarForm(): void {

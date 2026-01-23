@@ -213,6 +213,28 @@
         <div *ngIf="error" class="error">{{ error }}</div>
         
         <div *ngIf="!loading && !error">
+          <!-- Campo de búsqueda -->
+          <div class="search-section">
+            <div class="search-container">
+              <span class="search-icon app-icon">search</span>
+              <input
+                type="text"
+                [(ngModel)]="textoBusqueda"
+                (input)="aplicarFiltroBusqueda()"
+                placeholder="Buscar por nombre, apellidos, DNI, teléfono, email o licencia..."
+                class="search-input"
+              />
+              <button 
+                *ngIf="textoBusqueda" 
+                class="clear-search-button" 
+                (click)="limpiarBusqueda()"
+                title="Limpiar búsqueda"
+              >
+                <span class="app-icon">close</span>
+              </button>
+            </div>
+          </div>
+          
           <!-- Pestañas por estado -->
           <div class="tabs-container" *ngIf="tabs.length > 0">
             <div class="tabs">

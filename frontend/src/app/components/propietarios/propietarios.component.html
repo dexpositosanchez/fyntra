@@ -180,33 +180,57 @@
       <div *ngIf="loading" class="loading">Cargando...</div>
       <div *ngIf="error" class="error">{{ error }}</div>
       
-      <div class="propietarios-grid" *ngIf="!loading && !error">
-        <div class="propietario-card" *ngFor="let propietario of propietarios" (click)="editarPropietario(propietario)">
-          <div class="card-header">
-            <h3>{{ propietario.nombre }} {{ propietario.apellidos }}</h3>
-            <button class="delete-button" (click)="eliminarPropietario(propietario, $event)" title="Eliminar propietario">
-              <span class="app-icon">delete</span>
+      <div *ngIf="!loading && !error">
+        <!-- Campo de búsqueda -->
+        <div class="search-section">
+          <div class="search-container">
+            <span class="search-icon app-icon">search</span>
+            <input
+              type="text"
+              [(ngModel)]="textoBusqueda"
+              (input)="aplicarFiltroBusqueda()"
+              placeholder="Buscar por nombre, apellidos, teléfono, email o DNI..."
+              class="search-input"
+            />
+            <button 
+              *ngIf="textoBusqueda" 
+              class="clear-search-button" 
+              (click)="limpiarBusqueda()"
+              title="Limpiar búsqueda"
+            >
+              <span class="app-icon">close</span>
             </button>
-          </div>
-          <p *ngIf="propietario.dni"><strong>DNI:</strong> {{ propietario.dni }}</p>
-          <p *ngIf="propietario.telefono"><strong>Teléfono:</strong> {{ propietario.telefono }}</p>
-          <p *ngIf="propietario.email"><strong>Email:</strong> {{ propietario.email }}</p>
-          <div class="card-footer">
-            <div class="inmuebles-info" *ngIf="propietario.inmuebles && propietario.inmuebles.length > 0">
-              <span class="app-icon">home</span>
-              <span>{{ propietario.inmuebles.length }} inmueble(s)</span>
-            </div>
-            <div class="acceso-info" *ngIf="propietario.tiene_acceso">
-              <span class="app-icon">verified_user</span>
-              <span>Con acceso</span>
-            </div>
           </div>
         </div>
         
-        <div class="empty-state" *ngIf="propietarios.length === 0">
-          <span class="app-icon empty-icon">people</span>
-          <p>No hay propietarios registrados</p>
-          <button class="add-button" (click)="mostrarForm()">Crear primer propietario</button>
+        <div class="propietarios-grid">
+          <div class="propietario-card" *ngFor="let propietario of propietariosFiltrados" (click)="editarPropietario(propietario)">
+            <div class="card-header">
+              <h3>{{ propietario.nombre }} {{ propietario.apellidos }}</h3>
+              <button class="delete-button" (click)="eliminarPropietario(propietario, $event)" title="Eliminar propietario">
+                <span class="app-icon">delete</span>
+              </button>
+            </div>
+            <p *ngIf="propietario.dni"><strong>DNI:</strong> {{ propietario.dni }}</p>
+            <p *ngIf="propietario.telefono"><strong>Teléfono:</strong> {{ propietario.telefono }}</p>
+            <p *ngIf="propietario.email"><strong>Email:</strong> {{ propietario.email }}</p>
+            <div class="card-footer">
+              <div class="inmuebles-info" *ngIf="propietario.inmuebles && propietario.inmuebles.length > 0">
+                <span class="app-icon">home</span>
+                <span>{{ propietario.inmuebles.length }} inmueble(s)</span>
+              </div>
+              <div class="acceso-info" *ngIf="propietario.tiene_acceso">
+                <span class="app-icon">verified_user</span>
+                <span>Con acceso</span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="empty-state" *ngIf="propietariosFiltrados.length === 0">
+            <span class="app-icon empty-icon">people</span>
+            <p>No hay propietarios registrados</p>
+            <button class="add-button" (click)="mostrarForm()">Crear primer propietario</button>
+          </div>
         </div>
       </div>
     </div>

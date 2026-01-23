@@ -164,34 +164,57 @@
       </div>
       
       <div class="filters-section" *ngIf="!esPropietario">
-        <div class="filter-group">
-          <label>Comunidad</label>
-          <select [(ngModel)]="filtroComunidad" (change)="aplicarFiltros()" class="filter-input">
-            <option value="">Todas</option>
-            <option *ngFor="let comunidad of comunidades" [value]="comunidad.id">
-              {{ comunidad.nombre }}
-            </option>
-          </select>
+        <!-- Campo de búsqueda principal -->
+        <div class="search-container">
+          <span class="search-icon app-icon">search</span>
+          <input
+            type="text"
+            [(ngModel)]="textoBusqueda"
+            (input)="aplicarFiltros()"
+            placeholder="Buscar por referencia catastral o dirección..."
+            class="search-input"
+          />
+          <button 
+            *ngIf="textoBusqueda" 
+            class="clear-search-button" 
+            (click)="limpiarBusqueda()"
+            title="Limpiar búsqueda"
+          >
+            <span class="app-icon">close</span>
+          </button>
         </div>
-        <div class="filter-group">
-          <label>Tipo</label>
-          <select [(ngModel)]="filtroTipo" (change)="aplicarFiltros()" class="filter-input">
-            <option value="">Todos</option>
-            <option *ngFor="let tipo of tiposInmueble" [value]="tipo.value">
-              {{ tipo.label }}
-            </option>
-          </select>
+        
+        <div class="additional-filters">
+          <div class="filter-group">
+            <label>Comunidad</label>
+            <select [(ngModel)]="filtroComunidad" (change)="aplicarFiltros()" class="filter-input">
+              <option value="">Todas</option>
+              <option *ngFor="let comunidad of comunidades" [value]="comunidad.id">
+                {{ comunidad.nombre }}
+              </option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>Tipo</label>
+            <select [(ngModel)]="filtroTipo" (change)="aplicarFiltros()" class="filter-input">
+              <option value="">Todos</option>
+              <option *ngFor="let tipo of tiposInmueble" [value]="tipo.value">
+                {{ tipo.label }}
+              </option>
+            </select>
+          </div>
+          <button class="clear-filters-button" *ngIf="filtroComunidad || filtroTipo || textoBusqueda" (click)="limpiarFiltros()" title="Limpiar todos los filtros">
+            <span class="app-icon">clear_all</span>
+            Limpiar filtros
+          </button>
         </div>
-        <button class="clear-filters" *ngIf="filtroComunidad || filtroTipo" (click)="limpiarFiltros()">
-          Limpiar filtros
-        </button>
       </div>
       
       <div *ngIf="loading" class="loading">Cargando...</div>
       <div *ngIf="error" class="error">{{ error }}</div>
       
       <div class="inmuebles-grid" *ngIf="!loading && !error">
-        <div class="inmueble-card" *ngFor="let inmueble of inmuebles" (click)="!esPropietario && editarInmueble(inmueble)" [class.readonly]="esPropietario">
+        <div class="inmueble-card" *ngFor="let inmueble of inmueblesFiltrados" (click)="!esPropietario && editarInmueble(inmueble)" [class.readonly]="esPropietario">
           <div class="card-header">
             <h3>{{ inmueble.referencia }}</h3>
             <div class="card-actions">

@@ -239,6 +239,72 @@
         <div *ngIf="loading" class="loading">Cargando...</div>
         <div *ngIf="error" class="error">{{ error }}</div>
         
+        <div *ngIf="!loading && !error">
+          <!-- Sección de filtros -->
+          <div class="filters-section">
+            <div class="filters-row">
+              <div class="filter-group">
+                <label>Vehículo</label>
+                <select
+                  [(ngModel)]="filtroVehiculo"
+                  (change)="aplicarFiltros()"
+                  class="filter-select"
+                >
+                  <option value="">Todos</option>
+                  <option *ngFor="let vehiculo of vehiculos" [value]="vehiculo.id">
+                    {{ vehiculo.nombre }} - {{ vehiculo.matricula }}
+                  </option>
+                </select>
+              </div>
+              
+              <div class="filter-group">
+                <label>Tipo de Mantenimiento</label>
+                <select
+                  [(ngModel)]="filtroTipo"
+                  (change)="aplicarFiltros()"
+                  class="filter-select"
+                >
+                  <option value="">Todos</option>
+                  <option *ngFor="let tipo of tipos" [value]="tipo.value">
+                    {{ tipo.label }}
+                  </option>
+                </select>
+              </div>
+              
+              <div class="filter-group">
+                <label>Fecha Programada</label>
+                <input
+                  type="date"
+                  [(ngModel)]="filtroFechaProgramada"
+                  (change)="aplicarFiltros()"
+                  class="filter-input-date"
+                />
+              </div>
+              
+              <div class="filter-group">
+                <label>Proveedor/Taller</label>
+                <input
+                  type="text"
+                  [(ngModel)]="filtroProveedor"
+                  (input)="aplicarFiltros()"
+                  placeholder="Buscar proveedor..."
+                  class="filter-input-text"
+                />
+              </div>
+              
+              <button 
+                *ngIf="filtroVehiculo || filtroTipo || filtroFechaProgramada || filtroProveedor" 
+                class="clear-filters-button" 
+                (click)="limpiarTodosFiltros()"
+                title="Limpiar todos los filtros"
+              >
+                <span class="app-icon">clear_all</span>
+                Limpiar filtros
+              </button>
+            </div>
+          </div>
+        </div>
+        
         <div *ngIf="!loading && !error && mostrarSoloAlertas && mantenimientos.length === 0" class="no-alertas">
           <p>⚠️ No hay mantenimientos con alertas en este momento.</p>
           <p class="no-alertas-subtitle">

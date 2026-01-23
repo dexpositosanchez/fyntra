@@ -38,6 +38,12 @@ export class MantenimientosComponent implements OnInit, OnDestroy {
   mostrarMenuUsuario: boolean = false;
   usuario: any = null;
   numeroAlertas: number = 0;
+  // Filtros
+  filtroVehiculo: number | string | null = null;
+  filtroTipo: string = '';
+  filtroFechaProgramada: string = '';
+  filtroProveedor: string = '';
+  mantenimientosFiltrados: any[] = [];
   // Pestañas por estado
   mantenimientosPorEstado: { [key: string]: any[] } = {};
   tabs: { estado: string, label: string, count: number }[] = [];
@@ -143,6 +149,7 @@ export class MantenimientosComponent implements OnInit, OnDestroy {
               estado: m.estado
             })));
           }
+          this.aplicarFiltros();
           this.loading = false;
           this.error = '';
         },
@@ -174,7 +181,7 @@ export class MantenimientosComponent implements OnInit, OnDestroy {
             });
           }
           
-          this.agruparPorEstado();
+          this.aplicarFiltros();
           this.loading = false;
           this.error = '';
           // Cargar número de alertas en segundo plano
@@ -737,12 +744,65 @@ export class MantenimientosComponent implements OnInit, OnDestroy {
            this.currentRoute.includes('/mantenimientos');
   }
 
+  aplicarFiltros(): void {
+    // Aplicar todos los filtros
+    let resultados = [...this.mantenimientos];
+    
+    // Filtro por vehículo
+    if (this.filtroVehiculo !== null && this.filtroVehiculo !== undefined && this.filtroVehiculo !== '') {
+      const vehiculoId = typeof this.filtroVehiculo === 'string' ? parseInt(this.filtroVehiculo, 10) : this.filtroVehiculo;
+      if (!isNaN(vehiculoId)) {
+        resultados = resultados.filter(mantenimiento => {
+          return mantenimiento.vehiculo_id === vehiculoId;
+        });
+      }
+    }
+    
+    // Filtro por tipo
+    if (this.filtroTipo && this.filtroTipo.trim() !== '') {
+      resultados = resultados.filter(mantenimiento => {
+        return mantenimiento.tipo === this.filtroTipo;
+      });
+    }
+    
+    // Filtro por fecha programada
+    if (this.filtroFechaProgramada && this.filtroFechaProgramada.trim() !== '') {
+      resultados = resultados.filter(mantenimiento => {
+        if (!mantenimiento.fecha_programada) return false;
+        const fechaMantenimiento = new Date(mantenimiento.fecha_programada);
+        const fechaFiltro = new Date(this.filtroFechaProgramada);
+        // Comparar solo la fecha (sin hora)
+        return fechaMantenimiento.toDateString() === fechaFiltro.toDateString();
+      });
+    }
+    
+    // Filtro por proveedor/taller (búsqueda de texto)
+    if (this.filtroProveedor && this.filtroProveedor.trim() !== '') {
+      const busqueda = this.filtroProveedor.toLowerCase().trim();
+      resultados = resultados.filter(mantenimiento => {
+        const proveedor = (mantenimiento.proveedor || '').toLowerCase();
+        return proveedor.includes(busqueda);
+      });
+    }
+    
+    this.mantenimientosFiltrados = resultados;
+    this.agruparPorEstado();
+  }
+
+  limpiarTodosFiltros(): void {
+    this.filtroVehiculo = null;
+    this.filtroTipo = '';
+    this.filtroFechaProgramada = '';
+    this.filtroProveedor = '';
+    this.aplicarFiltros();
+  }
+
   agruparPorEstado(): void {
     // Inicializar objeto de agrupación
     this.mantenimientosPorEstado = {};
     
-    // Agrupar mantenimientos por estado
-    this.mantenimientos.forEach(mantenimiento => {
+    // Agrupar mantenimientos filtrados por estado
+    this.mantenimientosFiltrados.forEach(mantenimiento => {
       const estado = mantenimiento.estado || 'programado';
       if (!this.mantenimientosPorEstado[estado]) {
         this.mantenimientosPorEstado[estado] = [];

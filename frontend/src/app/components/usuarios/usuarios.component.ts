@@ -21,6 +21,8 @@ export class UsuariosComponent implements OnInit {
   mostrarMenuUsuario: boolean = false;
   usuario: any = null;
   filtroRol: string = '';
+  textoBusqueda: string = '';
+  usuariosFiltrados: any[] = [];
 
   usuarioForm: any = {
     nombre: '',
@@ -62,7 +64,7 @@ export class UsuariosComponent implements OnInit {
     this.apiService.getUsuarios().subscribe({
       next: (data) => {
         this.usuarios = data;
-        this.organizarUsuariosPorEstado();
+        this.aplicarFiltroTexto();
         this.loading = false;
       },
       error: (err) => {
@@ -72,6 +74,35 @@ export class UsuariosComponent implements OnInit {
     });
   }
 
+  aplicarFiltroTexto(): void {
+    // Aplicar filtro de búsqueda de texto sobre los usuarios cargados
+    if (!this.textoBusqueda || this.textoBusqueda.trim() === '') {
+      this.usuariosFiltrados = [...this.usuarios];
+    } else {
+      const busqueda = this.textoBusqueda.toLowerCase().trim();
+      this.usuariosFiltrados = this.usuarios.filter(usuario => {
+        const nombre = (usuario.nombre || '').toLowerCase();
+        const email = (usuario.email || '').toLowerCase();
+        
+        return nombre.includes(busqueda) || email.includes(busqueda);
+      });
+    }
+    
+    // Organizar los usuarios filtrados por estado
+    this.organizarUsuariosPorEstado();
+  }
+
+  limpiarBusqueda(): void {
+    this.textoBusqueda = '';
+    this.aplicarFiltroTexto();
+  }
+
+  limpiarTodosFiltros(): void {
+    this.filtroRol = '';
+    this.textoBusqueda = '';
+    this.aplicarFiltroTexto();
+  }
+
   organizarUsuariosPorEstado(): void {
     // Inicializar objetos
     this.usuariosPorEstado = {
@@ -79,14 +110,14 @@ export class UsuariosComponent implements OnInit {
       'inactivo': []
     };
 
-    // Filtrar por rol si hay filtro
-    let usuariosFiltrados = this.usuarios;
+    // Filtrar por rol si hay filtro (sobre los usuarios ya filtrados por texto)
+    let usuariosParaOrganizar = this.usuariosFiltrados;
     if (this.filtroRol) {
-      usuariosFiltrados = this.usuarios.filter(u => u.rol === this.filtroRol);
+      usuariosParaOrganizar = this.usuariosFiltrados.filter(u => u.rol === this.filtroRol);
     }
 
     // Organizar por estado
-    usuariosFiltrados.forEach(usuario => {
+    usuariosParaOrganizar.forEach(usuario => {
       const estado = usuario.activo ? 'activo' : 'inactivo';
       this.usuariosPorEstado[estado].push(usuario);
     });
@@ -125,7 +156,8 @@ export class UsuariosComponent implements OnInit {
   }
 
   aplicarFiltros(): void {
-    this.organizarUsuariosPorEstado();
+    // Aplicar filtro de texto y luego organizar por estado
+    this.aplicarFiltroTexto();
   }
 
   mostrarForm(): void {

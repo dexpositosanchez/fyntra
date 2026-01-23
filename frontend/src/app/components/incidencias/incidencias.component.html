@@ -235,20 +235,52 @@
 
     <!-- Lista de Incidencias -->
     <div *ngIf="!mostrarFormulario && !mostrarActuaciones && currentRoute.includes('/incidencias')">
-      <div class="list-header">
-        <h2>{{ esProveedor ? 'Mis Incidencias Asignadas' : (esPropietario ? 'Mis Incidencias' : 'Incidencias') }}</h2>
-        <div class="header-actions" *ngIf="!esProveedor">
-          <button class="add-button" (click)="mostrarForm()">+ Nueva Incidencia</button>
+      <div class="list-container">
+        <div class="list-header">
+          <h2>{{ esProveedor ? 'Mis Incidencias Asignadas' : (esPropietario ? 'Mis Incidencias' : 'Incidencias') }}</h2>
+          <div class="header-actions" *ngIf="!esProveedor">
+            <button class="add-button" (click)="mostrarForm()">+ Nueva Incidencia</button>
+          </div>
         </div>
-      </div>
-      
-      <div class="filters-section">
-        <div class="filter-group">
-          <label>Prioridad</label>
-          <select [(ngModel)]="filtroPrioridad" class="filter-input">
-            <option value="">Todas</option>
-            <option *ngFor="let p of prioridades" [value]="p.value">{{ p.label }}</option>
-          </select>
+        
+        <div class="filters-section">
+        <!-- Campo de búsqueda principal -->
+        <div class="search-container">
+          <span class="search-icon app-icon">search</span>
+          <input
+            type="text"
+            [(ngModel)]="textoBusqueda"
+            (input)="aplicarFiltros()"
+            placeholder="Buscar por título, referencia catastral o proveedor..."
+            class="search-input"
+          />
+          <button 
+            *ngIf="textoBusqueda" 
+            class="clear-search-button" 
+            (click)="limpiarBusqueda()"
+            title="Limpiar búsqueda"
+          >
+            <span class="app-icon">close</span>
+          </button>
+        </div>
+        
+        <div class="additional-filters">
+          <div class="filter-group">
+            <label>Prioridad</label>
+            <select [(ngModel)]="filtroPrioridad" (change)="aplicarFiltros()" class="filter-input">
+              <option value="">Todas</option>
+              <option *ngFor="let p of prioridades" [value]="p.value">{{ p.label }}</option>
+            </select>
+          </div>
+          <button 
+            class="clear-filters-button" 
+            *ngIf="filtroPrioridad || textoBusqueda" 
+            (click)="limpiarTodosFiltros()"
+            title="Limpiar todos los filtros"
+          >
+            <span class="app-icon">clear_all</span>
+            Limpiar filtros
+          </button>
         </div>
       </div>
 
@@ -285,6 +317,10 @@
               <p class="incidencia-inmueble" *ngIf="incidencia.inmueble">
                 <span class="app-icon">home</span>
                 {{ incidencia.inmueble.referencia }} - {{ incidencia.inmueble.direccion }}
+              </p>
+              <p class="incidencia-proveedor" *ngIf="getProveedorNombre(incidencia)">
+                <span class="app-icon">business</span>
+                {{ getProveedorNombre(incidencia) }}
               </p>
               <p class="incidencia-fecha">
                 <span class="app-icon">calendar_today</span>
@@ -327,6 +363,7 @@
             <p>No hay incidencias registradas.</p>
           </div>
         </div>
+      </div>
       </div>
     </div>
   </main>

@@ -31,6 +31,8 @@ export class PropietariosComponent implements OnInit, OnDestroy {
   currentRoute: string = '';
   mostrarMenuUsuario: boolean = false;
   usuario: any = null;
+  textoBusqueda: string = '';
+  propietariosFiltrados: any[] = [];
   private routerSubscription?: Subscription;
 
   constructor(
@@ -76,6 +78,7 @@ export class PropietariosComponent implements OnInit, OnDestroy {
     this.apiService.getPropietarios().subscribe({
       next: (data) => {
         this.propietarios = data;
+        this.aplicarFiltroBusqueda();
         this.loading = false;
       },
       error: (err) => {
@@ -257,6 +260,31 @@ export class PropietariosComponent implements OnInit, OnDestroy {
   logout(): void {
     this.mostrarMenuUsuario = false;
     this.authService.logout();
+  }
+
+  aplicarFiltroBusqueda(): void {
+    // Aplicar filtro de búsqueda
+    if (!this.textoBusqueda || this.textoBusqueda.trim() === '') {
+      this.propietariosFiltrados = [...this.propietarios];
+    } else {
+      const busqueda = this.textoBusqueda.toLowerCase().trim();
+      this.propietariosFiltrados = this.propietarios.filter(propietario => {
+        const nombreCompleto = `${propietario.nombre || ''} ${propietario.apellidos || ''}`.toLowerCase();
+        const telefono = (propietario.telefono || '').toLowerCase();
+        const email = (propietario.email || '').toLowerCase();
+        const dni = (propietario.dni || '').toLowerCase();
+        
+        return nombreCompleto.includes(busqueda) ||
+               telefono.includes(busqueda) ||
+               email.includes(busqueda) ||
+               dni.includes(busqueda);
+      });
+    }
+  }
+
+  limpiarBusqueda(): void {
+    this.textoBusqueda = '';
+    this.aplicarFiltroBusqueda();
   }
 }
 

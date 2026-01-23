@@ -39,6 +39,16 @@ class InmuebleSimple(BaseModel):
     class Config:
         from_attributes = True
 
+class ProveedorSimple(BaseModel):
+    id: int
+    nombre: str
+    email: Optional[str] = None
+    telefono: Optional[str] = None
+    especialidad: Optional[str] = None
+    
+    class Config:
+        from_attributes = True
+
 class IncidenciaResponse(IncidenciaBase):
     id: int
     inmueble_id: int
@@ -50,6 +60,7 @@ class IncidenciaResponse(IncidenciaBase):
     version: int
     creado_en: datetime
     inmueble: Optional[InmuebleSimple] = None
+    proveedor: Optional[ProveedorSimple] = None
     historial: List[HistorialIncidenciaResponse] = []
     actuaciones_count: int = 0
     documentos_count: int = 0

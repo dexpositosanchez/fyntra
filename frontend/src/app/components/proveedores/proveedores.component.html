@@ -122,18 +122,50 @@
 
     <!-- Lista -->
     <div *ngIf="!mostrarFormulario">
-      <div class="list-header">
-        <h2>Proveedores</h2>
-        <button class="add-button" (click)="mostrarForm()">+ Nuevo Proveedor</button>
-      </div>
-      
-      <div class="filters-section">
-        <div class="filter-group">
-          <label>Especialidad</label>
-          <select [(ngModel)]="filtroEspecialidad" (change)="aplicarFiltros()" class="filter-input">
-            <option value="">Todas</option>
-            <option *ngFor="let esp of especialidades" [value]="esp">{{ esp }}</option>
-          </select>
+      <div class="list-container">
+        <div class="list-header">
+          <h2>Proveedores</h2>
+          <button class="add-button" (click)="mostrarForm()">+ Nuevo Proveedor</button>
+        </div>
+        
+        <div class="filters-section">
+        <!-- Campo de búsqueda principal -->
+        <div class="search-container">
+          <span class="search-icon app-icon">search</span>
+          <input
+            type="text"
+            [(ngModel)]="textoBusqueda"
+            (input)="aplicarFiltros()"
+            placeholder="Buscar por nombre, email o teléfono..."
+            class="search-input"
+          />
+          <button 
+            *ngIf="textoBusqueda" 
+            class="clear-search-button" 
+            (click)="limpiarBusqueda()"
+            title="Limpiar búsqueda"
+          >
+            <span class="app-icon">close</span>
+          </button>
+        </div>
+        
+        <div class="additional-filters">
+          <div class="filter-group">
+            <label>Especialidad</label>
+            <select [(ngModel)]="filtroEspecialidad" (change)="aplicarFiltros()" class="filter-input">
+              <option value="">Todas</option>
+              <option *ngFor="let esp of especialidades" [value]="esp">{{ esp }}</option>
+            </select>
+          </div>
+          <button 
+            class="clear-filters-button" 
+            *ngIf="filtroEspecialidad || textoBusqueda" 
+            (click)="limpiarTodosFiltros()"
+            title="Limpiar todos los filtros"
+          >
+            <span class="app-icon">clear_all</span>
+            Limpiar filtros
+          </button>
         </div>
       </div>
 
@@ -187,6 +219,7 @@
             <button class="add-button" (click)="mostrarForm()">Crear primer proveedor</button>
           </div>
         </div>
+      </div>
       </div>
     </div>
   </main>

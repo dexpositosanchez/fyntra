@@ -36,6 +36,8 @@ export class ConductoresComponent implements OnInit, OnDestroy {
   mostrarSoloAlertas: boolean = false;
   mostrarMenuUsuario: boolean = false;
   usuario: any = null;
+  textoBusqueda: string = '';
+  conductoresFiltrados: any[] = [];
   private routerSubscription?: Subscription;
 
   constructor(
@@ -87,7 +89,7 @@ export class ConductoresComponent implements OnInit, OnDestroy {
     this.apiService.getConductores(params).subscribe({
       next: (data) => {
         this.conductores = data;
-        this.organizarConductoresPorEstado();
+        this.aplicarFiltroBusqueda();
         this.loading = false;
       },
       error: (err) => {
@@ -101,6 +103,36 @@ export class ConductoresComponent implements OnInit, OnDestroy {
     });
   }
 
+  aplicarFiltroBusqueda(): void {
+    // Aplicar filtro de búsqueda
+    if (!this.textoBusqueda || this.textoBusqueda.trim() === '') {
+      this.conductoresFiltrados = [...this.conductores];
+    } else {
+      const busqueda = this.textoBusqueda.toLowerCase().trim();
+      this.conductoresFiltrados = this.conductores.filter(conductor => {
+        const nombreCompleto = `${conductor.nombre || ''} ${conductor.apellidos || ''}`.toLowerCase();
+        const dni = (conductor.dni || '').toLowerCase();
+        const telefono = (conductor.telefono || '').toLowerCase();
+        const email = (conductor.email || '').toLowerCase();
+        const licencia = (conductor.licencia || '').toLowerCase();
+        
+        return nombreCompleto.includes(busqueda) ||
+               dni.includes(busqueda) ||
+               telefono.includes(busqueda) ||
+               email.includes(busqueda) ||
+               licencia.includes(busqueda);
+      });
+    }
+    
+    // Organizar los conductores filtrados por estado
+    this.organizarConductoresPorEstado();
+  }
+
+  limpiarBusqueda(): void {
+    this.textoBusqueda = '';
+    this.aplicarFiltroBusqueda();
+  }
+
   organizarConductoresPorEstado(): void {
     // Inicializar objetos
     this.conductoresPorEstado = {
@@ -108,8 +140,8 @@ export class ConductoresComponent implements OnInit, OnDestroy {
       'inactivo': []
     };
 
-    // Organizar por estado
-    this.conductores.forEach(conductor => {
+    // Organizar por estado usando los conductores filtrados
+    this.conductoresFiltrados.forEach(conductor => {
       const estado = conductor.activo ? 'activo' : 'inactivo';
       this.conductoresPorEstado[estado].push(conductor);
     });

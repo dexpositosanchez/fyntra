@@ -18,6 +18,8 @@ export class IncidenciasComponent implements OnInit, OnDestroy {
   error: string = '';
   filtroFecha: string = '';
   filtroPrioridad: string = '';
+  textoBusqueda: string = '';
+  incidenciasFiltradas: any[] = [];
   currentRoute: string = '';
   mostrarMenuUsuario: boolean = false;
   mostrarFormulario: boolean = false;
@@ -158,7 +160,7 @@ export class IncidenciasComponent implements OnInit, OnDestroy {
     observable.subscribe({
       next: (data) => {
         this.incidencias = data;
-        this.agruparPorEstado();
+        this.aplicarFiltroTexto();
         this.loading = false;
       },
       error: (err) => {
@@ -169,12 +171,72 @@ export class IncidenciasComponent implements OnInit, OnDestroy {
     });
   }
 
+  aplicarFiltroTexto(): void {
+    // Aplicar filtro de búsqueda de texto sobre las incidencias cargadas
+    if (!this.textoBusqueda || this.textoBusqueda.trim() === '') {
+      this.incidenciasFiltradas = [...this.incidencias];
+    } else {
+      const busqueda = this.textoBusqueda.toLowerCase().trim();
+      this.incidenciasFiltradas = this.incidencias.filter(incidencia => {
+        const titulo = (incidencia.titulo || '').toLowerCase();
+        const referencia = (incidencia.inmueble?.referencia || '').toLowerCase();
+        
+        // Extraer nombre del proveedor de forma segura - el proveedor viene como objeto con nombre
+        let proveedorNombre = '';
+        if (incidencia.proveedor) {
+          // Verificar si es un objeto con propiedad nombre
+          if (incidencia.proveedor && typeof incidencia.proveedor === 'object' && incidencia.proveedor.nombre) {
+            proveedorNombre = String(incidencia.proveedor.nombre || '').toLowerCase();
+          }
+          // Si es un string directamente (caso poco probable pero por si acaso)
+          else if (typeof incidencia.proveedor === 'string') {
+            proveedorNombre = incidencia.proveedor.toLowerCase();
+          }
+        }
+        
+        // Buscar en título, referencia o nombre del proveedor
+        const coincideTitulo = titulo.includes(busqueda);
+        const coincideReferencia = referencia.includes(busqueda);
+        const coincideProveedor = proveedorNombre && proveedorNombre.includes(busqueda);
+        
+        return coincideTitulo || coincideReferencia || coincideProveedor;
+      });
+    }
+    
+    // Organizar las incidencias filtradas por estado
+    this.agruparPorEstado();
+  }
+
+  limpiarBusqueda(): void {
+    this.textoBusqueda = '';
+    this.aplicarFiltroTexto();
+  }
+
+  limpiarTodosFiltros(): void {
+    this.filtroPrioridad = '';
+    this.textoBusqueda = '';
+    this.aplicarFiltroTexto();
+  }
+
+  aplicarFiltros(): void {
+    // Si solo hay búsqueda de texto, aplicar filtro local
+    this.aplicarFiltroTexto();
+  }
+
   agruparPorEstado(): void {
     // Inicializar objeto de agrupación
     this.incidenciasPorEstado = {};
     
+    // Filtrar por prioridad si hay filtro (sobre las incidencias ya filtradas por texto)
+    let incidenciasParaOrganizar = this.incidenciasFiltradas;
+    if (this.filtroPrioridad) {
+      incidenciasParaOrganizar = this.incidenciasFiltradas.filter(incidencia => 
+        incidencia.prioridad === this.filtroPrioridad
+      );
+    }
+    
     // Agrupar incidencias por estado
-    this.incidencias.forEach(incidencia => {
+    incidenciasParaOrganizar.forEach(incidencia => {
       // Asegurar que el estado sea un string (puede venir como enum del backend)
       const estado = (typeof incidencia.estado === 'string' ? incidencia.estado : incidencia.estado?.value || incidencia.estado) || 'abierta';
       if (!this.incidenciasPorEstado[estado]) {
@@ -385,6 +447,25 @@ export class IncidenciasComponent implements OnInit, OnDestroy {
   getInmuebleNombre(inmuebleId: number): string {
     const inmueble = this.inmuebles.find(i => i.id === inmuebleId);
     return inmueble ? `${inmueble.referencia} - ${inmueble.direccion || ''}` : 'N/A';
+  }
+
+  getProveedorNombre(incidencia: any): string | null {
+    // Verificar si hay proveedor asignado
+    if (!incidencia.proveedor) {
+      return null;
+    }
+    
+    // Si es un objeto con nombre
+    if (typeof incidencia.proveedor === 'object' && incidencia.proveedor.nombre) {
+      return incidencia.proveedor.nombre;
+    }
+    
+    // Si es un string directamente
+    if (typeof incidencia.proveedor === 'string') {
+      return incidencia.proveedor;
+    }
+    
+    return null;
   }
 
   formatearFecha(fecha: any): string {

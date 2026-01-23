@@ -27,6 +27,8 @@ export class ComunidadesComponent implements OnInit, OnDestroy {
   currentRoute: string = '';
   mostrarMenuUsuario: boolean = false;
   usuario: any = null;
+  textoBusqueda: string = '';
+  comunidadesFiltradas: any[] = [];
   private routerSubscription?: Subscription;
 
   constructor(
@@ -72,6 +74,7 @@ export class ComunidadesComponent implements OnInit, OnDestroy {
       next: (data) => {
         console.log('Comunidades recibidas:', data);
         this.comunidades = data;
+        this.aplicarFiltroBusqueda();
         this.loading = false;
       },
       error: (err) => {
@@ -210,6 +213,33 @@ export class ComunidadesComponent implements OnInit, OnDestroy {
   logout(): void {
     this.mostrarMenuUsuario = false;
     this.authService.logout();
+  }
+
+  aplicarFiltroBusqueda(): void {
+    // Aplicar filtro de búsqueda
+    if (!this.textoBusqueda || this.textoBusqueda.trim() === '') {
+      this.comunidadesFiltradas = [...this.comunidades];
+    } else {
+      const busqueda = this.textoBusqueda.toLowerCase().trim();
+      this.comunidadesFiltradas = this.comunidades.filter(comunidad => {
+        const nombre = (comunidad.nombre || '').toLowerCase();
+        const cif = (comunidad.cif || '').toLowerCase();
+        const direccion = (comunidad.direccion || '').toLowerCase();
+        const telefono = (comunidad.telefono || '').toLowerCase();
+        const email = (comunidad.email || '').toLowerCase();
+        
+        return nombre.includes(busqueda) ||
+               cif.includes(busqueda) ||
+               direccion.includes(busqueda) ||
+               telefono.includes(busqueda) ||
+               email.includes(busqueda);
+      });
+    }
+  }
+
+  limpiarBusqueda(): void {
+    this.textoBusqueda = '';
+    this.aplicarFiltroBusqueda();
   }
 }
 

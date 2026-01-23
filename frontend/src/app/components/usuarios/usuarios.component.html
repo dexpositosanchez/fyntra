@@ -105,24 +105,56 @@
 
     <!-- Lista de Usuarios -->
     <div *ngIf="!mostrarFormulario">
-      <div class="list-header">
-        <h1>Gestión de Usuarios</h1>
-        <button class="add-button" (click)="mostrarForm()">
-          <span class="app-icon">add</span>
-          Nuevo Usuario
-        </button>
-      </div>
-
-      <!-- Filtros -->
-      <div class="filters-section">
-        <div class="filter-group">
-          <label for="filtroRol">Rol:</label>
-          <select id="filtroRol" [(ngModel)]="filtroRol" (change)="aplicarFiltros()" name="filtroRol" class="filter-input">
-            <option value="">Todos</option>
-            <option *ngFor="let rol of roles" [value]="rol.value">{{ rol.label }}</option>
-          </select>
+      <div class="list-container">
+        <div class="list-header">
+          <h2>Gestión de Usuarios</h2>
+          <button class="add-button" (click)="mostrarForm()">
+            <span class="app-icon">add</span>
+            Nuevo Usuario
+          </button>
         </div>
-      </div>
+
+        <!-- Filtros -->
+        <div class="filters-section">
+          <!-- Campo de búsqueda principal -->
+          <div class="search-container">
+            <span class="search-icon app-icon">search</span>
+            <input
+              type="text"
+              [(ngModel)]="textoBusqueda"
+              (input)="aplicarFiltros()"
+              placeholder="Buscar por nombre o email..."
+              class="search-input"
+            />
+            <button 
+              *ngIf="textoBusqueda" 
+              class="clear-search-button" 
+              (click)="limpiarBusqueda()"
+              title="Limpiar búsqueda"
+            >
+              <span class="app-icon">close</span>
+            </button>
+          </div>
+          
+          <div class="additional-filters">
+            <div class="filter-group">
+              <label for="filtroRol">Rol:</label>
+              <select id="filtroRol" [(ngModel)]="filtroRol" (change)="aplicarFiltros()" name="filtroRol" class="filter-input">
+                <option value="">Todos</option>
+                <option *ngFor="let rol of roles" [value]="rol.value">{{ rol.label }}</option>
+              </select>
+            </div>
+            <button 
+              class="clear-filters-button" 
+              *ngIf="filtroRol || textoBusqueda" 
+              (click)="limpiarTodosFiltros()"
+              title="Limpiar todos los filtros"
+            >
+              <span class="app-icon">clear_all</span>
+              Limpiar filtros
+            </button>
+          </div>
+        </div>
 
       <div *ngIf="error && !mostrarFormulario" class="error-message">{{ error }}</div>
 
@@ -188,6 +220,7 @@
       <div class="loading-state" *ngIf="loading">
         <span class="app-icon spin">sync</span>
         <p>Cargando usuarios...</p>
+      </div>
       </div>
     </div>
   </main>

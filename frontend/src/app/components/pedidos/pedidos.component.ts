@@ -31,6 +31,10 @@ export class PedidosComponent implements OnInit, OnDestroy {
   currentRoute: string = '';
   mostrarMenuUsuario: boolean = false;
   usuario: any = null;
+  // Filtros
+  textoBusqueda: string = '';
+  filtroFechaEntrega: string = '';
+  pedidosFiltrados: any[] = [];
   // Pestañas por estado
   pedidosPorEstado: { [key: string]: any[] } = {};
   tabs: { estado: string, label: string, count: number }[] = [];
@@ -89,7 +93,7 @@ export class PedidosComponent implements OnInit, OnDestroy {
           ...pedido,
           fecha_entrega_deseada: pedido.fecha_entrega_deseada ? new Date(pedido.fecha_entrega_deseada) : null
         }));
-        this.agruparPorEstado();
+        this.aplicarFiltros();
         this.loading = false;
       },
       error: (err: HttpErrorResponse) => {
@@ -102,12 +106,60 @@ export class PedidosComponent implements OnInit, OnDestroy {
     });
   }
 
+  aplicarFiltros(): void {
+    // Aplicar todos los filtros
+    let resultados = [...this.pedidos];
+    
+    // Filtro de búsqueda de texto (cliente, origen, destino, tipo de mercancía)
+    if (this.textoBusqueda && this.textoBusqueda.trim() !== '') {
+      const busqueda = this.textoBusqueda.toLowerCase().trim();
+      resultados = resultados.filter(pedido => {
+        const cliente = (pedido.cliente || '').toLowerCase();
+        const origen = (pedido.origen || '').toLowerCase();
+        const destino = (pedido.destino || '').toLowerCase();
+        const tipoMercancia = (pedido.tipo_mercancia || '').toLowerCase();
+        
+        return cliente.includes(busqueda) ||
+               origen.includes(busqueda) ||
+               destino.includes(busqueda) ||
+               tipoMercancia.includes(busqueda);
+      });
+    }
+    
+    // Filtro por fecha de entrega deseada
+    if (this.filtroFechaEntrega && this.filtroFechaEntrega.trim() !== '') {
+      resultados = resultados.filter(pedido => {
+        if (!pedido.fecha_entrega_deseada) return false;
+        const fechaPedido = pedido.fecha_entrega_deseada instanceof Date 
+          ? pedido.fecha_entrega_deseada 
+          : new Date(pedido.fecha_entrega_deseada);
+        const fechaFiltro = new Date(this.filtroFechaEntrega);
+        // Comparar solo la fecha (sin hora)
+        return fechaPedido.toDateString() === fechaFiltro.toDateString();
+      });
+    }
+    
+    this.pedidosFiltrados = resultados;
+    this.agruparPorEstado();
+  }
+
+  limpiarBusqueda(): void {
+    this.textoBusqueda = '';
+    this.aplicarFiltros();
+  }
+
+  limpiarTodosFiltros(): void {
+    this.textoBusqueda = '';
+    this.filtroFechaEntrega = '';
+    this.aplicarFiltros();
+  }
+
   agruparPorEstado(): void {
     // Inicializar objeto de agrupación
     this.pedidosPorEstado = {};
     
-    // Agrupar pedidos por estado
-    this.pedidos.forEach(pedido => {
+    // Agrupar pedidos filtrados por estado
+    this.pedidosFiltrados.forEach(pedido => {
       const estado = pedido.estado || 'pendiente';
       if (!this.pedidosPorEstado[estado]) {
         this.pedidosPorEstado[estado] = [];

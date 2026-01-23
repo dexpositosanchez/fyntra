@@ -41,6 +41,10 @@ export class RutasComponent implements OnInit, OnDestroy {
   currentRoute: string = '';
   mostrarMenuUsuario: boolean = false;
   usuario: any = null;
+  // Filtros
+  filtroConductor: number | string | null = null;
+  filtroVehiculo: number | string | null = null;
+  rutasFiltradas: any[] = [];
   // Pestañas por estado
   rutasPorEstado: { [key: string]: any[] } = {};
   tabs: { estado: string, label: string, count: number }[] = [];
@@ -98,7 +102,7 @@ export class RutasComponent implements OnInit, OnDestroy {
     this.apiService.getRutas().subscribe({
       next: (data) => {
         this.rutas = data;
-        this.agruparPorEstado();
+        this.aplicarFiltros();
         this.loading = false;
       },
       error: (err: HttpErrorResponse) => {
@@ -111,12 +115,46 @@ export class RutasComponent implements OnInit, OnDestroy {
     });
   }
 
+  aplicarFiltros(): void {
+    // Aplicar todos los filtros
+    let resultados = [...this.rutas];
+    
+    // Filtro por conductor
+    if (this.filtroConductor !== null && this.filtroConductor !== undefined && this.filtroConductor !== '') {
+      const conductorId = typeof this.filtroConductor === 'string' ? parseInt(this.filtroConductor, 10) : this.filtroConductor;
+      if (!isNaN(conductorId)) {
+        resultados = resultados.filter(ruta => {
+          return ruta.conductor_id === conductorId;
+        });
+      }
+    }
+    
+    // Filtro por vehículo
+    if (this.filtroVehiculo !== null && this.filtroVehiculo !== undefined && this.filtroVehiculo !== '') {
+      const vehiculoId = typeof this.filtroVehiculo === 'string' ? parseInt(this.filtroVehiculo, 10) : this.filtroVehiculo;
+      if (!isNaN(vehiculoId)) {
+        resultados = resultados.filter(ruta => {
+          return ruta.vehiculo_id === vehiculoId;
+        });
+      }
+    }
+    
+    this.rutasFiltradas = resultados;
+    this.agruparPorEstado();
+  }
+
+  limpiarTodosFiltros(): void {
+    this.filtroConductor = null;
+    this.filtroVehiculo = null;
+    this.aplicarFiltros();
+  }
+
   agruparPorEstado(): void {
     // Inicializar objeto de agrupación
     this.rutasPorEstado = {};
     
-    // Agrupar rutas por estado
-    this.rutas.forEach(ruta => {
+    // Agrupar rutas filtradas por estado
+    this.rutasFiltradas.forEach(ruta => {
       const estado = ruta.estado || 'planificada';
       if (!this.rutasPorEstado[estado]) {
         this.rutasPorEstado[estado] = [];

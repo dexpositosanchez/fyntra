@@ -287,11 +287,79 @@ select.form-input {
 
 .filters-section {
   display: flex;
+  flex-direction: column;
   gap: 20px;
-  align-items: flex-end;
   margin-bottom: 25px;
   padding-bottom: 20px;
   border-bottom: 1px solid #e0e0e0;
+}
+
+// Campo de búsqueda principal
+.search-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: white;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 12px 16px;
+  transition: border-color 0.3s, box-shadow 0.3s;
+  
+  &:focus-within {
+    border-color: #1b9d8a;
+    box-shadow: 0 0 0 3px rgba(27, 157, 138, 0.1);
+  }
+  
+  .search-icon {
+    color: #8a94a6;
+    font-size: 20px;
+    margin-right: 12px;
+    flex-shrink: 0;
+  }
+  
+  .search-input {
+    flex: 1;
+    border: none;
+    outline: none;
+    font-size: 16px;
+    color: #2f343d;
+    background: transparent;
+    
+    &::placeholder {
+      color: #8a94a6;
+    }
+  }
+  
+  .clear-search-button {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    margin-left: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #8a94a6;
+    border-radius: 4px;
+    transition: background 0.2s, color 0.2s;
+    flex-shrink: 0;
+    
+    &:hover {
+      background: #f2f4f7;
+      color: #2f343d;
+    }
+    
+    .app-icon {
+      font-size: 18px;
+    }
+  }
+}
+
+.additional-filters {
+  display: flex;
+  gap: 15px;
+  align-items: flex-end;
+  flex-wrap: wrap;
 }
 
 .filter-group {
@@ -319,16 +387,30 @@ select.form-input {
   }
 }
 
-.clear-filters {
-  background: transparent;
-  border: none;
-  color: #d32f2f;
-  font-size: 13px;
+.clear-filters-button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #f2f4f7;
+  color: #5b6270;
+  border: 1px solid #e0e0e0;
+  padding: 8px 16px;
+  border-radius: 6px;
   cursor: pointer;
-  padding: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s;
+  height: fit-content;
+  white-space: nowrap;
   
   &:hover {
-    text-decoration: underline;
+    background: #e0e0e0;
+    border-color: #c8d0db;
+    color: #2f343d;
+  }
+  
+  .app-icon {
+    font-size: 16px;
   }
 }
 
