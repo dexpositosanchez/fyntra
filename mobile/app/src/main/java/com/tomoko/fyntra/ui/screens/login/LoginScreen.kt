@@ -66,7 +66,7 @@ fun LoginScreen(
         ) {
             // Logo
             Image(
-                painter = painterResource(id = R.drawable.imagotipo),
+                painter = painterResource(id = R.drawable.logotipo),
                 contentDescription = "Fyntra Logo",
                 modifier = Modifier
                     .size(200.dp)

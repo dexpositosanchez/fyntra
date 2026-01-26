@@ -65,13 +65,7 @@ interface ApiService {
     suspend fun getActuacionesIncidencia(@Path("incidencia_id") incidenciaId: Int): Response<List<Actuacion>>
 
     @POST("actuaciones/")
-    @Multipart
-    suspend fun crearActuacion(
-        @Part("incidencia_id") incidenciaId: RequestBody,
-        @Part("descripcion") descripcion: RequestBody,
-        @Part("fecha") fecha: RequestBody,
-        @Part("coste") coste: RequestBody?
-    ): Response<Actuacion>
+    suspend fun crearActuacion(@Body actuacion: ActuacionCreate): Response<Actuacion>
 
     @PUT("actuaciones/incidencia/{incidencia_id}/estado")
     @Multipart
@@ -90,7 +84,7 @@ interface ApiService {
     suspend fun uploadDocumento(
         @Part("incidencia_id") incidenciaId: RequestBody,
         @Part("nombre") nombre: RequestBody,
-        @Part("archivo") archivo: MultipartBody.Part
+        @Part archivo: MultipartBody.Part
     ): Response<Documento>
 
     @GET("documentos/{documento_id}/archivo")
@@ -111,9 +105,34 @@ interface ApiService {
         @Path("incidencia_id") incidenciaId: Int,
         @Body mensaje: MensajeCreate
     ): Response<Mensaje>
+    
+    @DELETE("mensajes/{mensaje_id}")
+    suspend fun eliminarMensaje(@Path("mensaje_id") mensajeId: Int): Response<Unit>
 
-    // Inmuebles (para propietarios)
+    // Inmuebles
     @GET("inmuebles/mis-inmuebles")
     suspend fun getMisInmuebles(): Response<List<InmuebleSimple>>
+    
+    @GET("inmuebles/")
+    suspend fun getInmuebles(
+        @Query("comunidad_id") comunidadId: Int? = null,
+        @Query("tipo") tipo: String? = null
+    ): Response<List<InmuebleResponse>>
+    
+    // Proveedores
+    @GET("proveedores/")
+    suspend fun getProveedores(
+        @Query("activo") activo: Boolean? = null,
+        @Query("especialidad") especialidad: String? = null
+    ): Response<List<ProveedorSimple>>
 }
+
+data class InmuebleResponse(
+    val id: Int,
+    val referencia: String,
+    val direccion: String? = null,
+    val comunidad_id: Int? = null,
+    val metros: Float? = null,
+    val tipo: String? = null
+)
 

@@ -13,11 +13,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavController
 import com.tomoko.fyntra.data.models.IncidenciaCreate
 import com.tomoko.fyntra.data.models.InmuebleSimple
+import com.tomoko.fyntra.data.api.InmuebleResponse
 import com.tomoko.fyntra.data.repository.AuthRepository
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.first
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -34,20 +37,54 @@ fun CrearIncidenciaScreen(
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
+    val context = LocalContext.current
+    val userRol = remember { mutableStateOf<String?>(null) }
+
     LaunchedEffect(Unit) {
+        // Obtener rol del usuario para decidir qué endpoint usar
+        val authDataStore = com.tomoko.fyntra.data.local.AuthDataStore(context)
+        userRol.value = authDataStore.userRol.first()
+
         isLoading = true
         try {
-            val response = authRepository.getApiServiceInstance().getMisInmuebles()
-            if (response.isSuccessful) {
-                inmuebles = response.body() ?: emptyList()
-                if (inmuebles.isNotEmpty()) {
-                    inmuebleId = inmuebles.first().id
+            if (userRol.value == "propietario") {
+                // Propietarios usan mis-inmuebles
+                val response = authRepository.getApiServiceInstance().getMisInmuebles()
+                if (response.isSuccessful) {
+                    val inmueblesList = response.body()
+                    if (inmueblesList != null) {
+                        inmuebles = inmueblesList
+                        if (inmuebles.isNotEmpty()) {
+                            inmuebleId = inmuebles.first().id
+                        }
+                    }
+                } else {
+                    error = "Error al cargar inmuebles: ${response.code()} ${response.message()}"
                 }
             } else {
-                error = "Error al cargar inmuebles"
+                // Admin usa el endpoint general que devuelve todos los inmuebles
+                val response = authRepository.getApiServiceInstance().getInmuebles()
+                if (response.isSuccessful) {
+                    val inmueblesResponse = response.body()
+                    if (inmueblesResponse != null) {
+                        // Convertir InmuebleResponse a InmuebleSimple
+                        inmuebles = inmueblesResponse.map {
+                            InmuebleSimple(
+                                id = it.id,
+                                referencia = it.referencia,
+                                direccion = it.direccion ?: ""
+                            )
+                        }
+                        if (inmuebles.isNotEmpty()) {
+                            inmuebleId = inmuebles.first().id
+                        }
+                    }
+                } else {
+                    error = "Error al cargar inmuebles: ${response.code()} ${response.message()}"
+                }
             }
         } catch (e: Exception) {
-            error = e.message
+            error = e.message ?: "Error al cargar inmuebles"
         } finally {
             isLoading = false
         }

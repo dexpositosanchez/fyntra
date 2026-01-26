@@ -526,7 +526,14 @@ export class IncidenciasComponent implements OnInit, OnDestroy {
 
   cargarActuaciones(incidenciaId: number): void {
     this.apiService.getActuacionesIncidencia(incidenciaId).subscribe({
-      next: (data) => this.actuaciones = data,
+      next: (data) => {
+        // Ordenar actuaciones por fecha descendente (más reciente primero)
+        this.actuaciones = data.sort((a, b) => {
+          const fechaA = new Date(a.fecha).getTime();
+          const fechaB = new Date(b.fecha).getTime();
+          return fechaB - fechaA; // Orden descendente
+        });
+      },
       error: () => this.actuaciones = []
     });
   }

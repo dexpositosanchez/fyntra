@@ -32,8 +32,14 @@ object RetrofitModule {
         val client = OkHttpClient.Builder()
             .addInterceptor { chain ->
                 val request = chain.request().newBuilder()
-                if (token != null) {
-                    request.addHeader("Authorization", "Bearer $token")
+                
+                // Siempre obtener el token más reciente del AuthDataStore
+                val authToken = kotlinx.coroutines.runBlocking {
+                    authDataStore.getToken()
+                }
+                
+                if (authToken != null && authToken.isNotBlank()) {
+                    request.addHeader("Authorization", "Bearer $authToken")
                 }
                 request.addHeader("Content-Type", "application/json")
                 chain.proceed(request.build())

@@ -44,7 +44,8 @@ class MainActivity : ComponentActivity() {
                 ) {
                     NavGraph(
                         authDataStore = authDataStore,
-                        authRepository = authRepository
+                        authRepository = authRepository,
+                        incidenciaRepository = incidenciaRepository
                     )
                 }
             }

@@ -14,7 +14,7 @@ import com.tomoko.fyntra.data.local.database.entities.PendingOperationEntity
         IncidenciaEntity::class,
         PendingOperationEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

@@ -41,10 +41,13 @@ fun ModuloTransportesScreen(
             .fillMaxSize()
             .background(Color(0xFFF5F5F5))
     ) {
-        // Header con botón de logout
+        // Header con botón de logout y cambio de módulo
         if (navController != null && authRepository != null) {
             AppHeader(
-                onLogout = { shouldLogout = true }
+                onLogout = { shouldLogout = true },
+                navController = navController,
+                authDataStore = authDataStore,
+                moduloActual = "transportes"
             )
         }
         
@@ -56,7 +59,7 @@ fun ModuloTransportesScreen(
             verticalArrangement = Arrangement.Center
         ) {
         Image(
-            painter = painterResource(id = R.drawable.imagotipo),
+            painter = painterResource(id = R.drawable.logotipo),
             contentDescription = "Fyntra Logo",
             modifier = Modifier.size(150.dp)
         )

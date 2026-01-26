@@ -22,12 +22,15 @@ import com.tomoko.fyntra.ui.screens.modulo.ModuloSelectorScreen
 import com.tomoko.fyntra.ui.screens.modulo.ModuloTransportesScreen
 import com.tomoko.fyntra.ui.screens.propietario.PropietarioHomeScreen
 import com.tomoko.fyntra.ui.screens.proveedor.ProveedorHomeScreen
+import com.tomoko.fyntra.ui.screens.incidencias.IncidenciasScreen
+import com.tomoko.fyntra.data.repository.IncidenciaRepository
 
 sealed class Screen(val route: String) {
     object Login : Screen("login")
     object ModuloSelector : Screen("modulo_selector")
     object ModuloFincas : Screen("modulo_fincas")
     object ModuloTransportes : Screen("modulo_transportes")
+    object Incidencias : Screen("incidencias")
     object ConductorHome : Screen("conductor_home")
     object PropietarioHome : Screen("propietario_home")
     object ProveedorHome : Screen("proveedor_home")
@@ -37,7 +40,8 @@ sealed class Screen(val route: String) {
 fun NavGraph(
     navController: NavHostController = rememberNavController(),
     authDataStore: AuthDataStore,
-    authRepository: AuthRepository
+    authRepository: AuthRepository,
+    incidenciaRepository: IncidenciaRepository
 ) {
     val userRol by authDataStore.userRol.collectAsState(initial = null)
     val isLoggedIn by authDataStore.token.collectAsState(initial = null)
@@ -97,6 +101,15 @@ fun NavGraph(
                 navController = navController,
                 authDataStore = authDataStore,
                 authRepository = authRepository
+            )
+        }
+
+        composable(Screen.Incidencias.route) {
+            IncidenciasScreen(
+                navController = navController,
+                authDataStore = authDataStore,
+                authRepository = authRepository,
+                incidenciaRepository = incidenciaRepository
             )
         }
 

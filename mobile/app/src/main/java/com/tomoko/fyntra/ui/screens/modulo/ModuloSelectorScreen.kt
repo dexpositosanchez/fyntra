@@ -46,9 +46,12 @@ fun ModuloSelectorScreen(
             .fillMaxSize()
             .background(Color(0xFFF5F5F5))
     ) {
-        // Header con botón de logout
+        // Header con botón de logout (sin menú de módulos)
         AppHeader(
-            onLogout = { shouldLogout = true }
+            onLogout = { shouldLogout = true },
+            navController = navController,
+            authDataStore = authDataStore,
+            mostrarMenuModulos = false
         )
 
         // Welcome section
@@ -83,12 +86,10 @@ fun ModuloSelectorScreen(
         ) {
             // Módulo Fincas
             ModuloCard(
-                title = "Administración de Fincas",
-                description = "Gestión de comunidades, propietarios e incidencias",
-                features = listOf("Comunidades", "Incidencias", "Propietarios"),
-                icon = R.drawable.isotipo,
+                title = "Fincas",
+                icon = "apartment",
                 onClick = {
-                    navController.navigate("modulo_fincas") {
+                    navController.navigate("incidencias") {
                         popUpTo("modulo_selector") { inclusive = false }
                     }
                 }
@@ -96,10 +97,8 @@ fun ModuloSelectorScreen(
 
             // Módulo Transportes
             ModuloCard(
-                title = "ERP de Transportes",
-                description = "Gestión de flota, rutas y pedidos",
-                features = listOf("Vehículos", "Rutas", "Pedidos"),
-                icon = R.drawable.isotipo,
+                title = "Transportes",
+                icon = "local_shipping",
                 onClick = {
                     navController.navigate("modulo_transportes") {
                         popUpTo("modulo_selector") { inclusive = false }
@@ -113,15 +112,13 @@ fun ModuloSelectorScreen(
 @Composable
 fun RowScope.ModuloCard(
     title: String,
-    description: String,
-    features: List<String>,
-    icon: Int,
+    icon: String,
     onClick: () -> Unit
 ) {
     Card(
         modifier = Modifier
             .weight(1f)
-            .height(300.dp)
+            .height(200.dp)
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
@@ -134,52 +131,25 @@ fun RowScope.ModuloCard(
                 .fillMaxSize()
                 .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceBetween
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Image(
-                painter = painterResource(id = icon),
-                contentDescription = title,
-                modifier = Modifier.size(80.dp),
-                contentScale = ContentScale.Fit
+            // Icono usando emoji o texto (Material Icons no está disponible directamente)
+            Text(
+                text = when (icon) {
+                    "apartment" -> "🏢"
+                    "local_shipping" -> "🚚"
+                    else -> "📦"
+                },
+                fontSize = 64.sp
             )
-
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Text(
-                    text = title,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF2F343D),
-                    textAlign = TextAlign.Center
-                )
-                Text(
-                    text = description,
-                    fontSize = 14.sp,
-                    color = Color(0xFF6F7785),
-                    textAlign = TextAlign.Center
-                )
-            }
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                features.forEach { feature ->
-                    Surface(
-                        shape = RoundedCornerShape(4.dp),
-                        color = Color(0xFFE8F5E9)
-                    ) {
-                        Text(
-                            text = feature,
-                            fontSize = 12.sp,
-                            color = Color(0xFF1B9D8A),
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                        )
-                    }
-                }
-            }
+            
+            Text(
+                text = title,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF1B9D8A),
+                textAlign = TextAlign.Center
+            )
         }
     }
 }

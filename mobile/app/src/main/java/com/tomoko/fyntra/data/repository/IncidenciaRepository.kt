@@ -30,8 +30,8 @@ class IncidenciaRepository(
     }
     
     // Refrescar incidencias desde el servidor (llamar manualmente cuando sea necesario)
-    suspend fun refreshIncidenciasFromServer(estado: String? = null) {
-        refreshIncidencias(estado)
+    suspend fun refreshIncidenciasFromServer(estado: String? = null, userRol: String? = null) {
+        refreshIncidencias(estado, userRol)
     }
 
     // Obtener una incidencia por ID
@@ -155,17 +155,41 @@ class IncidenciaRepository(
     }
 
     // Refrescar incidencias desde el servidor
-    private suspend fun refreshIncidencias(estado: String? = null) {
+    private suspend fun refreshIncidencias(estado: String? = null, userRol: String? = null) {
+        if (!networkMonitor.isCurrentlyOnline()) {
+            // Si no hay internet, no intentar refrescar
+            return
+        }
+        
         try {
-            val response = apiService.getIncidencias(estado)
-            if (response.isSuccessful && response.body() != null) {
-                val incidencias = response.body()!!
-                incidenciaDao.insertIncidencias(
-                    incidencias.map { it.toEntity() }
-                )
+            val response = if (userRol == "proveedor") {
+                // Proveedores usan endpoint diferente
+                apiService.getMisIncidenciasProveedor(estado)
+            } else {
+                // Admin, super_admin y propietarios usan el endpoint normal
+                apiService.getIncidencias(estado)
+            }
+            
+            if (response.isSuccessful) {
+                val incidencias = response.body()
+                if (incidencias != null && incidencias.isNotEmpty()) {
+                    // Limpiar e insertar nuevas incidencias
+                    incidenciaDao.deleteAllIncidencias()
+                    incidenciaDao.insertIncidencias(
+                        incidencias.map { it.toEntity() }
+                    )
+                } else if (incidencias != null && incidencias.isEmpty()) {
+                    // Si la respuesta es exitosa pero vacía, limpiar la base de datos
+                    incidenciaDao.deleteAllIncidencias()
+                }
+            } else {
+                // Si la respuesta no es exitosa, lanzar excepción
+                throw Exception("Error al obtener incidencias: ${response.code()} ${response.message()}")
             }
         } catch (e: Exception) {
             // Error al refrescar, usar caché local
+            // El error se manejará en el ViewModel
+            throw e
         }
     }
 
@@ -192,10 +216,23 @@ private fun IncidenciaEntity.toIncidencia(): Incidencia {
         inmueble = if (inmueble_referencia != null && inmueble_direccion != null) {
             com.tomoko.fyntra.data.models.InmuebleSimple(
                 id = inmueble_id,
-                referencia = inmueble_referencia,
-                direccion = inmueble_direccion
+                referencia = inmueble_referencia ?: "",
+                direccion = inmueble_direccion ?: ""
             )
-        } else null
+        } else null,
+        proveedor = if (proveedor_id != null && proveedor_nombre != null) {
+            com.tomoko.fyntra.data.models.ProveedorSimple(
+                id = proveedor_id,
+                nombre = proveedor_nombre ?: "",
+                email = proveedor_email,
+                telefono = proveedor_telefono,
+                especialidad = proveedor_especialidad
+            )
+        } else null,
+        historial = null, // El historial se carga por separado si es necesario
+        actuaciones_count = 0, // Se puede calcular desde la base de datos si es necesario
+        documentos_count = 0,
+        mensajes_count = 0
     )
 }
 
@@ -215,6 +252,10 @@ private fun Incidencia.toEntity(): IncidenciaEntity {
         syncStatus = "synced",
         lastSyncTimestamp = System.currentTimeMillis(),
         inmueble_referencia = inmueble?.referencia,
-        inmueble_direccion = inmueble?.direccion
+        inmueble_direccion = inmueble?.direccion,
+        proveedor_nombre = proveedor?.nombre,
+        proveedor_email = proveedor?.email,
+        proveedor_telefono = proveedor?.telefono,
+        proveedor_especialidad = proveedor?.especialidad
     )
 }

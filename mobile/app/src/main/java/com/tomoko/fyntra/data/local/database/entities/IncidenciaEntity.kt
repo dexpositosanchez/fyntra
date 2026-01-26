@@ -19,5 +19,9 @@ data class IncidenciaEntity(
     val syncStatus: String = "synced", // synced, pending, syncing, error
     val lastSyncTimestamp: Long = System.currentTimeMillis(),
     val inmueble_referencia: String? = null,
-    val inmueble_direccion: String? = null
+    val inmueble_direccion: String? = null,
+    val proveedor_nombre: String? = null,
+    val proveedor_email: String? = null,
+    val proveedor_telefono: String? = null,
+    val proveedor_especialidad: String? = null
 )

@@ -11,28 +11,41 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import android.net.Uri
+import android.content.Intent
+import android.os.Environment
+import android.app.DatePickerDialog
+import androidx.core.content.FileProvider
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.ResponseBody
 import java.io.File
+import java.io.FileOutputStream
 import java.text.SimpleDateFormat
 import java.util.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.foundation.clickable
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.TextButton
 import androidx.navigation.NavController
 import com.tomoko.fyntra.data.models.Incidencia
+import com.tomoko.fyntra.data.models.IncidenciaUpdate
 import com.tomoko.fyntra.data.repository.AuthRepository
 import kotlinx.coroutines.launch
 
@@ -64,6 +77,19 @@ fun IncidenciaDetailScreen(
             else -> false
         }
     }
+    
+    // Verificar si puede editar: admin siempre, propietario solo si es el creador, proveedor NO puede editar
+    val puedeEditar = remember(incidencia, userRol, userId) {
+        when {
+            userRol in listOf("super_admin", "admin_fincas") -> true
+            userRol == "propietario" && incidencia != null && userId != null -> {
+                incidencia!!.creador_usuario_id == userId
+            }
+            else -> false
+        }
+    }
+    
+    var mostrarEditarDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(incidenciaId) {
         isLoading = true
@@ -97,6 +123,16 @@ fun IncidenciaDetailScreen(
                     containerColor = MaterialTheme.colorScheme.primaryContainer
                 ),
                 actions = {
+                    if (puedeEditar) {
+                        IconButton(
+                            onClick = { mostrarEditarDialog = true }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = "Editar"
+                            )
+                        }
+                    }
                     if (puedeEliminar) {
                         IconButton(
                             onClick = { showDeleteDialog = true },
@@ -110,37 +146,6 @@ fun IncidenciaDetailScreen(
                     }
                 }
             )
-        },
-        bottomBar = {
-            TabRow(selectedTabIndex = selectedTab) {
-                Tab(
-                    selected = selectedTab == 0,
-                    onClick = { selectedTab = 0 },
-                    text = { Text("Detalles") }
-                )
-                Tab(
-                    selected = selectedTab == 1,
-                    onClick = { selectedTab = 1 },
-                    text = { Text("Historial") }
-                )
-                Tab(
-                    selected = selectedTab == 2,
-                    onClick = { selectedTab = 2 },
-                    text = { Text("Documentos") }
-                )
-                Tab(
-                    selected = selectedTab == 3,
-                    onClick = { selectedTab = 3 },
-                    text = { Text("Chat") }
-                )
-                if (userRol == "proveedor") {
-                    Tab(
-                        selected = selectedTab == 4,
-                        onClick = { selectedTab = 4 },
-                        text = { Text("Actuaciones") }
-                    )
-                }
-            }
         }
     ) { paddingValues ->
         if (isLoading) {
@@ -165,11 +170,44 @@ fun IncidenciaDetailScreen(
             Box(modifier = Modifier.padding(paddingValues)) {
                 val context = androidx.compose.ui.platform.LocalContext.current
                 when (selectedTab) {
-                    0 -> DetallesTab(incidencia!!, userRol, authRepository)
+                    0 -> DetallesTab(
+                        incidencia = incidencia!!,
+                        userRol = userRol,
+                        authRepository = authRepository,
+                        selectedTab = { selectedTab = it },
+                        onRefreshIncidencia = {
+                            scope.launch {
+                                try {
+                                    val response = authRepository.getApiServiceInstance().getIncidencia(incidenciaId)
+                                    if (response.isSuccessful) {
+                                        incidencia = response.body()
+                                    }
+                                } catch (e: Exception) {
+                                    // Error al refrescar
+                                }
+                            }
+                        }
+                    )
                     1 -> HistorialTab(incidencia!!)
                     2 -> DocumentosTab(incidencia!!, userRol, authRepository, userId, context)
                     3 -> ChatTab(incidencia!!, authRepository, userId)
-                    4 -> if (userRol == "proveedor") ActuacionesTab(incidencia!!, authRepository)
+                    4 -> if (userRol == "proveedor") ActuacionesTab(
+                        incidencia = incidencia!!,
+                        authRepository = authRepository,
+                        onActuacionCreada = {
+                            // Refrescar la incidencia después de crear una actuación
+                            scope.launch {
+                                try {
+                                    val response = authRepository.getApiServiceInstance().getIncidencia(incidenciaId)
+                                    if (response.isSuccessful) {
+                                        incidencia = response.body()
+                                    }
+                                } catch (e: Exception) {
+                                    // Error al refrescar, continuar
+                                }
+                            }
+                        }
+                    )
                 }
             }
         }
@@ -220,6 +258,33 @@ fun IncidenciaDetailScreen(
                 }
             )
         }
+        
+        // Dialog de edición
+        if (mostrarEditarDialog && incidencia != null) {
+            EditarIncidenciaDialog(
+                incidencia = incidencia!!,
+                userRol = userRol,
+                authRepository = authRepository,
+                onDismiss = { mostrarEditarDialog = false },
+                onSuccess = {
+                    mostrarEditarDialog = false
+                    // Recargar la incidencia
+                    scope.launch {
+                        isLoading = true
+                        try {
+                            val response = authRepository.getApiServiceInstance().getIncidencia(incidenciaId)
+                            if (response.isSuccessful) {
+                                incidencia = response.body()
+                            }
+                        } catch (e: Exception) {
+                            error = e.message
+                        } finally {
+                            isLoading = false
+                        }
+                    }
+                }
+            )
+        }
     }
 }
 
@@ -227,7 +292,9 @@ fun IncidenciaDetailScreen(
 fun DetallesTab(
     incidencia: Incidencia,
     userRol: String,
-    authRepository: AuthRepository
+    authRepository: AuthRepository,
+    selectedTab: (Int) -> Unit = {},
+    onRefreshIncidencia: () -> Unit = {}
 ) {
     Column(
         modifier = Modifier
@@ -254,11 +321,11 @@ fun DetallesTab(
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Column {
                         Text("Estado", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(incidencia.estado, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                        Text(getEstadoLabel(incidencia.estado), fontSize = 14.sp, fontWeight = FontWeight.Bold)
                     }
                     Column {
                         Text("Prioridad", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(incidencia.prioridad, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                        Text(getPrioridadLabel(incidencia.prioridad), fontSize = 14.sp, fontWeight = FontWeight.Bold)
                     }
                 }
                 
@@ -269,21 +336,78 @@ fun DetallesTab(
                 
                 Spacer(modifier = Modifier.height(8.dp))
                 
+                // Proveedor si está asignado
+                if (incidencia.proveedor != null) {
+                    Text("Proveedor", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("${incidencia.proveedor.nombre}${incidencia.proveedor.especialidad?.let { " - $it" } ?: ""}", fontSize = 14.sp)
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+                
                 Text("Fecha de creación", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(formatearFecha(incidencia.fecha_alta), fontSize = 14.sp)
+                Text(formatearFechaSolo(incidencia.fecha_alta), fontSize = 14.sp)
             }
         }
 
-        if (userRol == "proveedor") {
+        // Botones de acción rápida
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(
                     modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text("Cambiar Estado", fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                    // TODO: Implementar selector de estado
+                Text("Acciones", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // Botón Historial
+                    Button(
+                        onClick = { selectedTab(1) },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("📋 Historial", fontSize = 12.sp)
+                    }
+                    
+                    // Botón Documentos
+                    Button(
+                        onClick = { selectedTab(2) },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("📎 Adjuntos", fontSize = 12.sp)
+                    }
+                }
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // Botón Chat
+                    Button(
+                        onClick = { selectedTab(3) },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("💬 Chat", fontSize = 12.sp)
+                    }
+                    
+                    // Botón Actuaciones (solo para proveedores)
+                    if (userRol == "proveedor") {
+                        Button(
+                            onClick = { selectedTab(4) },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("🔧 Actuaciones", fontSize = 12.sp)
+                        }
+                    }
                 }
             }
+        }
+        
+        if (userRol == "proveedor") {
+            CambiarEstadoCard(
+                incidencia = incidencia,
+                authRepository = authRepository,
+                onEstadoCambiado = onRefreshIncidencia
+            )
         }
     }
 }
@@ -386,11 +510,18 @@ fun DocumentosTab(
                     tempFile.name
                 }
 
-                // Crear RequestBody para el archivo (el backend espera "archivo" no "file")
-                val requestFile = tempFile.asRequestBody("application/octet-stream".toMediaTypeOrNull())
+                // Obtener el tipo MIME del archivo
+                val mimeType = try {
+                    context?.contentResolver?.getType(uri) ?: "application/octet-stream"
+                } catch (e: Exception) {
+                    "application/octet-stream"
+                }
+
+                // Crear RequestBody para el archivo (el backend espera "archivo")
+                val requestFile = tempFile.asRequestBody(mimeType.toMediaTypeOrNull())
                 val filePart = MultipartBody.Part.createFormData("archivo", fileName, requestFile)
 
-                // Crear RequestBody para el nombre y incidencia_id
+                // Crear RequestBody para el nombre y incidencia_id (usando Form para multipart)
                 val nombrePart = nombreDocumento.toRequestBody("text/plain".toMediaTypeOrNull())
                 val incidenciaIdPart = incidencia.id.toString().toRequestBody("text/plain".toMediaTypeOrNull())
 
@@ -496,17 +627,24 @@ fun DocumentosTab(
                             ) {
                                 Button(
                                     onClick = {
-                                        // Abrir documento en navegador o descargar
                                         scope.launch {
                                             try {
-                                                // Obtener token para la descarga
                                                 val authDataStore = com.tomoko.fyntra.data.local.AuthDataStore(context)
                                                 val token = authDataStore.getToken()
                                                 if (token != null) {
                                                     val response = authRepository.getApiServiceInstance().downloadDocumento(doc.id, token)
                                                     if (response.isSuccessful) {
-                                                        // TODO: Abrir archivo o descargar
-                                                        error = "Funcionalidad de descarga en desarrollo"
+                                                        val responseBody = response.body()
+                                                        if (responseBody != null) {
+                                                            descargarYabrirDocumento(
+                                                                context = context,
+                                                                responseBody = responseBody,
+                                                                nombreArchivo = doc.nombre_archivo ?: doc.nombre,
+                                                                tipoArchivo = doc.tipo_archivo ?: "application/octet-stream"
+                                                            )
+                                                        } else {
+                                                            error = "Error: respuesta vacía"
+                                                        }
                                                     } else {
                                                         error = "Error al descargar documento: ${response.message()}"
                                                     }
@@ -514,7 +652,7 @@ fun DocumentosTab(
                                                     error = "No se pudo obtener el token de autenticación"
                                                 }
                                             } catch (e: Exception) {
-                                                error = e.message
+                                                error = e.message ?: "Error al descargar documento"
                                             }
                                         }
                                     }
@@ -604,7 +742,7 @@ fun formatearFecha(fechaString: String?): String {
         var fecha: Date? = null
         for (formato in formatos) {
             try {
-                val sdf = SimpleDateFormat(formato, Locale.getDefault())
+                val sdf = SimpleDateFormat(formato, Locale("es", "ES"))
                 sdf.timeZone = TimeZone.getTimeZone("UTC")
                 fecha = sdf.parse(fechaString)
                 if (fecha != null) break
@@ -613,7 +751,39 @@ fun formatearFecha(fechaString: String?): String {
             }
         }
         if (fecha != null) {
-            val formatoSalida = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
+            val formatoSalida = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale("es", "ES"))
+            formatoSalida.format(fecha)
+        } else {
+            fechaString
+        }
+    } catch (e: Exception) {
+        fechaString
+    }
+}
+
+fun formatearFechaSolo(fechaString: String?): String {
+    if (fechaString == null) return "N/A"
+    return try {
+        // Intentar parsear diferentes formatos de fecha
+        val formatos = listOf(
+            "yyyy-MM-dd'T'HH:mm:ss.SSSSSS",
+            "yyyy-MM-dd'T'HH:mm:ss",
+            "yyyy-MM-dd HH:mm:ss",
+            "yyyy-MM-dd"
+        )
+        var fecha: Date? = null
+        for (formato in formatos) {
+            try {
+                val sdf = SimpleDateFormat(formato, Locale("es", "ES"))
+                sdf.timeZone = TimeZone.getTimeZone("UTC")
+                fecha = sdf.parse(fechaString)
+                if (fecha != null) break
+            } catch (e: Exception) {
+                continue
+            }
+        }
+        if (fecha != null) {
+            val formatoSalida = SimpleDateFormat("dd/MM/yyyy", Locale("es", "ES"))
             formatoSalida.format(fecha)
         } else {
             fechaString
@@ -627,7 +797,32 @@ fun formatearFecha(fechaString: String?): String {
 fun HistorialTab(
     incidencia: Incidencia
 ) {
-    val historial = incidencia.historial ?: emptyList()
+    val historial = remember(incidencia.historial) {
+        (incidencia.historial ?: emptyList()).sortedByDescending { item ->
+            try {
+                val formatos = listOf(
+                    "yyyy-MM-dd'T'HH:mm:ss.SSSSSS",
+                    "yyyy-MM-dd'T'HH:mm:ss",
+                    "yyyy-MM-dd HH:mm:ss",
+                    "yyyy-MM-dd"
+                )
+                var fecha: Date? = null
+                for (formato in formatos) {
+                    try {
+                        val sdf = SimpleDateFormat(formato, Locale("es", "ES"))
+                        sdf.timeZone = TimeZone.getTimeZone("UTC")
+                        fecha = sdf.parse(item.fecha)
+                        if (fecha != null) break
+                    } catch (e: Exception) {
+                        continue
+                    }
+                }
+                fecha?.time ?: 0L
+            } catch (e: Exception) {
+                0L
+            }
+        }
+    }
     
     if (historial.isEmpty()) {
         Box(
@@ -658,7 +853,7 @@ fun HistorialTab(
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Text(
-                                text = "Estado: ${item.estado_anterior ?: "N/A"} → ${item.estado_nuevo}",
+                                text = "Estado: ${if (item.estado_anterior != null) getEstadoLabel(item.estado_anterior) else "N/A"} → ${getEstadoLabel(item.estado_nuevo)}",
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 16.sp
                             )
@@ -744,10 +939,18 @@ fun ChatTab(
     fun eliminarMensaje(mensajeId: Int) {
         scope.launch {
             try {
-                // TODO: Implementar endpoint de eliminación de mensajes
-                error = "Funcionalidad de eliminación en desarrollo"
+                isLoading = true
+                error = null
+                val response = authRepository.getApiServiceInstance().eliminarMensaje(mensajeId)
+                if (response.isSuccessful) {
+                    cargarMensajes() // Recargar mensajes después de eliminar
+                } else {
+                    error = "Error al eliminar mensaje: ${response.message()}"
+                }
             } catch (e: Exception) {
-                error = e.message
+                error = e.message ?: "Error al eliminar mensaje"
+            } finally {
+                isLoading = false
             }
         }
     }
@@ -861,14 +1064,753 @@ fun ChatTab(
 @Composable
 fun ActuacionesTab(
     incidencia: Incidencia,
-    authRepository: AuthRepository
+    authRepository: AuthRepository,
+    onActuacionCreada: () -> Unit = {}
 ) {
-    // TODO: Implementar lista de actuaciones y formulario
+    var actuaciones by remember { mutableStateOf<List<com.tomoko.fyntra.data.models.Actuacion>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var mostrarFormulario by remember { mutableStateOf(false) }
+    var descripcion by remember { mutableStateOf("") }
+    var fecha by remember { mutableStateOf("") }
+    var coste by remember { mutableStateOf("") }
+    var isSubmitting by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    
+    fun cargarActuaciones() {
+        scope.launch {
+            isLoading = true
+            try {
+                val response = authRepository.getApiServiceInstance().getActuacionesIncidencia(incidencia.id)
+                if (response.isSuccessful) {
+                    actuaciones = response.body() ?: emptyList()
+                } else {
+                    error = "Error al cargar actuaciones"
+                }
+            } catch (e: Exception) {
+                error = e.message
+            } finally {
+                isLoading = false
+            }
+        }
+    }
+    
+    fun crearActuacion() {
+        if (descripcion.isBlank() || fecha.isBlank()) {
+            error = "Por favor completa todos los campos obligatorios"
+            return
+        }
+        
+        scope.launch {
+            isSubmitting = true
+            error = null
+            try {
+                val costeValue = if (coste.isNotBlank()) {
+                    try {
+                        coste.toDouble()
+                    } catch (e: Exception) {
+                        null
+                    }
+                } else null
+                
+                // Convertir fecha a formato ISO si no lo está
+                val fechaISO = try {
+                    // Si ya está en formato ISO, usarla directamente
+                    if (fecha.matches(Regex("\\d{4}-\\d{2}-\\d{2}"))) {
+                        "${fecha}T00:00:00"
+                    } else {
+                        fecha
+                    }
+                } catch (e: Exception) {
+                    fecha
+                }
+                
+                val actuacionData = com.tomoko.fyntra.data.models.ActuacionCreate(
+                    incidencia_id = incidencia.id,
+                    descripcion = descripcion,
+                    fecha = fechaISO,
+                    coste = costeValue
+                )
+                
+                val response = authRepository.getApiServiceInstance().crearActuacion(actuacionData)
+                
+                if (response.isSuccessful) {
+                    descripcion = ""
+                    fecha = ""
+                    coste = ""
+                    mostrarFormulario = false
+                    error = null
+                    cargarActuaciones()
+                    onActuacionCreada() // Notificar que se creó una actuación
+                } else {
+                    error = "Error al crear actuación: ${response.message()}"
+                }
+            } catch (e: Exception) {
+                error = e.message ?: "Error al crear actuación"
+            } finally {
+                isSubmitting = false
+            }
+        }
+    }
+    
+    LaunchedEffect(incidencia.id) {
+        cargarActuaciones()
+    }
+    
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        // Botón para crear actuación
+        Button(
+            onClick = { mostrarFormulario = true },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Nueva Actuación")
+        }
+        
+        if (error != null) {
+            Text(
+                text = error!!,
+                color = MaterialTheme.colorScheme.error,
+                fontSize = 12.sp
+            )
+        }
+        
+        // Formulario de nueva actuación
+        if (mostrarFormulario) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        text = "Nueva Actuación",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    
+                    OutlinedTextField(
+                        value = descripcion,
+                        onValueChange = { descripcion = it },
+                        label = { Text("Descripción *") },
+                        modifier = Modifier.fillMaxWidth(),
+                        maxLines = 4,
+                        enabled = !isSubmitting
+                    )
+                    
+                    // Campo de fecha con DatePicker
+                    val context = LocalContext.current
+                    var fechaDisplay by remember { mutableStateOf("") }
+                    var fechaSeleccionada by remember { mutableStateOf<Calendar?>(null) }
+                    
+                    // Inicializar con fecha de hoy
+                    LaunchedEffect(Unit) {
+                        val hoy = Calendar.getInstance()
+                        fechaSeleccionada = hoy
+                        val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+                        fechaDisplay = sdf.format(hoy.time)
+                        val sdfISO = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                        fecha = sdfISO.format(hoy.time)
+                    }
+                    
+                    // Actualizar fechaDisplay cuando cambia fechaSeleccionada
+                    LaunchedEffect(fechaSeleccionada) {
+                        fechaSeleccionada?.let { cal ->
+                            val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+                            fechaDisplay = sdf.format(cal.time)
+                            val sdfISO = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                            fecha = sdfISO.format(cal.time)
+                        }
+                    }
+                    
+                    OutlinedTextField(
+                        value = fechaDisplay,
+                        onValueChange = { },
+                        label = { Text("Fecha * (dd/MM/yyyy)") },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                val cal = fechaSeleccionada ?: Calendar.getInstance()
+                                DatePickerDialog(
+                                    context,
+                                    { _, year, month, dayOfMonth ->
+                                        val nuevaFecha = Calendar.getInstance().apply {
+                                            set(year, month, dayOfMonth)
+                                        }
+                                        fechaSeleccionada = nuevaFecha
+                                    },
+                                    cal.get(Calendar.YEAR),
+                                    cal.get(Calendar.MONTH),
+                                    cal.get(Calendar.DAY_OF_MONTH)
+                                ).show()
+                            },
+                        enabled = !isSubmitting,
+                        readOnly = true,
+                        placeholder = { Text("Seleccionar fecha") },
+                        trailingIcon = {
+                            IconButton(onClick = {
+                                val cal = fechaSeleccionada ?: Calendar.getInstance()
+                                DatePickerDialog(
+                                    context,
+                                    { _, year, month, dayOfMonth ->
+                                        val nuevaFecha = Calendar.getInstance().apply {
+                                            set(year, month, dayOfMonth)
+                                        }
+                                        fechaSeleccionada = nuevaFecha
+                                    },
+                                    cal.get(Calendar.YEAR),
+                                    cal.get(Calendar.MONTH),
+                                    cal.get(Calendar.DAY_OF_MONTH)
+                                ).show()
+                            }) {
+                                Text("📅", fontSize = 20.sp)
+                            }
+                        }
+                    )
+                    
+                    OutlinedTextField(
+                        value = coste,
+                        onValueChange = { coste = it },
+                        label = { Text("Coste (opcional)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !isSubmitting,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+                    )
+                    
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        TextButton(
+                            onClick = {
+                                mostrarFormulario = false
+                                descripcion = ""
+                                fecha = ""
+                                coste = ""
+                                error = null
+                            },
+                            enabled = !isSubmitting
+                        ) {
+                            Text("Cancelar")
+                        }
+                        Button(
+                            onClick = { crearActuacion() },
+                            enabled = !isSubmitting && descripcion.isNotBlank() && fecha.isNotBlank(),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            if (isSubmitting) {
+                                CircularProgressIndicator(modifier = Modifier.size(16.dp))
+                            } else {
+                                Text("Crear")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Lista de actuaciones
+        if (isLoading) {
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = androidx.compose.ui.Alignment.Center
     ) {
-        Text("Actuaciones - En desarrollo")
+                CircularProgressIndicator()
+            }
+        } else if (actuaciones.isEmpty()) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = androidx.compose.ui.Alignment.Center
+            ) {
+                Text("No hay actuaciones registradas")
+            }
+        } else {
+            LazyColumn(
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(actuaciones) { actuacion ->
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                text = actuacion.descripcion,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = "Fecha: ${formatearFechaSolo(actuacion.fecha)}",
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                if (actuacion.coste != null) {
+                                    Text(
+                                        text = "Coste: ${String.format("%.2f", actuacion.coste)} €",
+                                        fontSize = 12.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun EditarIncidenciaDialog(
+    incidencia: Incidencia,
+    userRol: String,
+    authRepository: AuthRepository,
+    onDismiss: () -> Unit,
+    onSuccess: () -> Unit
+) {
+    var titulo by remember { mutableStateOf(incidencia.titulo) }
+    var descripcion by remember { mutableStateOf(incidencia.descripcion ?: "") }
+    var prioridad by remember { mutableStateOf(incidencia.prioridad) }
+    var estado by remember { mutableStateOf(incidencia.estado) }
+    var proveedorId by remember { mutableStateOf<Int?>(incidencia.proveedor_id) }
+    var comentarioCambio by remember { mutableStateOf("") }
+    var isLoading by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    
+    var proveedores by remember { mutableStateOf<List<com.tomoko.fyntra.data.models.ProveedorSimple>>(emptyList()) }
+    val scope = rememberCoroutineScope()
+    val esAdmin = userRol in listOf("super_admin", "admin_fincas")
+    val esProveedor = userRol == "proveedor"
+    val puedeEditarEstado = esAdmin || esProveedor
+    
+    LaunchedEffect(Unit) {
+        if (esAdmin) {
+            // Cargar proveedores solo para admin
+            scope.launch {
+                try {
+                    val response = authRepository.getApiServiceInstance().getProveedores(activo = true)
+                    if (response.isSuccessful) {
+                        proveedores = response.body() ?: emptyList()
+                    }
+                } catch (e: Exception) {
+                    // Error al cargar proveedores, continuar sin ellos
+                }
+            }
+        }
+    }
+    
+    AlertDialog(
+        onDismissRequest = { if (!isLoading) onDismiss() },
+        title = { Text("Editar Incidencia") },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                if (error != null) {
+                    Text(
+                        text = error!!,
+                        color = MaterialTheme.colorScheme.error,
+                        fontSize = 12.sp
+                    )
+                }
+                
+                OutlinedTextField(
+                    value = titulo,
+                    onValueChange = { titulo = it },
+                    label = { Text("Título *") },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !isLoading
+                )
+                
+                OutlinedTextField(
+                    value = descripcion,
+                    onValueChange = { descripcion = it },
+                    label = { Text("Descripción *") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(100.dp),
+                    maxLines = 4,
+                    enabled = !isLoading
+                )
+                
+                // Prioridad
+                var expandedPrioridad by remember { mutableStateOf(false) }
+                ExposedDropdownMenuBox(
+                    expanded = expandedPrioridad,
+                    onExpandedChange = { expandedPrioridad = !expandedPrioridad }
+                ) {
+                    OutlinedTextField(
+                        value = prioridad,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Prioridad *") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedPrioridad) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor(),
+                        enabled = !isLoading
+                    )
+                    ExposedDropdownMenu(
+                        expanded = expandedPrioridad,
+                        onDismissRequest = { expandedPrioridad = false }
+                    ) {
+                        listOf("baja", "media", "alta", "urgente").forEach { prio ->
+                            DropdownMenuItem(
+                                text = { Text(prio.capitalize()) },
+                                onClick = {
+                                    prioridad = prio
+                                    expandedPrioridad = false
+                                }
+                            )
+                        }
+                    }
+                }
+                
+                // Estado para admin y proveedor
+                if (puedeEditarEstado) {
+                    var expandedEstado by remember { mutableStateOf(false) }
+                    ExposedDropdownMenuBox(
+                        expanded = expandedEstado,
+                        onExpandedChange = { expandedEstado = !expandedEstado }
+                    ) {
+                        OutlinedTextField(
+                            value = estado,
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Estado") },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedEstado) },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .menuAnchor(),
+                            enabled = !isLoading
+                        )
+                        ExposedDropdownMenu(
+                            expanded = expandedEstado,
+                            onDismissRequest = { expandedEstado = false }
+                        ) {
+                            listOf("abierta", "asignada", "en_progreso", "resuelta", "cerrada").forEach { est ->
+                                DropdownMenuItem(
+                                    text = { Text(getEstadoLabel(est)) },
+                                    onClick = {
+                                        estado = est
+                                        expandedEstado = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                    
+                    // Selector de proveedor solo para admin
+                    if (esAdmin && proveedores.isNotEmpty()) {
+                        var expandedProveedor by remember { mutableStateOf(false) }
+                        val proveedorSeleccionado = proveedores.find { it.id == proveedorId }
+                        ExposedDropdownMenuBox(
+                            expanded = expandedProveedor,
+                            onExpandedChange = { expandedProveedor = !expandedProveedor }
+                        ) {
+                            OutlinedTextField(
+                                value = proveedorSeleccionado?.nombre ?: "Sin asignar",
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text("Proveedor") },
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedProveedor) },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .menuAnchor(),
+                                enabled = !isLoading
+                            )
+                            ExposedDropdownMenu(
+                                expanded = expandedProveedor,
+                                onDismissRequest = { expandedProveedor = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("Sin asignar") },
+                                    onClick = {
+                                        proveedorId = null
+                                        expandedProveedor = false
+                                    }
+                                )
+                                proveedores.forEach { prov ->
+                                    DropdownMenuItem(
+                                        text = { Text(prov.nombre) },
+                                        onClick = {
+                                            proveedorId = prov.id
+                                            expandedProveedor = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Comentario del cambio solo para admin
+                    if (esAdmin) {
+                        OutlinedTextField(
+                            value = comentarioCambio,
+                            onValueChange = { comentarioCambio = it },
+                            label = { Text("Comentario del cambio (opcional)") },
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = !isLoading
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    scope.launch {
+                        isLoading = true
+                        error = null
+                        try {
+                            val updateData = IncidenciaUpdate(
+                                titulo = titulo,
+                                descripcion = descripcion,
+                                prioridad = prioridad,
+                                estado = if (puedeEditarEstado) estado else null,
+                                proveedor_id = if (esAdmin) proveedorId else null,
+                                comentario_cambio = if (esAdmin && comentarioCambio.isNotBlank()) comentarioCambio else null,
+                                version = incidencia.version
+                            )
+                            
+                            val response = authRepository.getApiServiceInstance().actualizarIncidencia(
+                                incidencia.id,
+                                updateData
+                            )
+                            
+                            if (response.isSuccessful) {
+                                onSuccess()
+                            } else {
+                                error = response.message() ?: "Error al actualizar incidencia"
+                            }
+                        } catch (e: Exception) {
+                            error = e.message ?: "Error al actualizar incidencia"
+                        } finally {
+                            isLoading = false
+                        }
+                    }
+                },
+                enabled = !isLoading && titulo.isNotBlank() && descripcion.isNotBlank()
+            ) {
+                if (isLoading) {
+                    CircularProgressIndicator(modifier = Modifier.size(16.dp))
+                } else {
+                    Text("Guardar")
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = onDismiss,
+                enabled = !isLoading
+            ) {
+                Text("Cancelar")
+            }
+        }
+    )
+}
+
+fun getEstadoLabel(estado: String): String {
+    return when (estado.lowercase()) {
+        "abierta" -> "Abierta"
+        "asignada" -> "Asignada"
+        "en_progreso" -> "En Progreso"
+        "resuelta" -> "Resuelta"
+        "cerrada" -> "Cerrada"
+        else -> estado
+    }
+}
+
+fun getPrioridadLabel(prioridad: String): String {
+    return when (prioridad.lowercase()) {
+        "baja" -> "Baja"
+        "media" -> "Media"
+        "alta" -> "Alta"
+        "urgente" -> "Urgente"
+        else -> prioridad.capitalize()
+    }
+}
+
+// Función para descargar y abrir documento
+suspend fun descargarYabrirDocumento(
+    context: android.content.Context,
+    responseBody: ResponseBody,
+    nombreArchivo: String,
+    tipoArchivo: String
+) {
+    withContext(Dispatchers.IO) {
+        try {
+            // Crear directorio de descargas si no existe
+            val downloadsDir = context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
+                ?: context.filesDir
+            val file = File(downloadsDir, nombreArchivo)
+            
+            // Escribir el archivo
+            file.outputStream().use { output ->
+                responseBody.byteStream().use { input ->
+                    input.copyTo(output)
+                }
+            }
+            
+            // Abrir el archivo con Intent
+            withContext(Dispatchers.Main) {
+                val uri = FileProvider.getUriForFile(
+                    context,
+                    "${context.packageName}.fileprovider",
+                    file
+                )
+                
+                val intent = Intent(Intent.ACTION_VIEW).apply {
+                    setDataAndType(uri, tipoArchivo)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                
+                try {
+                    context.startActivity(intent)
+                } catch (e: Exception) {
+                    // Si no hay app para abrir, intentar con ACTION_SEND
+                    val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                        type = tipoArchivo
+                        putExtra(Intent.EXTRA_STREAM, uri)
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }
+                    context.startActivity(Intent.createChooser(shareIntent, "Abrir con..."))
+                }
+            }
+        } catch (e: Exception) {
+            throw e
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CambiarEstadoCard(
+    incidencia: Incidencia,
+    authRepository: AuthRepository,
+    onEstadoCambiado: () -> Unit
+) {
+    var estadoSeleccionado by remember { mutableStateOf(incidencia.estado) }
+    var isLoading by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var expandedEstado by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    
+    // Estados permitidos para proveedor
+    val estadosPermitidos = listOf("asignada", "en_progreso", "resuelta", "cerrada")
+    
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text("Cambiar Estado", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            
+            if (error != null) {
+                Text(
+                    text = error!!,
+                    color = MaterialTheme.colorScheme.error,
+                    fontSize = 12.sp
+                )
+            }
+            
+            ExposedDropdownMenuBox(
+                expanded = expandedEstado,
+                onExpandedChange = { expandedEstado = !expandedEstado }
+            ) {
+                OutlinedTextField(
+                    value = getEstadoLabel(estadoSeleccionado),
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Estado") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedEstado) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor(),
+                    enabled = !isLoading
+                )
+                ExposedDropdownMenu(
+                    expanded = expandedEstado,
+                    onDismissRequest = { expandedEstado = false }
+                ) {
+                    estadosPermitidos.forEach { est ->
+                        DropdownMenuItem(
+                            text = { Text(getEstadoLabel(est)) },
+                            onClick = {
+                                estadoSeleccionado = est
+                                expandedEstado = false
+                            }
+                        )
+                    }
+                }
+            }
+            
+            Button(
+                onClick = {
+                    if (estadoSeleccionado != incidencia.estado) {
+                        scope.launch {
+                            isLoading = true
+                            error = null
+                            try {
+                                val updateData = IncidenciaUpdate(
+                                    titulo = null,
+                                    descripcion = null,
+                                    prioridad = null,
+                                    estado = estadoSeleccionado,
+                                    proveedor_id = null,
+                                    comentario_cambio = null,
+                                    version = incidencia.version
+                                )
+                                
+                                val response = authRepository.getApiServiceInstance().actualizarIncidencia(
+                                    incidencia.id,
+                                    updateData
+                                )
+                                
+                                if (response.isSuccessful) {
+                                    onEstadoCambiado()
+                                } else {
+                                    error = response.message() ?: "Error al cambiar estado"
+                                }
+                            } catch (e: Exception) {
+                                error = e.message ?: "Error al cambiar estado"
+                            } finally {
+                                isLoading = false
+                            }
+                        }
+                    }
+                },
+                enabled = !isLoading && estadoSeleccionado != incidencia.estado,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                if (isLoading) {
+                    CircularProgressIndicator(modifier = Modifier.size(16.dp))
+                } else {
+                    Text("Guardar Cambio de Estado")
+                }
+            }
+        }
     }
 }
 

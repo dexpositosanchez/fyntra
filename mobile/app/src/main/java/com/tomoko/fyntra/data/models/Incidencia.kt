@@ -13,10 +13,19 @@ data class Incidencia(
     val fecha_cierre: String? = null,
     val version: Int,
     val inmueble: InmuebleSimple? = null,
+    val proveedor: ProveedorSimple? = null,
     val historial: List<HistorialIncidencia>? = null,
     val actuaciones_count: Int = 0,
     val documentos_count: Int = 0,
     val mensajes_count: Int = 0
+)
+
+data class ProveedorSimple(
+    val id: Int,
+    val nombre: String,
+    val email: String? = null,
+    val telefono: String? = null,
+    val especialidad: String? = null
 )
 
 data class InmuebleSimple(
@@ -46,6 +55,7 @@ data class IncidenciaUpdate(
     val descripcion: String? = null,
     val prioridad: String? = null,
     val estado: String? = null,
+    val proveedor_id: Int? = null,
     val comentario_cambio: String? = null,
     val version: Int
 )

@@ -8,15 +8,11 @@ data class Actuacion(
     val fecha: String,
     val coste: Double? = null,
     val creado_en: String,
-    val proveedor: ProveedorSimple? = null
-)
-
-data class ProveedorSimple(
-    val id: Int,
-    val nombre: String
+    val proveedor: com.tomoko.fyntra.data.models.ProveedorSimple? = null
 )
 
 data class ActuacionCreate(
+    val incidencia_id: Int,
     val descripcion: String,
     val fecha: String,
     val coste: Double? = null
