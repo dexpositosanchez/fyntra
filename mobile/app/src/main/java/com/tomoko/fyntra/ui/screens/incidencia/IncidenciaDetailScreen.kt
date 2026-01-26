@@ -22,6 +22,11 @@ import android.content.Intent
 import android.os.Environment
 import android.app.DatePickerDialog
 import androidx.core.content.FileProvider
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.core.content.ContextCompat
+import java.text.SimpleDateFormat
+import java.util.Locale
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
@@ -29,7 +34,6 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.ResponseBody
 import java.io.File
 import java.io.FileOutputStream
-import java.text.SimpleDateFormat
 import java.util.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -426,14 +430,98 @@ fun DocumentosTab(
     var showUploadDialog by remember { mutableStateOf(false) }
     var nombreDocumento by remember { mutableStateOf("") }
     var archivoSeleccionado by remember { mutableStateOf<Uri?>(null) }
+    var fotoCapturada by remember { mutableStateOf<Uri?>(null) }
+    var archivoFoto by remember { mutableStateOf<File?>(null) }
     var isUploading by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+    
+    // Variable para mantener referencia al archivo de foto actual
+    var archivoFotoActual by remember { mutableStateOf<File?>(null) }
 
     // Launcher para seleccionar archivos
     val filePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         archivoSeleccionado = uri
+        fotoCapturada = null
+        archivoFoto = null
+        archivoFotoActual = null
+    }
+
+    // Launcher para tomar foto
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { success: Boolean ->
+        if (success && archivoFotoActual != null && archivoFotoActual!!.exists()) {
+            val photoUri = FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                archivoFotoActual!!
+            )
+            fotoCapturada = photoUri
+            archivoFoto = archivoFotoActual
+            archivoSeleccionado = null
+        } else {
+            error = "Error al capturar la foto"
+            archivoFotoActual = null
+        }
+    }
+
+    // Launcher para permisos de cámara
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        if (isGranted) {
+            // Crear nuevo archivo para la foto en cacheDir (configurado en FileProvider)
+            val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+            val imageFileName = "JPEG_${timeStamp}_"
+            val nuevoArchivo = File.createTempFile(
+                imageFileName,
+                ".jpg",
+                context.cacheDir
+            )
+            archivoFotoActual = nuevoArchivo
+            
+            val photoUri = FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                nuevoArchivo
+            )
+            cameraLauncher.launch(photoUri)
+        } else {
+            error = "Se necesita permiso de cámara para tomar fotos"
+        }
+    }
+
+    // Función para tomar foto
+    fun tomarFoto() {
+        when {
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.CAMERA
+            ) == PackageManager.PERMISSION_GRANTED -> {
+                // Crear nuevo archivo para la foto en cacheDir (configurado en FileProvider)
+                val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+                val imageFileName = "JPEG_${timeStamp}_"
+                val nuevoArchivo = File.createTempFile(
+                    imageFileName,
+                    ".jpg",
+                    context.cacheDir
+                )
+                archivoFotoActual = nuevoArchivo
+                
+                val photoUri = FileProvider.getUriForFile(
+                    context,
+                    "${context.packageName}.fileprovider",
+                    nuevoArchivo
+                )
+                cameraLauncher.launch(photoUri)
+            }
+            else -> {
+                // Solicitar permiso
+                permissionLauncher.launch(Manifest.permission.CAMERA)
+            }
+        }
     }
 
     fun cargarDocumentos() {
@@ -474,47 +562,59 @@ fun DocumentosTab(
             error = "Por favor, ingrese un nombre para el documento"
             return
         }
-        if (archivoSeleccionado == null) {
-            error = "Por favor, seleccione un archivo"
+        if (archivoSeleccionado == null && archivoFoto == null) {
+            error = "Por favor, seleccione un archivo o tome una foto"
             return
         }
 
         scope.launch {
             isUploading = true
             try {
-                val uri = archivoSeleccionado!!
-                val inputStream = context?.contentResolver?.openInputStream(uri)
-                if (inputStream == null) {
-                    error = "Error al leer el archivo"
-                    isUploading = false
-                    return@launch
-                }
+                val tempFile: File
+                val fileName: String
+                val mimeType: String
 
-                // Crear archivo temporal
-                val tempFile = File.createTempFile("upload_", null, context?.cacheDir)
-                tempFile.outputStream().use { output ->
-                    inputStream.copyTo(output)
-                }
+                if (archivoFoto != null) {
+                    // Usar la foto capturada
+                    tempFile = archivoFoto!!
+                    fileName = "${nombreDocumento.replace(" ", "_")}_${SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())}.jpg"
+                    mimeType = "image/jpeg"
+                } else {
+                    // Usar el archivo seleccionado
+                    val uri = archivoSeleccionado!!
+                    val inputStream = context?.contentResolver?.openInputStream(uri)
+                    if (inputStream == null) {
+                        error = "Error al leer el archivo"
+                        isUploading = false
+                        return@launch
+                    }
 
-                // Obtener el nombre del archivo original si es posible
-                val fileName = try {
-                    context?.contentResolver?.query(uri, null, null, null, null)?.use { cursor ->
-                        val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
-                        if (cursor.moveToFirst() && nameIndex >= 0) {
-                            cursor.getString(nameIndex)
-                        } else {
-                            tempFile.name
-                        }
-                    } ?: tempFile.name
-                } catch (e: Exception) {
-                    tempFile.name
-                }
+                    // Crear archivo temporal
+                    tempFile = File.createTempFile("upload_", null, context?.cacheDir)
+                    tempFile.outputStream().use { output ->
+                        inputStream.copyTo(output)
+                    }
 
-                // Obtener el tipo MIME del archivo
-                val mimeType = try {
-                    context?.contentResolver?.getType(uri) ?: "application/octet-stream"
-                } catch (e: Exception) {
-                    "application/octet-stream"
+                    // Obtener el nombre del archivo original si es posible
+                    fileName = try {
+                        context?.contentResolver?.query(uri, null, null, null, null)?.use { cursor ->
+                            val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                            if (cursor.moveToFirst() && nameIndex >= 0) {
+                                cursor.getString(nameIndex)
+                            } else {
+                                tempFile.name
+                            }
+                        } ?: tempFile.name
+                    } catch (e: Exception) {
+                        tempFile.name
+                    }
+
+                    // Obtener el tipo MIME del archivo
+                    mimeType = try {
+                        context?.contentResolver?.getType(uri) ?: "application/octet-stream"
+                    } catch (e: Exception) {
+                        "application/octet-stream"
+                    }
                 }
 
                 // Crear RequestBody para el archivo (el backend espera "archivo")
@@ -534,14 +634,26 @@ fun DocumentosTab(
                 if (response.isSuccessful) {
                     nombreDocumento = ""
                     archivoSeleccionado = null
+                    fotoCapturada = null
+                    archivoFoto = null
+                    archivoFotoActual = null
                     showUploadDialog = false
                     cargarDocumentos()
                 } else {
                     error = "Error al subir documento: ${response.message()}"
                 }
 
-                // Eliminar archivo temporal
-                tempFile.delete()
+                // Eliminar archivo temporal solo si no es la foto (la foto se eliminará después si es necesario)
+                if (archivoFoto == null || tempFile != archivoFoto) {
+                    tempFile.delete()
+                } else {
+                    // Si es la foto, eliminarla después de subirla
+                    try {
+                        tempFile.delete()
+                    } catch (e: Exception) {
+                        // Ignorar error al eliminar
+                    }
+                }
             } catch (e: Exception) {
                 error = "Error al subir documento: ${e.message}"
             } finally {
@@ -678,7 +790,17 @@ fun DocumentosTab(
     // Dialog para subir documento
     if (showUploadDialog) {
         AlertDialog(
-            onDismissRequest = { if (!isUploading) showUploadDialog = false },
+            onDismissRequest = { 
+                if (!isUploading) {
+                    showUploadDialog = false
+                    nombreDocumento = ""
+                    archivoSeleccionado = null
+                    fotoCapturada = null
+                    archivoFoto = null
+                    archivoFotoActual = null
+                    error = null
+                }
+            },
             title = { Text("Subir Documento") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -689,16 +811,35 @@ fun DocumentosTab(
                         modifier = Modifier.fillMaxWidth(),
                         enabled = !isUploading
                     )
-                    Button(
-                        onClick = { filePickerLauncher.launch("*/*") },
+                    Row(
                         modifier = Modifier.fillMaxWidth(),
-                        enabled = !isUploading
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Text(if (archivoSeleccionado != null) "Archivo seleccionado" else "Seleccionar archivo")
+                        Button(
+                            onClick = { filePickerLauncher.launch("*/*") },
+                            modifier = Modifier.weight(1f),
+                            enabled = !isUploading
+                        ) {
+                            Text(if (archivoSeleccionado != null) "Archivo ✓" else "Seleccionar archivo", fontSize = 12.sp)
+                        }
+                        Button(
+                            onClick = { tomarFoto() },
+                            modifier = Modifier.weight(1f),
+                            enabled = !isUploading
+                        ) {
+                            Text(if (fotoCapturada != null) "Foto ✓" else "📷 Tomar foto", fontSize = 12.sp)
+                        }
                     }
                     if (archivoSeleccionado != null) {
                         Text(
-                            text = "Archivo: ${archivoSeleccionado.toString().takeLast(30)}",
+                            text = "Archivo seleccionado",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    if (fotoCapturada != null) {
+                        Text(
+                            text = "Foto capturada",
                             fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.primary
                         )
@@ -708,7 +849,7 @@ fun DocumentosTab(
             confirmButton = {
                 TextButton(
                     onClick = { subirDocumento() },
-                    enabled = !isUploading && nombreDocumento.isNotBlank() && archivoSeleccionado != null
+                    enabled = !isUploading && nombreDocumento.isNotBlank() && (archivoSeleccionado != null || archivoFoto != null)
                 ) {
                     if (isUploading) {
                         CircularProgressIndicator(modifier = Modifier.size(16.dp))
@@ -719,7 +860,15 @@ fun DocumentosTab(
             },
             dismissButton = {
                 TextButton(
-                    onClick = { showUploadDialog = false },
+                    onClick = { 
+                        showUploadDialog = false
+                        nombreDocumento = ""
+                        archivoSeleccionado = null
+                        fotoCapturada = null
+                        archivoFoto = null
+                        archivoFotoActual = null
+                        error = null
+                    },
                     enabled = !isUploading
                 ) {
                     Text("Cancelar")
