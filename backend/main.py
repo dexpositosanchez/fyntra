@@ -6,6 +6,7 @@ from sqlalchemy import text
 from app.core.config import settings
 from app.api import auth, incidencias, vehiculos, comunidades, conductores, pedidos, rutas, mantenimientos, inmuebles, propietarios, proveedores, actuaciones, documentos, mensajes, usuarios
 from app.database import engine, Base
+import app.models  # noqa: F401  (asegura que se registren todos los modelos)
 
 # Crear tablas en la base de datos
 Base.metadata.create_all(bind=engine)

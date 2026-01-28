@@ -11,6 +11,7 @@ from app.models.vehiculo import Vehiculo
 from app.models.conductor import Conductor
 from app.models.pedido import Pedido
 from app.models.ruta import Ruta, RutaParada
+from app.models.incidencia_ruta import IncidenciaRuta, IncidenciaRutaFoto
 from app.models.mantenimiento import Mantenimiento
 from app.models.historial_incidencia import HistorialIncidencia
 
@@ -29,6 +30,8 @@ __all__ = [
     "Pedido",
     "Ruta",
     "RutaParada",
+    "IncidenciaRuta",
+    "IncidenciaRutaFoto",
     "Mantenimiento",
     "HistorialIncidencia",
 ]

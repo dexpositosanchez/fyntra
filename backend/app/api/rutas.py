@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File, Form
+from typing import Annotated
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_, func, case
@@ -14,7 +15,9 @@ from app.models.vehiculo import Vehiculo, EstadoVehiculo
 from app.models.conductor import Conductor
 from app.models.pedido import Pedido, EstadoPedido
 from app.models.usuario import Usuario
+from app.models.incidencia_ruta import IncidenciaRuta, IncidenciaRutaFoto, TipoIncidenciaRuta
 from app.schemas.ruta import RutaCreate, RutaUpdate, RutaResponse, RutaParadaCreate, RutaParadaResponse, RutaParadaUpdate
+from app.schemas.incidencia_ruta import IncidenciaRutaCreate, IncidenciaRutaResponse
 from app.api.dependencies import get_current_user
 from app.core.security import decode_access_token
 from app.core.cache import (
@@ -23,6 +26,10 @@ from app.core.cache import (
 )
 
 router = APIRouter(prefix="/rutas", tags=["rutas"])
+
+# Directorio para almacenar fotos de incidencias de ruta
+UPLOAD_DIR_INCIDENCIAS_RUTA = "/app/uploads/incidencias_ruta"
+MAX_FILE_SIZE_INCIDENCIA_RUTA = 10 * 1024 * 1024  # 10MB
 
 def formatear_fecha(fecha) -> Optional[str]:
     """Formatea una fecha en formato dd/mm/YYYY"""
@@ -67,6 +74,33 @@ def formatear_datetime(dt) -> Optional[str]:
         logging.error(f"Error formateando datetime: {e}, tipo: {type(dt)}, valor: {dt}")
         return None
     return None
+
+
+def _incidencias_ruta_basic(db: Session, ruta_id: int) -> dict:
+    """Devuelve {'incidencias_count': int, 'tiene_incidencias': bool}."""
+    count = db.query(IncidenciaRuta).filter(IncidenciaRuta.ruta_id == ruta_id).count()
+    return {"incidencias_count": count, "tiene_incidencias": count > 0}
+
+
+def _incidencias_ruta_full(db: Session, ruta_id: int) -> List[dict]:
+    incidencias = db.query(IncidenciaRuta).filter(IncidenciaRuta.ruta_id == ruta_id).order_by(IncidenciaRuta.creado_en.desc()).all()
+    result: List[dict] = []
+    for inc in incidencias:
+        fotos = [
+            {"id": f.id, "tipo_archivo": f.tipo_archivo}
+            for f in (inc.fotos or [])
+        ]
+        result.append({
+            "id": inc.id,
+            "ruta_id": inc.ruta_id,
+            "ruta_parada_id": inc.ruta_parada_id,
+            "creador_usuario_id": inc.creador_usuario_id,
+            "tipo": inc.tipo.value if inc.tipo else None,
+            "descripcion": inc.descripcion,
+            "creado_en": inc.creado_en,
+            "fotos": fotos
+        })
+    return result
 
 def validar_vehiculo(vehiculo_id: int, fecha_inicio: datetime, fecha_fin: datetime, db: Session, ruta_id_excluir: Optional[int] = None) -> Vehiculo:
     """Valida que el vehículo esté disponible, activo y no tenga otra ruta en el rango de fechas"""
@@ -459,6 +493,7 @@ async def listar_rutas(
     estado: Optional[EstadoRuta] = Query(None),
     conductor_id: Optional[int] = Query(None),
     vehiculo_id: Optional[int] = Query(None),
+    solo_con_incidencias: Optional[bool] = Query(None, description="Filtrar solo rutas con incidencias"),
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=100),
     db: Session = Depends(get_db),
@@ -553,6 +588,8 @@ async def listar_rutas(
                 "pedido": parada_grupo["pedidos"][0] if parada_grupo["pedidos"] else None
             })
         
+        incidencias_info = _incidencias_ruta_basic(db, ruta.id)
+        incidencias_full = _incidencias_ruta_full(db, ruta.id)
         ruta_dict = {
             "id": ruta.id,
             "fecha": formatear_fecha(ruta.fecha),
@@ -573,7 +610,10 @@ async def listar_rutas(
                 "id": ruta.vehiculo.id,
                 "nombre": ruta.vehiculo.nombre,
                 "matricula": ruta.vehiculo.matricula
-            } if ruta.vehiculo else None
+            } if ruta.vehiculo else None,
+            "incidencias": incidencias_full,
+            "incidencias_count": incidencias_info["incidencias_count"],
+            "tiene_incidencias": incidencias_info["tiene_incidencias"]
         }
         resultados.append(RutaResponse(**ruta_dict))
     
@@ -680,6 +720,8 @@ async def obtener_mis_rutas(
                 logging.warning(f"Ruta {ruta.id} tiene conductor_id o vehiculo_id None, saltando")
                 continue
             
+            incidencias_info = _incidencias_ruta_basic(db, ruta.id)
+            incidencias_full = _incidencias_ruta_full(db, ruta.id)
             ruta_dict = {
                 "id": ruta.id,
                 "fecha": formatear_fecha(ruta.fecha),
@@ -700,7 +742,10 @@ async def obtener_mis_rutas(
                     "id": ruta.vehiculo.id,
                     "nombre": ruta.vehiculo.nombre,
                     "matricula": ruta.vehiculo.matricula
-                } if ruta.vehiculo else None
+                } if ruta.vehiculo else None,
+                "incidencias": incidencias_full,
+                "incidencias_count": incidencias_info["incidencias_count"],
+                "tiene_incidencias": incidencias_info["tiene_incidencias"]
             }
             resultados.append(RutaResponse(**ruta_dict))
         except Exception as e:
@@ -807,6 +852,8 @@ async def obtener_ruta(
             "pedido": parada_grupo["pedidos"][0] if parada_grupo["pedidos"] else None
         })
     
+    incidencias_info = _incidencias_ruta_basic(db, ruta.id)
+    incidencias_full = _incidencias_ruta_full(db, ruta.id)
     ruta_dict = {
         "id": ruta.id,
         "fecha": formatear_fecha(ruta.fecha),
@@ -827,7 +874,10 @@ async def obtener_ruta(
             "id": ruta.vehiculo.id,
             "nombre": ruta.vehiculo.nombre,
             "matricula": ruta.vehiculo.matricula
-        } if ruta.vehiculo else None
+        } if ruta.vehiculo else None,
+        "incidencias": incidencias_full,
+        "incidencias_count": incidencias_info["incidencias_count"],
+        "tiene_incidencias": incidencias_info["tiene_incidencias"]
     }
     
     result = RutaResponse(**ruta_dict)
@@ -2014,6 +2064,68 @@ async def obtener_foto_parada(
         headers={"Content-Disposition": f"inline; filename={os.path.basename(parada.ruta_foto)}"}
     )
 
+@router.get("/incidencias/{incidencia_ruta_id}/fotos/{foto_id}")
+async def obtener_foto_incidencia_ruta(
+    incidencia_ruta_id: int,
+    foto_id: int,
+    token: Optional[str] = Query(None),
+    db: Session = Depends(get_db)
+):
+    """Obtiene una foto de una incidencia de ruta"""
+    if not token:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    try:
+        payload = decode_access_token(token)
+        email = payload.get("sub")
+        if not email:
+            raise HTTPException(status_code=401, detail="Not authenticated")
+        current_user = db.query(Usuario).filter(Usuario.email == email).first()
+        if not current_user:
+            raise HTTPException(status_code=401, detail="Not authenticated")
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    incidencia = db.query(IncidenciaRuta).filter(IncidenciaRuta.id == incidencia_ruta_id).first()
+    if not incidencia:
+        raise HTTPException(status_code=404, detail="Incidencia no encontrada")
+    
+    # Verificar permisos: solo el conductor asignado o admin puede ver
+    ruta = db.query(Ruta).filter(Ruta.id == incidencia.ruta_id).first()
+    if not ruta:
+        raise HTTPException(status_code=404, detail="Ruta no encontrada")
+    
+    if current_user.rol not in ["super_admin", "admin_transportes"]:
+        conductor_ruta = db.query(Conductor).filter(Conductor.id == ruta.conductor_id).first() if ruta.conductor_id else None
+        if not conductor_ruta or conductor_ruta.usuario_id != current_user.id:
+            raise HTTPException(status_code=403, detail="No tiene permisos para ver esta foto")
+    
+    foto = db.query(IncidenciaRutaFoto).filter(
+        IncidenciaRutaFoto.id == foto_id,
+        IncidenciaRutaFoto.incidencia_ruta_id == incidencia_ruta_id
+    ).first()
+    
+    if not foto:
+        raise HTTPException(status_code=404, detail="Foto no encontrada")
+    
+    # Verificar que el archivo existe
+    if not os.path.exists(foto.ruta_archivo):
+        raise HTTPException(status_code=404, detail="Archivo no encontrado en el servidor")
+    
+    # Determinar el tipo de contenido
+    media_type = foto.tipo_archivo or "image/jpeg"
+    if foto.ruta_archivo.lower().endswith('.png'):
+        media_type = "image/png"
+    elif foto.ruta_archivo.lower().endswith('.webp'):
+        media_type = "image/webp"
+    
+    return FileResponse(
+        foto.ruta_archivo,
+        media_type=media_type,
+        headers={"Content-Disposition": f"inline; filename={os.path.basename(foto.ruta_archivo)}"}
+    )
+
 @router.get("/paradas/{parada_id}/firma")
 async def obtener_firma_parada(
     parada_id: int,
@@ -2068,4 +2180,157 @@ async def obtener_firma_parada(
         parada.ruta_firma,
         media_type=media_type,
         headers={"Content-Disposition": f"inline; filename={os.path.basename(parada.ruta_firma)}"}
+    )
+
+
+@router.post("/{ruta_id}/incidencia", response_model=IncidenciaRutaResponse, status_code=status.HTTP_201_CREATED)
+async def crear_incidencia_ruta(
+    ruta_id: int,
+    tipo: str = Form(..., description="Tipo: averia, retraso, cliente_ausente, otros"),
+    descripcion: str = Form(..., min_length=1, description="Descripción obligatoria"),
+    ruta_parada_id: Optional[int] = Form(None, description="ID de la parada de la ruta (opcional). Si no se indica, es incidencia de ruta."),
+    cancelar_ruta: bool = Form(False, description="Si es True, cancela la ruta después de crear la incidencia"),
+    fotos: List[UploadFile] = File(default=[]),
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user)
+):
+    """Crear una incidencia de ruta (solo conductores)"""
+    if current_user.rol != "conductor":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Solo los conductores pueden crear incidencias de ruta"
+        )
+    
+    # Normalizar fotos: asegurarse de que es una lista
+    if fotos is None:
+        fotos = []
+    elif not isinstance(fotos, list):
+        # Si viene como un solo archivo, convertir a lista
+        fotos = [fotos] if fotos else []
+    
+    # Validar tipo
+    try:
+        tipo_enum = TipoIncidenciaRuta(tipo)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Tipo de incidencia inválido: {tipo}. Valores permitidos: averia, retraso, cliente_ausente, otros"
+        )
+    
+    # Obtener el conductor asociado al usuario
+    conductor = db.query(Conductor).filter(Conductor.usuario_id == current_user.id).first()
+    if not conductor:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Conductor no encontrado"
+        )
+    
+    # Obtener la ruta
+    ruta = db.query(Ruta).filter(Ruta.id == ruta_id).first()
+    if not ruta:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Ruta no encontrada"
+        )
+    
+    # Verificar que la ruta pertenece al conductor
+    if ruta.conductor_id != conductor.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tiene permisos para crear incidencias en esta ruta"
+        )
+    
+    # Verificar que la ruta no esté cancelada
+    if ruta.estado == EstadoRuta.CANCELADA:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No se pueden crear incidencias en rutas canceladas"
+        )
+    
+    # Si se especifica una parada, verificar que existe y pertenece a la ruta
+    if ruta_parada_id:
+        parada = db.query(RutaParada).filter(
+            RutaParada.id == ruta_parada_id,
+            RutaParada.ruta_id == ruta_id
+        ).first()
+        if not parada:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Parada no encontrada o no pertenece a esta ruta"
+            )
+    
+    # Crear la incidencia
+    nueva_incidencia = IncidenciaRuta(
+        ruta_id=ruta_id,
+        ruta_parada_id=ruta_parada_id,
+        creador_usuario_id=current_user.id,
+        tipo=tipo_enum,
+        descripcion=descripcion
+    )
+    db.add(nueva_incidencia)
+    db.flush()
+    
+    # Procesar fotos si se proporcionan
+    if fotos and len(fotos) > 0:
+        os.makedirs(UPLOAD_DIR_INCIDENCIAS_RUTA, exist_ok=True)
+        for foto in fotos:
+            if foto.content_type not in ALLOWED_IMAGE_TYPES:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Tipo de archivo de foto no permitido. Solo se permiten imágenes JPEG, PNG o WebP"
+                )
+            
+            contenido = await foto.read()
+            if len(contenido) > MAX_FILE_SIZE_INCIDENCIA_RUTA:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="El archivo de foto excede el tamaño máximo de 10MB"
+                )
+            
+            extension = os.path.splitext(foto.filename)[1] if foto.filename else ".jpg"
+            nombre_unico = f"incidencia_{nueva_incidencia.id}_{uuid.uuid4()}{extension}"
+            ruta_completa = os.path.join(UPLOAD_DIR_INCIDENCIAS_RUTA, nombre_unico)
+            
+            with open(ruta_completa, "wb") as f:
+                f.write(contenido)
+            
+            foto_incidencia = IncidenciaRutaFoto(
+                incidencia_ruta_id=nueva_incidencia.id,
+                ruta_archivo=ruta_completa,
+                tipo_archivo=foto.content_type
+            )
+            db.add(foto_incidencia)
+    
+    # Si se solicita cancelar la ruta, cambiar su estado
+    if cancelar_ruta:
+        ruta.estado = EstadoRuta.CANCELADA
+        # Restaurar estado de los pedidos a "pendiente"
+        pedidos_ids = set(parada.pedido_id for parada in ruta.paradas)
+        for pedido_id in pedidos_ids:
+            pedido = db.query(Pedido).filter(Pedido.id == pedido_id).first()
+            if pedido:
+                pedido.estado = EstadoPedido.PENDIENTE
+    
+    db.commit()
+    db.refresh(nueva_incidencia)
+    
+    # Invalidar caché
+    invalidate_rutas_cache()
+    invalidate_cache_pattern("pedidos:*")
+    
+    # Construir respuesta
+    fotos_respuesta = [
+        {"id": f.id, "tipo_archivo": f.tipo_archivo}
+        for f in nueva_incidencia.fotos
+    ]
+    
+    return IncidenciaRutaResponse(
+        id=nueva_incidencia.id,
+        ruta_id=nueva_incidencia.ruta_id,
+        ruta_parada_id=nueva_incidencia.ruta_parada_id,
+        creador_usuario_id=nueva_incidencia.creador_usuario_id,
+        tipo=nueva_incidencia.tipo,
+        descripcion=nueva_incidencia.descripcion,
+        creado_en=nueva_incidencia.creado_en,
+        fotos=fotos_respuesta
     )

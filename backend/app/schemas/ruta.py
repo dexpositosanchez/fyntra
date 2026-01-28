@@ -2,6 +2,7 @@ from pydantic import BaseModel, field_validator
 from typing import Optional, List
 from datetime import datetime, date
 from app.models.ruta import TipoOperacion
+from app.schemas.incidencia_ruta import IncidenciaRutaResponse
 
 class RutaParadaBase(BaseModel):
     pedido_id: int
@@ -95,6 +96,9 @@ class RutaResponse(BaseModel):
     paradas: List[RutaParadaResponse] = []
     conductor: Optional[dict] = None
     vehiculo: Optional[dict] = None
+    incidencias: List[IncidenciaRutaResponse] = []
+    incidencias_count: int = 0
+    tiene_incidencias: bool = False
     
     class Config:
         from_attributes = True

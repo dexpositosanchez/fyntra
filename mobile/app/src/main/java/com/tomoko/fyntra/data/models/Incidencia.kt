@@ -12,6 +12,7 @@ data class Incidencia(
     val fecha_alta: String,
     val fecha_cierre: String? = null,
     val version: Int,
+    val creado_en: String? = null,
     val inmueble: InmuebleSimple? = null,
     val proveedor: ProveedorSimple? = null,
     val historial: List<HistorialIncidencia>? = null,
@@ -45,7 +46,7 @@ data class HistorialIncidencia(
 
 data class IncidenciaCreate(
     val titulo: String,
-    val descripcion: String,
+    val descripcion: String? = null,
     val prioridad: String,
     val inmueble_id: Int
 )

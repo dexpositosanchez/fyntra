@@ -213,6 +213,7 @@ private fun IncidenciaEntity.toIncidencia(): Incidencia {
         fecha_alta = fecha_alta,
         fecha_cierre = fecha_cierre,
         version = version,
+        creado_en = null, // No se almacena en la entidad local
         inmueble = if (inmueble_referencia != null && inmueble_direccion != null) {
             com.tomoko.fyntra.data.models.InmuebleSimple(
                 id = inmueble_id,

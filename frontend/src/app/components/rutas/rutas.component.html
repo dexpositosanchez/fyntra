@@ -131,8 +131,8 @@
             </div>
           </div>
           
-          <!-- Sección de seguimiento (en progreso y finalizadas) -->
-          <div class="progreso-section" *ngIf="rutaActual?.estado === 'en_curso' || rutaActual?.estado === 'completada'">
+          <!-- Sección de seguimiento (en progreso, finalizadas y canceladas) -->
+          <div class="progreso-section" *ngIf="rutaActual?.estado === 'en_curso' || rutaActual?.estado === 'completada' || rutaActual?.estado === 'cancelada'">
             <h3>Progreso de la Ruta</h3>
             <div class="progreso-info">
               <p><strong>Estado:</strong> {{ getEstadoTexto(rutaActual?.estado) }}</p>
@@ -162,6 +162,30 @@
                     </a>
                     <a *ngIf="parada.ruta_firma" [href]="getUrlFirma(parada.ruta_firma, parada.id)" target="_blank" class="evidencia-icon-link" title="Ver firma">
                       <span class="app-icon">draw</span>
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Incidencias (debajo de las paradas) -->
+            <div class="incidencias-progreso" *ngIf="rutaActual?.incidencias && rutaActual.incidencias.length > 0">
+              <h4>Incidencias ({{ rutaActual.incidencias.length }})</h4>
+              <div class="incidencia-progreso-item" *ngFor="let incidencia of rutaActual.incidencias">
+                <div class="incidencia-progreso-header">
+                  <span class="incidencia-tipo-badge">{{ formatearTipoIncidencia(incidencia.tipo) }}</span>
+                  <span class="incidencia-fecha">{{ formatearFechaHora(incidencia.creado_en) }}</span>
+                </div>
+                <div class="incidencia-progreso-content">
+                  <p><strong>Descripción:</strong> {{ incidencia.descripcion }}</p>
+                  <p *ngIf="incidencia.ruta_parada_id"><strong>Parada:</strong> #{{ getParadaOrden(incidencia.ruta_parada_id) }}</p>
+                  <div class="incidencia-evidencias" *ngIf="incidencia.fotos && incidencia.fotos.length > 0">
+                    <a *ngFor="let foto of incidencia.fotos" 
+                       [href]="getUrlFotoIncidencia(incidencia.id, foto.id)" 
+                       target="_blank" 
+                       class="evidencia-icon-link" 
+                       title="Ver foto">
+                      <span class="app-icon">photo_camera</span>
                     </a>
                   </div>
                 </div>
@@ -395,8 +419,19 @@
               </select>
             </div>
             
+            <div class="filter-group">
+              <label>
+                <input
+                  type="checkbox"
+                  [(ngModel)]="filtroSoloConIncidencias"
+                  (change)="aplicarFiltros()"
+                />
+                Solo rutas con incidencias
+              </label>
+            </div>
+            
             <button 
-              *ngIf="filtroConductor || filtroVehiculo" 
+              *ngIf="filtroConductor || filtroVehiculo || filtroSoloConIncidencias" 
               class="clear-filters-button" 
               (click)="limpiarTodosFiltros()"
               title="Limpiar todos los filtros"
@@ -425,9 +460,17 @@
           <div class="rutas-grid" *ngIf="getRutasTabActiva().length > 0">
             <div class="ruta-card" 
                  *ngFor="let ruta of getRutasTabActiva()"
-                 [class]="'ruta-card ' + getEstadoClass(ruta.estado)">
+                 [class]="'ruta-card ' + getEstadoClass(ruta.estado)"
+                 [class.tiene-incidencias]="ruta.tiene_incidencias || (ruta.incidencias_count && ruta.incidencias_count > 0)">
             <div class="ruta-header">
-              <h3 (click)="editarRuta(ruta)" style="cursor: pointer;">Ruta #{{ ruta.id }}</h3>
+              <h3 (click)="editarRuta(ruta)" style="cursor: pointer;">
+                Ruta #{{ ruta.id }}
+                <span *ngIf="ruta.tiene_incidencias || (ruta.incidencias_count && ruta.incidencias_count > 0)" 
+                      class="incidencia-indicator" 
+                      title="Esta ruta tiene incidencias">
+                  <span class="app-icon">warning</span>
+                </span>
+              </h3>
               <div class="ruta-actions">
                 <button 
                   type="button" 

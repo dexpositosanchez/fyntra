@@ -45,6 +45,7 @@ export class RutasComponent implements OnInit, OnDestroy {
   // Filtros
   filtroConductor: number | string | null = null;
   filtroVehiculo: number | string | null = null;
+  filtroSoloConIncidencias: boolean = false;
   rutasFiltradas: any[] = [];
   // Pestañas por estado
   rutasPorEstado: { [key: string]: any[] } = {};
@@ -100,7 +101,11 @@ export class RutasComponent implements OnInit, OnDestroy {
 
   cargarRutas(): void {
     this.loading = true;
-    this.apiService.getRutas().subscribe({
+    const params: any = {};
+    if (this.filtroSoloConIncidencias) {
+      params.solo_con_incidencias = true;
+    }
+    this.apiService.getRutas(params).subscribe({
       next: (data) => {
         this.rutas = data;
         this.aplicarFiltros();
@@ -138,6 +143,13 @@ export class RutasComponent implements OnInit, OnDestroy {
           return ruta.vehiculo_id === vehiculoId;
         });
       }
+    }
+    
+    // Filtro solo rutas con incidencias
+    if (this.filtroSoloConIncidencias) {
+      resultados = resultados.filter(ruta => {
+        return ruta.tiene_incidencias === true || (ruta.incidencias_count && ruta.incidencias_count > 0);
+      });
     }
     
     this.rutasFiltradas = resultados;
@@ -1394,6 +1406,30 @@ export class RutasComponent implements OnInit, OnDestroy {
   getParadasOrdenadas(): any[] {
     if (!this.rutaActual || !this.rutaActual.paradas) return [];
     return [...this.rutaActual.paradas].sort((a: any, b: any) => a.orden - b.orden);
+  }
+
+  formatearTipoIncidencia(tipo: string): string {
+    const tipos: { [key: string]: string } = {
+      'averia': 'Avería',
+      'retraso': 'Retraso',
+      'cliente_ausente': 'Cliente ausente',
+      'otros': 'Otros'
+    };
+    return tipos[tipo] || tipo;
+  }
+
+  getUrlFotoIncidencia(incidenciaId: number, fotoId: number): string {
+    if (!incidenciaId || !fotoId) return '';
+    // Usar el endpoint de la API para obtener la foto
+    const token = localStorage.getItem('access_token');
+    const tokenParam = token ? `?token=${encodeURIComponent(token)}` : '';
+    return `${this.apiService.getBaseUrl()}/api/rutas/incidencias/${incidenciaId}/fotos/${fotoId}${tokenParam}`;
+  }
+
+  getParadaOrden(paradaId: number): number {
+    if (!this.rutaActual || !this.rutaActual.paradas) return 0;
+    const parada = this.rutaActual.paradas.find((p: any) => p.id === paradaId);
+    return parada ? parada.orden : 0;
   }
 }
 

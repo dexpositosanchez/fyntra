@@ -41,8 +41,16 @@ interface ApiService {
         @Body confirmacion: EntregaConfirmacion
     ): Response<Unit>
 
-    @POST("rutas/incidencia")
-    suspend fun reportarIncidenciaRuta(@Body incidencia: IncidenciaRutaCreate): Response<Incidencia>
+    @Multipart
+    @POST("rutas/{ruta_id}/incidencia")
+    suspend fun reportarIncidenciaRuta(
+        @Path("ruta_id") rutaId: Int,
+        @Part("tipo") tipo: RequestBody,
+        @Part("descripcion") descripcion: RequestBody,
+        @Part("ruta_parada_id") rutaParadaId: RequestBody? = null,
+        @Part("cancelar_ruta") cancelarRuta: RequestBody,
+        @Part fotos: List<@JvmSuppressWildcards MultipartBody.Part>
+    ): Response<IncidenciaRutaResponse>
 
     // Incidencias
     @GET("incidencias/")

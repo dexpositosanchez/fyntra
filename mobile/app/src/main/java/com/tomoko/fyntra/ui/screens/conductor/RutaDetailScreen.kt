@@ -1,16 +1,21 @@
 package com.tomoko.fyntra.ui.screens.conductor
 
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.Uri
+import android.util.Size
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
@@ -37,12 +42,11 @@ import com.tomoko.fyntra.data.repository.AuthRepository
 import kotlinx.coroutines.launch
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
+import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
 import java.io.FileOutputStream
-import android.graphics.BitmapFactory
-import android.util.Size
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -57,6 +61,7 @@ fun RutaDetailScreen(
     var showCompletarParadaDialog by remember { mutableStateOf<Parada?>(null) }
     var showIniciarDialog by remember { mutableStateOf(false) }
     var showFinalizarDialog by remember { mutableStateOf(false) }
+    var showCrearIncidenciaDialog by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     fun cargarRuta() {
@@ -111,16 +116,30 @@ fun RutaDetailScreen(
                     }
                 }
                 "en_curso" -> {
-                    val todasParadasCompletadas = ruta?.paradas?.all { it.estado == "entregado" } ?: false
-                    if (todasParadasCompletadas) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        modifier = Modifier.padding(end = 16.dp, bottom = 16.dp)
+                    ) {
                         FloatingActionButton(
-                            onClick = { showFinalizarDialog = true },
-                            containerColor = MaterialTheme.colorScheme.primary
+                            onClick = { showCrearIncidenciaDialog = true },
+                            containerColor = MaterialTheme.colorScheme.errorContainer
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Check,
-                                contentDescription = "Finalizar Ruta"
+                                imageVector = Icons.Default.Warning,
+                                contentDescription = "Reportar Incidencia"
                             )
+                        }
+                        val todasParadasCompletadas = ruta?.paradas?.all { it.estado == "entregado" } ?: false
+                        if (todasParadasCompletadas) {
+                            FloatingActionButton(
+                                onClick = { showFinalizarDialog = true },
+                                containerColor = MaterialTheme.colorScheme.primary
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = "Finalizar Ruta"
+                                )
+                            }
                         }
                     }
                 }
@@ -177,7 +196,7 @@ fun RutaDetailScreen(
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text("Estado: ${ruta!!.estado}", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                                Text("Estado", fontSize = 16.sp, fontWeight = FontWeight.Bold)
                                 Surface(
                                     color = when (ruta!!.estado) {
                                         "en_curso" -> Color(0xFFFF9800)
@@ -309,6 +328,20 @@ fun RutaDetailScreen(
                 onDismiss = { showCompletarParadaDialog = null },
                 onSuccess = {
                     showCompletarParadaDialog = null
+                    cargarRuta()
+                },
+                authRepository = authRepository
+            )
+        }
+
+        // Dialog para crear incidencia
+        if (showCrearIncidenciaDialog) {
+            CrearIncidenciaRutaDialog(
+                rutaId = rutaId,
+                paradas = ruta?.paradas ?: emptyList(),
+                onDismiss = { showCrearIncidenciaDialog = false },
+                onSuccess = {
+                    showCrearIncidenciaDialog = false
                     cargarRuta()
                 },
                 authRepository = authRepository
@@ -730,6 +763,332 @@ fun FirmaCanvasDialog(
                         modifier = Modifier.weight(1f)
                     ) {
                         Text("Guardar")
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CrearIncidenciaRutaDialog(
+    rutaId: Int,
+    paradas: List<Parada>,
+    onDismiss: () -> Unit,
+    onSuccess: () -> Unit,
+    authRepository: AuthRepository
+) {
+    var tipoIncidencia by remember { mutableStateOf("averia") }
+    var descripcion by remember { mutableStateOf("") }
+    var paradaSeleccionada by remember { mutableStateOf<Int?>(null) }
+    var fotoUri by remember { mutableStateOf<Uri?>(null) }
+    var fotoBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    var cancelarRuta by remember { mutableStateOf(false) }
+    var isLoading by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var mensajeExito by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    // Fichero temporal para la foto de la incidencia
+    val fotoFile = remember {
+        File(context.cacheDir, "incidencia_${rutaId}_${System.currentTimeMillis()}.jpg").apply {
+            parentFile?.mkdirs()
+        }
+    }
+
+    // Uri para la cámara (FileProvider)
+    LaunchedEffect(Unit) {
+        fotoUri = FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.fileprovider",
+            fotoFile
+        )
+    }
+
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success && fotoFile.exists()) {
+            fotoBitmap = BitmapFactory.decodeFile(fotoFile.absolutePath)
+        }
+    }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            shape = MaterialTheme.shapes.large
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Text(
+                    "Reportar Incidencia",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold
+                )
+
+                if (error != null) {
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer
+                        )
+                    ) {
+                        Text(
+                            text = error!!,
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                            modifier = Modifier.padding(16.dp)
+                        )
+                    }
+                }
+                
+                if (mensajeExito != null) {
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer
+                        )
+                    ) {
+                        Text(
+                            text = mensajeExito!!,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.padding(16.dp)
+                        )
+                    }
+                }
+
+                // Selector: Ruta o Parada
+                var expandedUbicacion by remember { mutableStateOf(false) }
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text("Ubicación *")
+                    Button(
+                        onClick = { expandedUbicacion = !expandedUbicacion },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            if (paradaSeleccionada == null)
+                                "Ruta"
+                            else
+                                "Parada #${paradas.find { it.id == paradaSeleccionada }?.orden ?: paradaSeleccionada}"
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = expandedUbicacion,
+                        onDismissRequest = { expandedUbicacion = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Ruta") },
+                            onClick = {
+                                paradaSeleccionada = null
+                                expandedUbicacion = false
+                            }
+                        )
+                        paradas.forEach { parada ->
+                            DropdownMenuItem(
+                                text = { Text("Parada #${parada.orden} - ${parada.direccion}") },
+                                onClick = {
+                                    paradaSeleccionada = parada.id
+                                    expandedUbicacion = false
+                                }
+                            )
+                        }
+                    }
+                }
+
+                // Selector de tipo de incidencia
+                var expandedTipo by remember { mutableStateOf(false) }
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text("Tipo de Incidencia *")
+                    Button(
+                        onClick = { expandedTipo = !expandedTipo },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        val tiposIncidenciaDisplay = mapOf(
+                            "averia" to "Avería",
+                            "retraso" to "Retraso",
+                            "cliente_ausente" to "Cliente ausente",
+                            "otros" to "Otros"
+                        )
+                        Text(tiposIncidenciaDisplay[tipoIncidencia] ?: tipoIncidencia.replaceFirstChar { it.uppercaseChar() })
+                    }
+                    DropdownMenu(
+                        expanded = expandedTipo,
+                        onDismissRequest = { expandedTipo = false }
+                    ) {
+                        val tiposIncidencia = mapOf(
+                            "averia" to "Avería",
+                            "retraso" to "Retraso",
+                            "cliente_ausente" to "Cliente ausente",
+                            "otros" to "Otros"
+                        )
+                        tiposIncidencia.forEach { (valor, texto) ->
+                            DropdownMenuItem(
+                                text = { Text(texto) },
+                                onClick = {
+                                    tipoIncidencia = valor
+                                    expandedTipo = false
+                                }
+                            )
+                        }
+                    }
+                }
+
+                // Descripción
+                OutlinedTextField(
+                    value = descripcion,
+                    onValueChange = { descripcion = it },
+                    label = { Text("Descripción *") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(120.dp),
+                    maxLines = 5
+                )
+
+                // Botón para tomar foto (como en completar parada)
+                Button(
+                    onClick = {
+                        fotoUri?.let { cameraLauncher.launch(it) }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Tomar foto (opcional)")
+                }
+
+                // Mostrar foto si existe
+                fotoBitmap?.let { bitmap ->
+                    Image(
+                        bitmap = bitmap.asImageBitmap(),
+                        contentDescription = "Foto incidencia",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp)
+                    )
+                }
+
+                // Checkbox para cancelar ruta
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Checkbox(
+                        checked = cancelarRuta,
+                        onCheckedChange = { cancelarRuta = it }
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        "Cancelar ruta después de guardar",
+                        fontSize = 14.sp
+                    )
+                }
+
+                // Botones de acción
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    TextButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Cancelar")
+                    }
+                    Button(
+                        onClick = {
+                            if (descripcion.isBlank()) {
+                                error = "La descripción es obligatoria"
+                            } else {
+                                scope.launch {
+                                    isLoading = true
+                                    error = null
+                                    mensajeExito = null
+                                    try {
+                                        val apiService = authRepository.getApiServiceInstance()
+
+                                        // Preparar partes multipart
+                                        val mediaTypeText = "text/plain".toMediaType()
+                                        val tipoPart: RequestBody = tipoIncidencia.toRequestBody(mediaTypeText)
+                                        val descripcionPart: RequestBody = descripcion.toRequestBody(mediaTypeText)
+                                        val cancelarRutaPart: RequestBody = cancelarRuta.toString().toRequestBody(mediaTypeText)
+
+                                        val rutaParadaIdPart: RequestBody? = paradaSeleccionada?.let {
+                                            it.toString().toRequestBody(mediaTypeText)
+                                        }
+
+                                        // Preparar foto (como lista, para el backend)
+                                        // Similar a cómo se hace en completarParada, pero como lista
+                                        val fotoParts = if (fotoFile.exists()) {
+                                            val requestFile = fotoFile.asRequestBody("image/jpeg".toMediaType())
+                                            listOf(
+                                                MultipartBody.Part.createFormData(
+                                                    "fotos",
+                                                    fotoFile.name,
+                                                    requestFile
+                                                )
+                                            )
+                                        } else {
+                                            emptyList() // Lista vacía cuando no hay fotos
+                                        }
+
+                                        val response = apiService.reportarIncidenciaRuta(
+                                            rutaId = rutaId,
+                                            tipo = tipoPart,
+                                            descripcion = descripcionPart,
+                                            rutaParadaId = rutaParadaIdPart,
+                                            cancelarRuta = cancelarRutaPart,
+                                            fotos = fotoParts
+                                        )
+
+                                        if (response.isSuccessful) {
+                                            mensajeExito = "Incidencia enviada correctamente"
+                                            error = null
+                                            // Esperar un momento para que el usuario vea el mensaje
+                                            kotlinx.coroutines.delay(1500)
+                                            onSuccess()
+                                        } else {
+                                            mensajeExito = null
+                                            val errorBody = response.errorBody()?.string()
+                                            val errorMessage = if (errorBody != null && errorBody.isNotBlank()) {
+                                                try {
+                                                    // Intentar parsear el JSON del error (FastAPI devuelve {"detail": "mensaje"})
+                                                    val errorJson = com.google.gson.Gson().fromJson(errorBody, Map::class.java)
+                                                    errorJson["detail"]?.toString() ?: errorBody
+                                                } catch (e: Exception) {
+                                                    errorBody
+                                                }
+                                            } else {
+                                                response.message() ?: "Error al crear incidencia"
+                                            }
+                                            error = "Error ${response.code()}: $errorMessage"
+                                        }
+                                    } catch (e: Exception) {
+                                        mensajeExito = null
+                                        error = e.message ?: "Error al crear incidencia"
+                                    } finally {
+                                        isLoading = false
+                                    }
+                                }
+                            }
+                        },
+                        modifier = Modifier.weight(1f),
+                        enabled = !isLoading && descripcion.isNotBlank()
+                    ) {
+                        if (isLoading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                color = MaterialTheme.colorScheme.onPrimary
+                            )
+                        } else {
+                            Text(if (cancelarRuta) "Guardar y Cancelar" else "Guardar")
+                        }
                     }
                 }
             }

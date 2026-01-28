@@ -9,7 +9,7 @@
 | RF4. Planificación de Rutas | Creación de rutas asignando conductor y vehículo, con múltiples pedidos y orden de entrega, validando capacidades y disponibilidad. | ✅ | ✅ |  |
 | RF5. Seguimiento de Entregas | Confirmación de entregas desde la app móvil, con firma del cliente, foto de la entrega y actualización de estado en tiempo real. | ✅ | ✅ |  |
 | RF6. Gestión de Mantenimientos | Programación y registro de mantenimientos preventivos y correctivos, con alertas de mantenimientos próximos o vencidos. | ✅ | ✅ |  |
-| RF7. Reporte de Incidencias en Ruta | Registro desde la app móvil de incidencias en ruta (averías, retrasos, cliente ausente) con descripción y fotos. | ⬜ | ⬜ / ✅ / ❌ |  |
+| RF7. Reporte de Incidencias en Ruta | Registro desde la app móvil de incidencias en ruta (averías, retrasos, cliente ausente) con descripción y fotos. | ✅ | ✅ |  |
 | RF8. Informes de Operaciones | Informes de entregas, tiempos de ruta, eficiencia de conductores, costes de mantenimiento y rendimiento de la flota. | ⬜ | ⬜ / ✅ / ❌ |  |
 | RF9. Historial de Rutas | Historial completo de rutas realizadas con fecha, conductor, vehículo, pedidos entregados y tiempos. | ⬜ | ⬜ / ✅ / ❌ |  |
 | **FINCAS** |  |  |  |  |

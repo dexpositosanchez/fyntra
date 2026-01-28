@@ -217,14 +217,14 @@ fun CrearIncidenciaScreen(
 
             Button(
                 onClick = {
-                    if (titulo.isNotBlank() && descripcion.isNotBlank() && inmuebleId != null) {
+                    if (titulo.isNotBlank() && inmuebleId != null) {
                         scope.launch {
                             isLoading = true
                             error = null
                             try {
                                 val nuevaIncidencia = IncidenciaCreate(
                                     titulo = titulo,
-                                    descripcion = descripcion,
+                                    descripcion = if (descripcion.isNotBlank()) descripcion else null,
                                     prioridad = prioridad,
                                     inmueble_id = inmuebleId!!
                                 )
@@ -232,7 +232,19 @@ fun CrearIncidenciaScreen(
                                 if (response.isSuccessful) {
                                     navController.popBackStack()
                                 } else {
-                                    error = response.message() ?: "Error al crear incidencia"
+                                    val errorBody = response.errorBody()?.string()
+                                    val errorMessage = if (errorBody != null && errorBody.isNotBlank()) {
+                                        try {
+                                            // Intentar parsear el JSON del error (FastAPI devuelve {"detail": "mensaje"})
+                                            val errorJson = com.google.gson.Gson().fromJson(errorBody, Map::class.java)
+                                            errorJson["detail"]?.toString() ?: errorBody
+                                        } catch (e: Exception) {
+                                            errorBody
+                                        }
+                                    } else {
+                                        response.message() ?: "Error al crear incidencia"
+                                    }
+                                    error = "Error ${response.code()}: $errorMessage"
                                 }
                             } catch (e: Exception) {
                                 error = e.message ?: "Error al crear incidencia"
@@ -247,7 +259,7 @@ fun CrearIncidenciaScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp),
-                enabled = !isLoading && titulo.isNotBlank() && descripcion.isNotBlank() && inmuebleId != null
+                enabled = !isLoading && titulo.isNotBlank() && inmuebleId != null
             ) {
                 if (isLoading) {
                     CircularProgressIndicator(
