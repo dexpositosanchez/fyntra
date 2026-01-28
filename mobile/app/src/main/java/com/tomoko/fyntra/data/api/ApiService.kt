@@ -25,6 +25,16 @@ interface ApiService {
     @PUT("rutas/{ruta_id}/finalizar")
     suspend fun finalizarRuta(@Path("ruta_id") rutaId: Int): Response<Ruta>
 
+    @PUT("rutas/{ruta_id}/paradas/{parada_id}/completar")
+    @Multipart
+    suspend fun completarParada(
+        @Path("ruta_id") rutaId: Int,
+        @Path("parada_id") paradaId: Int,
+        @Part("accion") accion: RequestBody,
+        @Part foto: MultipartBody.Part? = null,
+        @Part firma: MultipartBody.Part? = null
+    ): Response<Parada>
+
     @POST("rutas/{ruta_id}/confirmar-entrega")
     suspend fun confirmarEntrega(
         @Path("ruta_id") rutaId: Int,

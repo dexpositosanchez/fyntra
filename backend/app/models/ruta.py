@@ -50,7 +50,10 @@ class RutaParada(Base):
     tipo_operacion = Column(Enum(TipoOperacion, values_callable=lambda x: [e.value for e in TipoOperacion]), nullable=False)  # carga o descarga
     ventana_horaria = Column(String(50))  # Ej: "09:00-12:00"
     fecha_hora_llegada = Column(DateTime(timezone=True))  # Fecha y hora aproximada de llegada a la parada
+    fecha_hora_completada = Column(DateTime(timezone=True))  # Fecha y hora real de completado de la parada
     estado = Column(Enum(EstadoParada, values_callable=lambda x: [e.value for e in EstadoParada]), default=EstadoParada.PENDIENTE, nullable=False)
+    ruta_foto = Column(String(500))  # Ruta del archivo de foto de la entrega
+    ruta_firma = Column(String(500))  # Ruta del archivo de firma del cliente
     creado_en = Column(DateTime(timezone=True), server_default=func.now())
     actualizado_en = Column(DateTime(timezone=True), onupdate=func.now())
     

@@ -20,6 +20,7 @@ export class RutasComponent implements OnInit, OnDestroy {
   mostrarFormulario: boolean = false;
   editandoRuta: boolean = false;
   rutaIdEditando: number | null = null;
+  rutaActual: any = null; // Ruta actualmente siendo editada/visualizada
   rutaForm: any = {
     fecha: '',
     conductor_id: null,
@@ -53,7 +54,7 @@ export class RutasComponent implements OnInit, OnDestroy {
   
   estados = [
     { value: 'planificada', label: 'Planificada' },
-    { value: 'en_curso', label: 'En Curso' },
+    { value: 'en_curso', label: 'En Progreso' },
     { value: 'completada', label: 'Completada' },
     { value: 'cancelada', label: 'Cancelada' }
   ];
@@ -274,6 +275,7 @@ export class RutasComponent implements OnInit, OnDestroy {
   mostrarForm(): void {
     this.editandoRuta = false;
     this.rutaIdEditando = null;
+    this.rutaActual = null;
     this.mostrarFormulario = true;
     this.rutaForm = {
       fecha: '',
@@ -294,17 +296,36 @@ export class RutasComponent implements OnInit, OnDestroy {
     this.rutaIdEditando = ruta.id;
     this.mostrarFormulario = true;
     
+    // Si la ruta está en progreso, cargar los datos completos desde el servidor
+    if (ruta.estado === 'en_curso') {
+      this.apiService.getRuta(ruta.id).subscribe({
+        next: (rutaCompleta) => {
+          this.rutaActual = rutaCompleta;
+          this.cargarDatosRuta(rutaCompleta);
+        },
+        error: (err) => {
+          this.error = 'Error al cargar los datos de la ruta';
+          this.rutaActual = ruta; // Usar los datos básicos como fallback
+          this.cargarDatosRuta(ruta);
+        }
+      });
+    } else {
+      this.rutaActual = ruta;
+      this.cargarDatosRuta(ruta);
+    }
+  }
+
+  cargarDatosRuta(ruta: any): void {
     // Formatear fecha_inicio y fecha_fin para date (YYYY-MM-DD)
+    // Las fechas vienen en formato "dd/mm/YYYY HH:MM" desde el backend
     let fechaInicioFormateada = '';
     if (ruta.fecha_inicio) {
-      const fechaInicio = new Date(ruta.fecha_inicio);
-      fechaInicioFormateada = fechaInicio.toISOString().split('T')[0];
+      fechaInicioFormateada = this.parsearFechaParaInput(ruta.fecha_inicio);
     }
     
     let fechaFinFormateada = '';
     if (ruta.fecha_fin) {
-      const fechaFin = new Date(ruta.fecha_fin);
-      fechaFinFormateada = fechaFin.toISOString().split('T')[0];
+      fechaFinFormateada = this.parsearFechaParaInput(ruta.fecha_fin);
     }
     
     // Extraer IDs únicos de pedidos de las paradas
@@ -418,6 +439,7 @@ export class RutasComponent implements OnInit, OnDestroy {
     this.mostrarFormulario = false;
     this.editandoRuta = false;
     this.rutaIdEditando = null;
+    this.rutaActual = null;
     this.mostrarFechasPedido = false;
     this.pedidoSeleccionado = null;
     this.error = '';
@@ -774,14 +796,27 @@ export class RutasComponent implements OnInit, OnDestroy {
 
   formatearFechaHora(fechaHora: string): string {
     if (!fechaHora) return '';
-    const fecha = new Date(fechaHora);
-    const day = String(fecha.getDate()).padStart(2, '0');
-    const month = String(fecha.getMonth() + 1).padStart(2, '0');
-    const year = fecha.getFullYear().toString().padStart(4, '0');
-    const hours = String(fecha.getHours()).padStart(2, '0');
-    const minutes = String(fecha.getMinutes()).padStart(2, '0');
-    // Formato dd/mm/YYYY HH:MM
-    return `${day}/${month}/${year} ${hours}:${minutes}`;
+    
+    // Si ya viene en formato "dd/mm/YYYY HH:MM" desde el backend, devolverlo tal cual
+    if (fechaHora.includes('/') && fechaHora.includes(':')) {
+      return fechaHora;
+    }
+    
+    // Si viene en formato ISO o datetime, parsearlo
+    try {
+      const fecha = new Date(fechaHora);
+      if (isNaN(fecha.getTime())) return fechaHora; // Si no se puede parsear, devolver tal cual
+      
+      const day = String(fecha.getDate()).padStart(2, '0');
+      const month = String(fecha.getMonth() + 1).padStart(2, '0');
+      const year = fecha.getFullYear().toString().padStart(4, '0');
+      const hours = String(fecha.getHours()).padStart(2, '0');
+      const minutes = String(fecha.getMinutes()).padStart(2, '0');
+      // Formato dd/mm/YYYY HH:MM
+      return `${day}/${month}/${year} ${hours}:${minutes}`;
+    } catch (e) {
+      return fechaHora; // Si hay error, devolver tal cual
+    }
   }
 
   getFechaHoraLocal(fechaHora: string | null | undefined): string {
@@ -792,13 +827,36 @@ export class RutasComponent implements OnInit, OnDestroy {
       return fechaHora;
     }
     
-    // Si viene en formato ISO string, convertir a datetime-local
-    const fecha = new Date(fechaHora);
-    if (isNaN(fecha.getTime())) return '';
+    // Si viene en formato "dd/mm/YYYY HH:MM" desde el backend
+    if (fechaHora.includes('/') && fechaHora.includes(':')) {
+      try {
+        const partes = fechaHora.trim().split(' ');
+        const fechaParte = partes[0]; // "dd/mm/YYYY"
+        const horaParte = partes[1] || '00:00'; // "HH:MM"
+        const partesFecha = fechaParte.split('/');
+        
+        if (partesFecha.length === 3) {
+          const dia = partesFecha[0].padStart(2, '0');
+          const mes = partesFecha[1].padStart(2, '0');
+          const año = partesFecha[2];
+          return `${año}-${mes}-${dia}T${horaParte}`;
+        }
+      } catch (e) {
+        console.error('Error parseando fecha:', e, fechaHora);
+      }
+    }
     
-    // Ajustar por zona horaria local
-    const localDate = new Date(fecha.getTime() - fecha.getTimezoneOffset() * 60000);
-    return localDate.toISOString().slice(0, 16);
+    // Si viene en formato ISO string, convertir a datetime-local
+    try {
+      const fecha = new Date(fechaHora);
+      if (isNaN(fecha.getTime())) return '';
+      
+      // Ajustar por zona horaria local
+      const localDate = new Date(fecha.getTime() - fecha.getTimezoneOffset() * 60000);
+      return localDate.toISOString().slice(0, 16);
+    } catch (e) {
+      return '';
+    }
   }
 
   actualizarFechaHoraParada(rutaId: number, paradaId: number, fechaHora: string): void {
@@ -1189,11 +1247,48 @@ export class RutasComponent implements OnInit, OnDestroy {
   getEstadoTexto(estado: string): string {
     const textos: { [key: string]: string } = {
       'planificada': 'Planificada',
-      'en_curso': 'En Curso',
+      'en_curso': 'En Progreso',
       'completada': 'Completada',
       'cancelada': 'Cancelada'
     };
     return textos[estado?.toLowerCase()] || estado || 'Planificada';
+  }
+
+  getProgresoParadasTexto(ruta: any): string {
+    // Solo mostrar progreso en listado cuando está en progreso
+    if (!ruta || ruta.estado?.toLowerCase() !== 'en_curso') return '';
+    const total = ruta.paradas?.length || 0;
+    if (!total) return ' (0/0 paradas)';
+    const completadas = (ruta.paradas || []).filter((p: any) => p?.estado === 'entregado').length;
+    return ` (${completadas}/${total} paradas)`;
+  }
+
+  parsearFechaParaInput(fechaStr: string): string {
+    // Convierte fecha en formato "dd/mm/YYYY HH:MM" o "dd/mm/YYYY" a formato YYYY-MM-DD para input type="date"
+    if (!fechaStr) return '';
+    
+    try {
+      // Si ya está en formato ISO, devolver solo la parte de fecha
+      if (fechaStr.includes('T') || fechaStr.match(/^\d{4}-\d{2}-\d{2}/)) {
+        return fechaStr.split('T')[0].split(' ')[0];
+      }
+      
+      // Formato "dd/mm/YYYY HH:MM" o "dd/mm/YYYY"
+      const partes = fechaStr.trim().split(' ');
+      const fechaParte = partes[0]; // "dd/mm/YYYY"
+      const partesFecha = fechaParte.split('/');
+      
+      if (partesFecha.length === 3) {
+        const dia = partesFecha[0].padStart(2, '0');
+        const mes = partesFecha[1].padStart(2, '0');
+        const año = partesFecha[2];
+        return `${año}-${mes}-${dia}`;
+      }
+    } catch (e) {
+      console.error('Error parseando fecha:', e, fechaStr);
+    }
+    
+    return '';
   }
 
   formatearFecha(fecha: any): string {
@@ -1235,6 +1330,70 @@ export class RutasComponent implements OnInit, OnDestroy {
   logout(): void {
     this.mostrarMenuUsuario = false;
     this.authService.logout();
+  }
+
+  getParadasCompletadas(): number {
+    if (!this.rutaActual || !this.rutaActual.paradas) return 0;
+    return this.rutaActual.paradas.filter((p: any) => p.estado === 'entregado').length;
+  }
+
+  getTotalParadas(): number {
+    if (!this.rutaActual || !this.rutaActual.paradas) return 0;
+    return this.rutaActual.paradas.length;
+  }
+
+  todasParadasCompletadas(): boolean {
+    if (!this.rutaActual || !this.rutaActual.paradas) return false;
+    return this.rutaActual.paradas.every((p: any) => p.estado === 'entregado');
+  }
+
+  finalizarRuta(): void {
+    if (!this.rutaIdEditando) return;
+    
+    if (!this.todasParadasCompletadas()) {
+      this.error = 'No se puede finalizar la ruta. Todas las paradas deben estar completadas.';
+      return;
+    }
+
+    this.loading = true;
+    this.error = '';
+    
+    this.apiService.finalizarRuta(this.rutaIdEditando).subscribe({
+      next: () => {
+        this.cargarRutas();
+        this.mostrarFormulario = false;
+        this.editandoRuta = false;
+        this.rutaIdEditando = null;
+        this.rutaActual = null;
+        this.loading = false;
+        this.error = '';
+      },
+      error: (err: HttpErrorResponse) => {
+        this.loading = false;
+        this.error = err.error?.detail || 'Error al finalizar la ruta';
+      }
+    });
+  }
+
+  getUrlFoto(rutaFoto: string, paradaId: number): string {
+    if (!rutaFoto || !paradaId) return '';
+    // Usar el endpoint de la API para obtener la foto
+    const token = localStorage.getItem('access_token');
+    const tokenParam = token ? `?token=${encodeURIComponent(token)}` : '';
+    return `${this.apiService.getBaseUrl()}/api/rutas/paradas/${paradaId}/foto${tokenParam}`;
+  }
+
+  getUrlFirma(rutaFirma: string, paradaId: number): string {
+    if (!rutaFirma || !paradaId) return '';
+    // Usar el endpoint de la API para obtener la firma
+    const token = localStorage.getItem('access_token');
+    const tokenParam = token ? `?token=${encodeURIComponent(token)}` : '';
+    return `${this.apiService.getBaseUrl()}/api/rutas/paradas/${paradaId}/firma${tokenParam}`;
+  }
+
+  getParadasOrdenadas(): any[] {
+    if (!this.rutaActual || !this.rutaActual.paradas) return [];
+    return [...this.rutaActual.paradas].sort((a: any, b: any) => a.orden - b.orden);
   }
 }
 

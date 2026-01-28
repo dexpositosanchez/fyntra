@@ -239,19 +239,36 @@ async def crear_conductor(
     
     usuario_id = None
     
-    # Si se proporciona password y email, crear usuario automáticamente
-    if conductor_data.password and conductor_data.email:
+    # Si se proporciona email, crear usuario automáticamente (todos los conductores deben tener usuario)
+    if conductor_data.email:
+        # Verificar que no exista ya un usuario con ese email
+        usuario_existente = db.query(Usuario).filter(Usuario.email == conductor_data.email).first()
+        if usuario_existente:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Ya existe un usuario con ese email"
+            )
+        
         nombre_completo = f"{conductor_data.nombre} {conductor_data.apellidos or ''}".strip()
+        # Si no se proporciona password, generar una por defecto (el email sin dominio)
+        password_final = conductor_data.password if conductor_data.password else conductor_data.email.split("@")[0] + "123"
+        
         nuevo_usuario = Usuario(
             nombre=nombre_completo,
             email=conductor_data.email,
-            hash_password=get_password_hash(conductor_data.password),
+            hash_password=get_password_hash(password_final),
             rol="conductor",
             activo=conductor_data.activo
         )
         db.add(nuevo_usuario)
         db.flush()  # Para obtener el ID
         usuario_id = nuevo_usuario.id
+    else:
+        # Si no hay email, no se puede crear usuario
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="El conductor debe tener un email para crear un usuario asociado"
+        )
     
     # Crear conductor (excluyendo password del dump)
     conductor_dict = conductor_data.model_dump(exclude={'password'})
@@ -346,33 +363,36 @@ async def actualizar_conductor(
             if usuario_asociado:
                 usuario_asociado.email = update_data["email"]
     
-    # Manejar creación/actualización de usuario si se proporciona password
+    # Manejar creación/actualización de usuario
     password = update_data.pop("password", None)
-    if password:
-        if not conductor.email:
+    
+    # Si el conductor no tiene usuario pero tiene email, crear usuario
+    if not conductor.usuario_id and conductor.email:
+        usuario_existente = db.query(Usuario).filter(Usuario.email == conductor.email).first()
+        if usuario_existente:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="El conductor debe tener un email para crear un usuario"
+                detail="Ya existe un usuario con ese email"
             )
         
-        if conductor.usuario_id:
-            # Actualizar contraseña del usuario existente
-            usuario_asociado = db.query(Usuario).filter(Usuario.id == conductor.usuario_id).first()
-            if usuario_asociado:
-                usuario_asociado.hash_password = get_password_hash(password)
-        else:
-            # Crear nuevo usuario
-            nombre_completo = f"{conductor.nombre} {conductor.apellidos or ''}".strip()
-            nuevo_usuario = Usuario(
-                nombre=nombre_completo,
-                email=conductor.email,
-                hash_password=get_password_hash(password),
-                rol="conductor",
-                activo=conductor.activo
-            )
-            db.add(nuevo_usuario)
-            db.flush()
-            conductor.usuario_id = nuevo_usuario.id
+        nombre_completo = f"{conductor.nombre} {conductor.apellidos or ''}".strip()
+        password_final = password if password else conductor.email.split("@")[0] + "123"
+        
+        nuevo_usuario = Usuario(
+            nombre=nombre_completo,
+            email=conductor.email,
+            hash_password=get_password_hash(password_final),
+            rol="conductor",
+            activo=conductor.activo
+        )
+        db.add(nuevo_usuario)
+        db.flush()
+        conductor.usuario_id = nuevo_usuario.id
+    elif password and conductor.usuario_id:
+        # Actualizar contraseña del usuario existente
+        usuario_asociado = db.query(Usuario).filter(Usuario.id == conductor.usuario_id).first()
+        if usuario_asociado:
+            usuario_asociado.hash_password = get_password_hash(password)
     
     # Actualizar campos del conductor (excluyendo password que ya se procesó)
     for field, value in update_data.items():

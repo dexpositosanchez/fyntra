@@ -14,6 +14,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.tomoko.fyntra.ui.screens.conductor.ConductorHomeScreen
+import com.tomoko.fyntra.ui.screens.conductor.RutaDetailScreen
 import com.tomoko.fyntra.ui.screens.incidencia.CrearIncidenciaScreen
 import com.tomoko.fyntra.ui.screens.incidencia.IncidenciaDetailScreen
 import com.tomoko.fyntra.ui.screens.login.LoginScreen
@@ -115,6 +116,18 @@ fun NavGraph(
 
         composable(Screen.ConductorHome.route) {
             ConductorHomeScreen(navController, authRepository)
+        }
+        
+        composable(
+            route = "ruta_detail/{rutaId}",
+            arguments = listOf(navArgument("rutaId") { type = NavType.IntType })
+        ) { backStackEntry ->
+            val rutaId = backStackEntry.arguments?.getInt("rutaId") ?: 0
+            RutaDetailScreen(
+                rutaId = rutaId,
+                navController = navController,
+                authRepository = authRepository
+            )
         }
 
         composable(Screen.PropietarioHome.route) {

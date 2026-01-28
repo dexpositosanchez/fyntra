@@ -2,10 +2,12 @@ package com.tomoko.fyntra.data.models
 
 data class Ruta(
     val id: Int,
-    val nombre: String,
+    val nombre: String? = null,
     val conductor_id: Int,
     val vehiculo_id: Int,
-    val fecha: String,
+    val fecha: String? = null,
+    val fecha_inicio: String? = null,
+    val fecha_fin: String? = null,
     val estado: String,
     val conductor: Conductor? = null,
     val vehiculo: Vehiculo? = null,
@@ -20,7 +22,10 @@ data class Parada(
     val direccion: String,
     val fecha_hora_carga: String? = null,
     val fecha_hora_descarga: String? = null,
+    val fecha_hora_completada: String? = null,
     val estado: String,
+    val ruta_foto: String? = null,
+    val ruta_firma: String? = null,
     val pedido: Pedido? = null
 )
 

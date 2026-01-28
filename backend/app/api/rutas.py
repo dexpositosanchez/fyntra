@@ -1,8 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File, Form
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
-from sqlalchemy import and_, or_, func
+from sqlalchemy import and_, or_, func, case
 from typing import List, Optional
 from datetime import date, datetime, timedelta
+from datetime import timezone
+import os
+import uuid
+import logging
 from app.database import get_db
 from app.models.ruta import Ruta, RutaParada, EstadoRuta, EstadoParada, TipoOperacion
 from app.models.vehiculo import Vehiculo, EstadoVehiculo
@@ -11,12 +16,57 @@ from app.models.pedido import Pedido, EstadoPedido
 from app.models.usuario import Usuario
 from app.schemas.ruta import RutaCreate, RutaUpdate, RutaResponse, RutaParadaCreate, RutaParadaResponse, RutaParadaUpdate
 from app.api.dependencies import get_current_user
+from app.core.security import decode_access_token
 from app.core.cache import (
     get_from_cache_async, set_to_cache_async, generate_cache_key,
     invalidate_rutas_cache, invalidate_pedidos_cache, invalidate_cache_pattern, delete_from_cache
 )
 
 router = APIRouter(prefix="/rutas", tags=["rutas"])
+
+def formatear_fecha(fecha) -> Optional[str]:
+    """Formatea una fecha en formato dd/mm/YYYY"""
+    if fecha is None:
+        return None
+    try:
+        if isinstance(fecha, str):
+            # Si ya es string, intentar parsearlo y reformatearlo
+            try:
+                from datetime import datetime as dt
+                parsed = dt.fromisoformat(fecha.replace('Z', '+00:00'))
+                return parsed.strftime("%d/%m/%Y")
+            except:
+                return fecha  # Si no se puede parsear, devolver tal cual
+        if isinstance(fecha, date):
+            return fecha.strftime("%d/%m/%Y")
+        if isinstance(fecha, datetime):
+            return fecha.strftime("%d/%m/%Y")
+    except Exception as e:
+        logging.error(f"Error formateando fecha: {e}, tipo: {type(fecha)}, valor: {fecha}")
+        return None
+    return None
+
+def formatear_datetime(dt) -> Optional[str]:
+    """Formatea un datetime en formato dd/mm/YYYY HH:MM"""
+    if dt is None:
+        return None
+    try:
+        if isinstance(dt, str):
+            # Si ya es string, intentar parsearlo y reformatearlo
+            try:
+                from datetime import datetime as dt_parsed
+                parsed = dt_parsed.fromisoformat(dt.replace('Z', '+00:00'))
+                return parsed.strftime("%d/%m/%Y %H:%M")
+            except:
+                return dt  # Si no se puede parsear, devolver tal cual
+        if isinstance(dt, datetime):
+            return dt.strftime("%d/%m/%Y %H:%M")
+        if isinstance(dt, date):
+            return dt.strftime("%d/%m/%Y")
+    except Exception as e:
+        logging.error(f"Error formateando datetime: {e}, tipo: {type(dt)}, valor: {dt}")
+        return None
+    return None
 
 def validar_vehiculo(vehiculo_id: int, fecha_inicio: datetime, fecha_fin: datetime, db: Session, ruta_id_excluir: Optional[int] = None) -> Vehiculo:
     """Valida que el vehículo esté disponible, activo y no tenga otra ruta en el rango de fechas"""
@@ -466,9 +516,12 @@ async def listar_rutas(
                     "direccion": p.direccion,
                     "tipo_operacion": p.tipo_operacion.value,
                     "ventana_horaria": p.ventana_horaria,
-                    "fecha_hora_llegada": p.fecha_hora_llegada.isoformat() if p.fecha_hora_llegada else None,
+                    "fecha_hora_llegada": formatear_datetime(p.fecha_hora_llegada) if p.fecha_hora_llegada else None,
+                    "fecha_hora_completada": formatear_datetime(p.fecha_hora_completada) if hasattr(p, 'fecha_hora_completada') and p.fecha_hora_completada else None,
                     "estado": p.estado.value,
-                    "creado_en": p.creado_en,
+                    "ruta_foto": p.ruta_foto if hasattr(p, 'ruta_foto') else None,
+                    "ruta_firma": p.ruta_firma if hasattr(p, 'ruta_firma') else None,
+                    "creado_en": formatear_datetime(p.creado_en) if p.creado_en else None,
                     "pedidos": []
                 }
             
@@ -492,22 +545,24 @@ async def listar_rutas(
                 "tipo_operacion": parada_grupo["tipo_operacion"],
                 "ventana_horaria": parada_grupo["ventana_horaria"],
                 "fecha_hora_llegada": parada_grupo["fecha_hora_llegada"],
+                "fecha_hora_completada": parada_grupo.get("fecha_hora_completada"),
                 "estado": parada_grupo["estado"],
+                "ruta_foto": parada_grupo.get("ruta_foto"),
+                "ruta_firma": parada_grupo.get("ruta_firma"),
                 "creado_en": parada_grupo["creado_en"],
-                "pedido": parada_grupo["pedidos"][0] if parada_grupo["pedidos"] else None,
-                "pedidos": parada_grupo["pedidos"]
+                "pedido": parada_grupo["pedidos"][0] if parada_grupo["pedidos"] else None
             })
         
         ruta_dict = {
             "id": ruta.id,
-            "fecha": ruta.fecha,
-            "fecha_inicio": ruta.fecha_inicio.isoformat() if ruta.fecha_inicio else None,
-            "fecha_fin": ruta.fecha_fin.isoformat() if ruta.fecha_fin else None,
+            "fecha": formatear_fecha(ruta.fecha),
+            "fecha_inicio": formatear_datetime(ruta.fecha_inicio) if ruta.fecha_inicio else None,
+            "fecha_fin": formatear_datetime(ruta.fecha_fin) if ruta.fecha_fin else None,
             "conductor_id": ruta.conductor_id,
             "vehiculo_id": ruta.vehiculo_id,
             "observaciones": ruta.observaciones,
             "estado": ruta.estado.value,
-            "creado_en": ruta.creado_en,
+            "creado_en": formatear_datetime(ruta.creado_en) if ruta.creado_en else None,
             "paradas": paradas_lista,
             "conductor": {
                 "id": ruta.conductor.id,
@@ -530,6 +585,131 @@ async def listar_rutas(
     
     return resultados
 
+@router.get("/mis-rutas", response_model=List[RutaResponse])
+async def obtener_mis_rutas(
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user)
+):
+    """Obtener las rutas asignadas al conductor autenticado"""
+    if current_user.rol != "conductor":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Solo los conductores pueden acceder a sus rutas"
+        )
+    
+    # Obtener el conductor asociado al usuario
+    conductor = db.query(Conductor).filter(Conductor.usuario_id == current_user.id).first()
+    if not conductor:
+        return []
+    
+    # Obtener todas las rutas del conductor
+    rutas = db.query(Ruta).filter(
+        Ruta.conductor_id == conductor.id,
+        Ruta.estado != EstadoRuta.CANCELADA
+    ).all()
+    
+    # Ordenar manualmente: primero EN_CURSO, luego PLANIFICADA, luego COMPLETADA
+    def ordenar_rutas(ruta):
+        estado_orden = {
+            EstadoRuta.EN_CURSO: 1,
+            EstadoRuta.PLANIFICADA: 2,
+            EstadoRuta.COMPLETADA: 3
+        }
+        return (estado_orden.get(ruta.estado, 4), ruta.fecha or date.min)
+    
+    rutas = sorted(rutas, key=ordenar_rutas)
+    
+    resultados = []
+    for ruta in rutas:
+        try:
+            # Agrupar paradas por dirección y tipo
+            paradas_agrupadas = {}
+            for p in ruta.paradas:
+                if not p.direccion or not p.tipo_operacion:
+                    continue  # Saltar paradas inválidas
+                pedido = db.query(Pedido).filter(Pedido.id == p.pedido_id).first()
+                direccion_key = f"{p.direccion.strip().lower()}_{p.tipo_operacion.value}"
+                
+                if direccion_key not in paradas_agrupadas:
+                    paradas_agrupadas[direccion_key] = {
+                        "id": p.id,
+                        "ruta_id": p.ruta_id,
+                        "orden": p.orden,
+                        "direccion": p.direccion,
+                        "tipo_operacion": p.tipo_operacion.value,
+                        "ventana_horaria": p.ventana_horaria,
+                        "fecha_hora_llegada": formatear_datetime(p.fecha_hora_llegada) if p.fecha_hora_llegada else None,
+                        "fecha_hora_completada": formatear_datetime(p.fecha_hora_completada) if p.fecha_hora_completada else None,
+                        "estado": p.estado.value,
+                        "ruta_foto": p.ruta_foto,
+                        "ruta_firma": p.ruta_firma,
+                        "creado_en": formatear_datetime(p.creado_en) if p.creado_en else None,
+                        "pedidos": []
+                    }
+                
+                if pedido:
+                    paradas_agrupadas[direccion_key]["pedidos"].append({
+                        "id": pedido.id,
+                        "cliente": pedido.cliente,
+                        "origen": pedido.origen,
+                        "destino": pedido.destino
+                    })
+            
+            # Convertir a lista ordenada
+            paradas_lista = []
+            for key, parada_grupo in sorted(paradas_agrupadas.items(), key=lambda x: x[1]["orden"]):
+                paradas_lista.append({
+                    "id": parada_grupo["id"],
+                    "ruta_id": parada_grupo["ruta_id"],
+                    "pedido_id": parada_grupo["pedidos"][0]["id"] if parada_grupo["pedidos"] else None,
+                    "orden": parada_grupo["orden"],
+                    "direccion": parada_grupo["direccion"],
+                    "tipo_operacion": parada_grupo["tipo_operacion"],
+                    "ventana_horaria": parada_grupo["ventana_horaria"],
+                    "fecha_hora_llegada": parada_grupo["fecha_hora_llegada"],
+                    "fecha_hora_completada": parada_grupo["fecha_hora_completada"],
+                    "estado": parada_grupo["estado"],
+                    "ruta_foto": parada_grupo["ruta_foto"],
+                    "ruta_firma": parada_grupo["ruta_firma"],
+                    "creado_en": parada_grupo["creado_en"],
+                    "pedido": parada_grupo["pedidos"][0] if parada_grupo["pedidos"] else None
+                })
+            
+            # Verificar que conductor_id y vehiculo_id existan
+            if not ruta.conductor_id or not ruta.vehiculo_id:
+                logging.warning(f"Ruta {ruta.id} tiene conductor_id o vehiculo_id None, saltando")
+                continue
+            
+            ruta_dict = {
+                "id": ruta.id,
+                "fecha": formatear_fecha(ruta.fecha),
+                "fecha_inicio": formatear_datetime(ruta.fecha_inicio) if ruta.fecha_inicio else None,
+                "fecha_fin": formatear_datetime(ruta.fecha_fin) if ruta.fecha_fin else None,
+                "conductor_id": ruta.conductor_id,
+                "vehiculo_id": ruta.vehiculo_id,
+                "observaciones": ruta.observaciones,
+                "estado": ruta.estado.value,
+                "creado_en": formatear_datetime(ruta.creado_en) if ruta.creado_en else None,
+                "paradas": paradas_lista,
+                "conductor": {
+                    "id": ruta.conductor.id,
+                    "nombre": ruta.conductor.nombre,
+                    "apellidos": ruta.conductor.apellidos
+                } if ruta.conductor else None,
+                "vehiculo": {
+                    "id": ruta.vehiculo.id,
+                    "nombre": ruta.vehiculo.nombre,
+                    "matricula": ruta.vehiculo.matricula
+                } if ruta.vehiculo else None
+            }
+            resultados.append(RutaResponse(**ruta_dict))
+        except Exception as e:
+            # Log del error pero continuar con las demás rutas
+            logging.error(f"Error procesando ruta {ruta.id}: {str(e)}")
+            continue
+    
+    return resultados
+
 @router.get("/{ruta_id}", response_model=RutaResponse)
 async def obtener_ruta(
     ruta_id: int,
@@ -537,7 +717,23 @@ async def obtener_ruta(
     current_user: Usuario = Depends(get_current_user)
 ):
     """Obtener una ruta por ID"""
-    if current_user.rol not in ["super_admin", "admin_transportes"]:
+    ruta = db.query(Ruta).filter(Ruta.id == ruta_id).first()
+    if not ruta:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Ruta no encontrada"
+        )
+    
+    # Si es conductor, solo puede ver sus propias rutas
+    if current_user.rol == "conductor":
+        conductor = db.query(Conductor).filter(Conductor.usuario_id == current_user.id).first()
+        if not conductor or ruta.conductor_id != conductor.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="No tiene permisos para ver esta ruta"
+            )
+    # Si es admin, puede ver cualquier ruta
+    elif current_user.rol not in ["super_admin", "admin_transportes"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No tiene permisos para ver rutas"
@@ -561,6 +757,8 @@ async def obtener_ruta(
     # Agrupar paradas por dirección y tipo
     paradas_agrupadas = {}
     for p in ruta.paradas:
+        if not p.direccion or not p.tipo_operacion:
+            continue  # Saltar paradas inválidas
         pedido = db.query(Pedido).filter(Pedido.id == p.pedido_id).first()
         direccion_key = f"{p.direccion.strip().lower()}_{p.tipo_operacion.value}"
         
@@ -572,9 +770,12 @@ async def obtener_ruta(
                 "direccion": p.direccion,
                 "tipo_operacion": p.tipo_operacion.value,
                 "ventana_horaria": p.ventana_horaria,
-                "fecha_hora_llegada": p.fecha_hora_llegada.isoformat() if p.fecha_hora_llegada else None,
+                "fecha_hora_llegada": formatear_datetime(p.fecha_hora_llegada) if p.fecha_hora_llegada else None,
+                "fecha_hora_completada": formatear_datetime(p.fecha_hora_completada) if p.fecha_hora_completada else None,
                 "estado": p.estado.value,
-                "creado_en": p.creado_en,
+                "ruta_foto": p.ruta_foto,
+                "ruta_firma": p.ruta_firma,
+                "creado_en": formatear_datetime(p.creado_en) if p.creado_en else None,
                 "pedidos": []
             }
         
@@ -598,22 +799,24 @@ async def obtener_ruta(
             "tipo_operacion": parada_grupo["tipo_operacion"],
             "ventana_horaria": parada_grupo["ventana_horaria"],
             "fecha_hora_llegada": parada_grupo["fecha_hora_llegada"],
+            "fecha_hora_completada": parada_grupo["fecha_hora_completada"],
             "estado": parada_grupo["estado"],
+            "ruta_foto": parada_grupo["ruta_foto"],
+            "ruta_firma": parada_grupo["ruta_firma"],
             "creado_en": parada_grupo["creado_en"],
-            "pedido": parada_grupo["pedidos"][0] if parada_grupo["pedidos"] else None,
-            "pedidos": parada_grupo["pedidos"]
+            "pedido": parada_grupo["pedidos"][0] if parada_grupo["pedidos"] else None
         })
     
     ruta_dict = {
         "id": ruta.id,
-        "fecha": ruta.fecha,
-        "fecha_inicio": ruta.fecha_inicio.isoformat() if ruta.fecha_inicio else None,
-        "fecha_fin": ruta.fecha_fin.isoformat() if ruta.fecha_fin else None,
+        "fecha": formatear_fecha(ruta.fecha),
+        "fecha_inicio": formatear_datetime(ruta.fecha_inicio) if ruta.fecha_inicio else None,
+        "fecha_fin": formatear_datetime(ruta.fecha_fin) if ruta.fecha_fin else None,
         "conductor_id": ruta.conductor_id,
         "vehiculo_id": ruta.vehiculo_id,
         "observaciones": ruta.observaciones,
         "estado": ruta.estado.value,
-        "creado_en": ruta.creado_en,
+        "creado_en": formatear_datetime(ruta.creado_en) if ruta.creado_en else None,
         "paradas": paradas_lista,
         "conductor": {
             "id": ruta.conductor.id,
@@ -1248,20 +1451,22 @@ async def actualizar_ruta(
     
     paradas_lista = []
     for key, parada_grupo in sorted(paradas_agrupadas_respuesta.items(), key=lambda x: x[1]["orden"]):
-        paradas_lista.append({
-            "id": parada_grupo["id"],
-            "ruta_id": parada_grupo["ruta_id"],
-            "pedido_id": parada_grupo["pedidos"][0]["id"] if parada_grupo["pedidos"] else None,
-            "orden": parada_grupo["orden"],
-            "direccion": parada_grupo["direccion"],
-            "tipo_operacion": parada_grupo["tipo_operacion"],
-            "ventana_horaria": parada_grupo["ventana_horaria"],
-            "fecha_hora_llegada": parada_grupo["fecha_hora_llegada"],
-            "estado": parada_grupo["estado"],
-            "creado_en": parada_grupo["creado_en"],
-            "pedido": parada_grupo["pedidos"][0] if parada_grupo["pedidos"] else None,
-            "pedidos": parada_grupo["pedidos"]
-        })
+            paradas_lista.append({
+                "id": parada_grupo["id"],
+                "ruta_id": parada_grupo["ruta_id"],
+                "pedido_id": parada_grupo["pedidos"][0]["id"] if parada_grupo["pedidos"] else None,
+                "orden": parada_grupo["orden"],
+                "direccion": parada_grupo["direccion"],
+                "tipo_operacion": parada_grupo["tipo_operacion"],
+                "ventana_horaria": parada_grupo["ventana_horaria"],
+                "fecha_hora_llegada": parada_grupo["fecha_hora_llegada"],
+                "fecha_hora_completada": parada_grupo.get("fecha_hora_completada"),
+                "estado": parada_grupo["estado"],
+                "ruta_foto": parada_grupo.get("ruta_foto"),
+                "ruta_firma": parada_grupo.get("ruta_firma"),
+                "creado_en": parada_grupo["creado_en"],
+                "pedido": parada_grupo["pedidos"][0] if parada_grupo["pedidos"] else None
+            })
     
     ruta_dict = {
         "id": ruta.id,
@@ -1378,3 +1583,489 @@ async def eliminar_ruta(
     
     return None
 
+@router.put("/{ruta_id}/iniciar", response_model=RutaResponse)
+async def iniciar_ruta(
+    ruta_id: int,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user)
+):
+    """Iniciar una ruta (cambiar estado a EN_CURSO)"""
+    if current_user.rol != "conductor":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Solo los conductores pueden iniciar rutas"
+        )
+    
+    # Obtener el conductor asociado al usuario
+    conductor = db.query(Conductor).filter(Conductor.usuario_id == current_user.id).first()
+    if not conductor:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Conductor no encontrado"
+        )
+    
+    # Obtener la ruta
+    ruta = db.query(Ruta).filter(Ruta.id == ruta_id).first()
+    if not ruta:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Ruta no encontrada"
+        )
+    
+    # Verificar que la ruta pertenece al conductor
+    if ruta.conductor_id != conductor.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tiene permisos para iniciar esta ruta"
+        )
+    
+    # Verificar que la ruta esté en estado PLANIFICADA
+    if ruta.estado != EstadoRuta.PLANIFICADA:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"La ruta debe estar en estado PLANIFICADA para iniciarla. Estado actual: {ruta.estado.value}"
+        )
+    
+    # Cambiar estado a EN_CURSO y registrar fecha de inicio
+    ruta.estado = EstadoRuta.EN_CURSO
+    ruta.fecha_inicio = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(ruta)
+    
+    # Invalidar caché
+    invalidate_rutas_cache()
+    
+    # Construir respuesta
+    paradas_lista = []
+    for p in ruta.paradas:
+        if not p.direccion or not p.tipo_operacion:
+            continue  # Saltar paradas inválidas
+        pedido = db.query(Pedido).filter(Pedido.id == p.pedido_id).first()
+        paradas_lista.append({
+            "id": p.id,
+            "ruta_id": p.ruta_id,
+            "pedido_id": p.pedido_id,
+            "orden": p.orden,
+            "direccion": p.direccion,
+            "tipo_operacion": p.tipo_operacion.value,
+            "ventana_horaria": p.ventana_horaria,
+            "fecha_hora_llegada": formatear_datetime(p.fecha_hora_llegada) if p.fecha_hora_llegada else None,
+            "fecha_hora_completada": formatear_datetime(p.fecha_hora_completada) if p.fecha_hora_completada else None,
+            "estado": p.estado.value,
+            "ruta_foto": p.ruta_foto,
+            "ruta_firma": p.ruta_firma,
+            "creado_en": formatear_datetime(p.creado_en) if p.creado_en else None,
+            "pedido": {
+                "id": pedido.id,
+                "cliente": pedido.cliente,
+                "origen": pedido.origen,
+                "destino": pedido.destino
+            } if pedido else None
+        })
+    
+    ruta_dict = {
+        "id": ruta.id,
+        "fecha": formatear_fecha(ruta.fecha),
+        "fecha_inicio": formatear_datetime(ruta.fecha_inicio) if ruta.fecha_inicio else None,
+        "fecha_fin": formatear_datetime(ruta.fecha_fin) if ruta.fecha_fin else None,
+        "conductor_id": ruta.conductor_id,
+        "vehiculo_id": ruta.vehiculo_id,
+        "observaciones": ruta.observaciones,
+        "estado": ruta.estado.value,
+        "creado_en": formatear_datetime(ruta.creado_en) if ruta.creado_en else None,
+        "paradas": paradas_lista,
+        "conductor": {
+            "id": ruta.conductor.id,
+            "nombre": ruta.conductor.nombre,
+            "apellidos": ruta.conductor.apellidos
+        } if ruta.conductor else None,
+        "vehiculo": {
+            "id": ruta.vehiculo.id,
+            "nombre": ruta.vehiculo.nombre,
+            "matricula": ruta.vehiculo.matricula
+        } if ruta.vehiculo else None
+    }
+    
+    return RutaResponse(**ruta_dict)
+
+@router.put("/{ruta_id}/finalizar", response_model=RutaResponse)
+async def finalizar_ruta(
+    ruta_id: int,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user)
+):
+    """Finalizar una ruta (cambiar estado a COMPLETADA)"""
+    if current_user.rol != "conductor":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Solo los conductores pueden finalizar rutas"
+        )
+    
+    # Obtener el conductor asociado al usuario
+    conductor = db.query(Conductor).filter(Conductor.usuario_id == current_user.id).first()
+    if not conductor:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Conductor no encontrado"
+        )
+    
+    # Obtener la ruta
+    ruta = db.query(Ruta).filter(Ruta.id == ruta_id).first()
+    if not ruta:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Ruta no encontrada"
+        )
+    
+    # Verificar que la ruta pertenece al conductor
+    if ruta.conductor_id != conductor.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tiene permisos para finalizar esta ruta"
+        )
+    
+    # Verificar que la ruta esté en estado EN_CURSO
+    if ruta.estado != EstadoRuta.EN_CURSO:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"La ruta debe estar en estado EN_CURSO para finalizarla. Estado actual: {ruta.estado.value}"
+        )
+    
+    # Verificar que todas las paradas estén completadas (ENTREGADO)
+    paradas_pendientes = [p for p in ruta.paradas if p.estado != EstadoParada.ENTREGADO]
+    if paradas_pendientes:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"No se puede finalizar la ruta. Hay {len(paradas_pendientes)} parada(s) pendiente(s) de completar."
+        )
+    
+    # Cambiar estado a COMPLETADA y registrar fecha de fin
+    ruta.estado = EstadoRuta.COMPLETADA
+    ruta.fecha_fin = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(ruta)
+    
+    # Invalidar caché
+    invalidate_rutas_cache()
+    
+    # Construir respuesta
+    paradas_lista = []
+    for p in ruta.paradas:
+        if not p.direccion or not p.tipo_operacion:
+            continue  # Saltar paradas inválidas
+        pedido = db.query(Pedido).filter(Pedido.id == p.pedido_id).first()
+        paradas_lista.append({
+            "id": p.id,
+            "ruta_id": p.ruta_id,
+            "pedido_id": p.pedido_id,
+            "orden": p.orden,
+            "direccion": p.direccion,
+            "tipo_operacion": p.tipo_operacion.value,
+            "ventana_horaria": p.ventana_horaria,
+            "fecha_hora_llegada": formatear_datetime(p.fecha_hora_llegada) if p.fecha_hora_llegada else None,
+            "fecha_hora_completada": formatear_datetime(p.fecha_hora_completada) if p.fecha_hora_completada else None,
+            "estado": p.estado.value,
+            "ruta_foto": p.ruta_foto,
+            "ruta_firma": p.ruta_firma,
+            "creado_en": formatear_datetime(p.creado_en) if p.creado_en else None,
+            "pedido": {
+                "id": pedido.id,
+                "cliente": pedido.cliente,
+                "origen": pedido.origen,
+                "destino": pedido.destino
+            } if pedido else None
+        })
+    
+    ruta_dict = {
+        "id": ruta.id,
+        "fecha": formatear_fecha(ruta.fecha),
+        "fecha_inicio": formatear_datetime(ruta.fecha_inicio) if ruta.fecha_inicio else None,
+        "fecha_fin": formatear_datetime(ruta.fecha_fin) if ruta.fecha_fin else None,
+        "conductor_id": ruta.conductor_id,
+        "vehiculo_id": ruta.vehiculo_id,
+        "observaciones": ruta.observaciones,
+        "estado": ruta.estado.value,
+        "creado_en": formatear_datetime(ruta.creado_en) if ruta.creado_en else None,
+        "paradas": paradas_lista,
+        "conductor": {
+            "id": ruta.conductor.id,
+            "nombre": ruta.conductor.nombre,
+            "apellidos": ruta.conductor.apellidos
+        } if ruta.conductor else None,
+        "vehiculo": {
+            "id": ruta.vehiculo.id,
+            "nombre": ruta.vehiculo.nombre,
+            "matricula": ruta.vehiculo.matricula
+        } if ruta.vehiculo else None
+    }
+    
+    return RutaResponse(**ruta_dict)
+
+
+# Directorio para almacenar fotos y firmas de paradas
+UPLOAD_DIR_PARADAS = "/app/uploads/paradas"
+ALLOWED_IMAGE_TYPES = {'image/jpeg', 'image/png', 'image/webp'}
+MAX_FILE_SIZE_PARADAS = 10 * 1024 * 1024  # 10MB
+
+@router.put("/{ruta_id}/paradas/{parada_id}/completar", response_model=RutaParadaResponse)
+async def completar_parada(
+    ruta_id: int,
+    parada_id: int,
+    accion: Optional[str] = Form(None),
+    foto: Optional[UploadFile] = File(None),
+    firma: Optional[UploadFile] = File(None),
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user)
+):
+    """Marcar una parada como completada (ENTREGADO) con foto y firma opcionales"""
+    if current_user.rol != "conductor":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Solo los conductores pueden completar paradas"
+        )
+    
+    # Obtener el conductor asociado al usuario
+    conductor = db.query(Conductor).filter(Conductor.usuario_id == current_user.id).first()
+    if not conductor:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Conductor no encontrado"
+        )
+    
+    # Obtener la ruta
+    ruta = db.query(Ruta).filter(Ruta.id == ruta_id).first()
+    if not ruta:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Ruta no encontrada"
+        )
+    
+    # Verificar que la ruta pertenece al conductor
+    if ruta.conductor_id != conductor.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tiene permisos para completar paradas de esta ruta"
+        )
+    
+    # Verificar que la ruta esté en estado EN_CURSO
+    if ruta.estado != EstadoRuta.EN_CURSO:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"La ruta debe estar en estado EN_CURSO. Estado actual: {ruta.estado.value}"
+        )
+    
+    # Obtener la parada
+    parada = db.query(RutaParada).filter(
+        RutaParada.id == parada_id,
+        RutaParada.ruta_id == ruta_id
+    ).first()
+    
+    if not parada:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Parada no encontrada"
+        )
+    
+    # Crear directorio si no existe
+    os.makedirs(UPLOAD_DIR_PARADAS, exist_ok=True)
+    
+    # Procesar foto si se proporciona
+    ruta_foto = None
+    if foto:
+        if foto.content_type not in ALLOWED_IMAGE_TYPES:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Tipo de archivo de foto no permitido. Solo se permiten imágenes JPEG, PNG o WebP"
+            )
+        
+        contenido = await foto.read()
+        if len(contenido) > MAX_FILE_SIZE_PARADAS:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="El archivo de foto excede el tamaño máximo de 10MB"
+            )
+        
+        extension = os.path.splitext(foto.filename)[1] if foto.filename else ".jpg"
+        nombre_unico = f"foto_{parada_id}_{uuid.uuid4()}{extension}"
+        ruta_completa = os.path.join(UPLOAD_DIR_PARADAS, nombre_unico)
+        
+        with open(ruta_completa, "wb") as f:
+            f.write(contenido)
+        
+        ruta_foto = ruta_completa
+    
+    # Procesar firma si se proporciona
+    ruta_firma = None
+    if firma:
+        if firma.content_type not in ALLOWED_IMAGE_TYPES:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Tipo de archivo de firma no permitido. Solo se permiten imágenes JPEG, PNG o WebP"
+            )
+        
+        contenido = await firma.read()
+        if len(contenido) > MAX_FILE_SIZE_PARADAS:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="El archivo de firma excede el tamaño máximo de 10MB"
+            )
+        
+        extension = os.path.splitext(firma.filename)[1] if firma.filename else ".png"
+        nombre_unico = f"firma_{parada_id}_{uuid.uuid4()}{extension}"
+        ruta_completa = os.path.join(UPLOAD_DIR_PARADAS, nombre_unico)
+        
+        with open(ruta_completa, "wb") as f:
+            f.write(contenido)
+        
+        ruta_firma = ruta_completa
+    
+    # Actualizar parada
+    parada.estado = EstadoParada.ENTREGADO
+    parada.fecha_hora_completada = datetime.now(timezone.utc)
+    if ruta_foto:
+        parada.ruta_foto = ruta_foto
+    if ruta_firma:
+        parada.ruta_firma = ruta_firma
+    
+    db.commit()
+    db.refresh(parada)
+    
+    # Invalidar caché
+    invalidate_rutas_cache()
+    
+    # Obtener pedido para la respuesta
+    pedido = db.query(Pedido).filter(Pedido.id == parada.pedido_id).first()
+    
+    return RutaParadaResponse(
+        id=parada.id,
+        ruta_id=parada.ruta_id,
+        pedido_id=parada.pedido_id,
+        orden=parada.orden,
+        direccion=parada.direccion,
+        tipo_operacion=parada.tipo_operacion.value,
+        ventana_horaria=parada.ventana_horaria,
+        fecha_hora_llegada=formatear_datetime(parada.fecha_hora_llegada) if parada.fecha_hora_llegada else None,
+        fecha_hora_completada=formatear_datetime(parada.fecha_hora_completada) if parada.fecha_hora_completada else None,
+        estado=parada.estado.value,
+        ruta_foto=parada.ruta_foto,
+        ruta_firma=parada.ruta_firma,
+        creado_en=formatear_datetime(parada.creado_en) if parada.creado_en else None,
+        pedido={
+            "id": pedido.id,
+            "cliente": pedido.cliente,
+            "origen": pedido.origen,
+            "destino": pedido.destino
+        } if pedido else None
+    )
+
+@router.get("/paradas/{parada_id}/foto")
+async def obtener_foto_parada(
+    parada_id: int,
+    token: Optional[str] = Query(None),
+    db: Session = Depends(get_db)
+):
+    """Obtiene la foto de una parada"""
+    if not token:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    try:
+        payload = decode_access_token(token)
+        email = payload.get("sub")
+        if not email:
+            raise HTTPException(status_code=401, detail="Not authenticated")
+        current_user = db.query(Usuario).filter(Usuario.email == email).first()
+        if not current_user:
+            raise HTTPException(status_code=401, detail="Not authenticated")
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    parada = db.query(RutaParada).filter(RutaParada.id == parada_id).first()
+    if not parada:
+        raise HTTPException(status_code=404, detail="Parada no encontrada")
+    
+    # Verificar permisos: solo el conductor asignado o admin puede ver
+    ruta = db.query(Ruta).filter(Ruta.id == parada.ruta_id).first()
+    if not ruta:
+        raise HTTPException(status_code=404, detail="Ruta no encontrada")
+    
+    if current_user.rol not in ["super_admin", "admin_transportes"]:
+        conductor_ruta = db.query(Conductor).filter(Conductor.id == ruta.conductor_id).first() if ruta.conductor_id else None
+        if not conductor_ruta or conductor_ruta.usuario_id != current_user.id:
+            raise HTTPException(status_code=403, detail="No tiene permisos para ver esta foto")
+    
+    if not parada.ruta_foto:
+        raise HTTPException(status_code=404, detail="Foto no encontrada")
+    
+    # Verificar que el archivo existe
+    if not os.path.exists(parada.ruta_foto):
+        raise HTTPException(status_code=404, detail="Archivo no encontrado en el servidor")
+    
+    # Determinar el tipo de contenido
+    media_type = "image/jpeg"
+    if parada.ruta_foto.lower().endswith('.png'):
+        media_type = "image/png"
+    elif parada.ruta_foto.lower().endswith('.webp'):
+        media_type = "image/webp"
+    
+    return FileResponse(
+        parada.ruta_foto,
+        media_type=media_type,
+        headers={"Content-Disposition": f"inline; filename={os.path.basename(parada.ruta_foto)}"}
+    )
+
+@router.get("/paradas/{parada_id}/firma")
+async def obtener_firma_parada(
+    parada_id: int,
+    token: Optional[str] = Query(None),
+    db: Session = Depends(get_db)
+):
+    """Obtiene la firma de una parada"""
+    if not token:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    try:
+        payload = decode_access_token(token)
+        email = payload.get("sub")
+        if not email:
+            raise HTTPException(status_code=401, detail="Not authenticated")
+        current_user = db.query(Usuario).filter(Usuario.email == email).first()
+        if not current_user:
+            raise HTTPException(status_code=401, detail="Not authenticated")
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    parada = db.query(RutaParada).filter(RutaParada.id == parada_id).first()
+    if not parada:
+        raise HTTPException(status_code=404, detail="Parada no encontrada")
+    
+    # Verificar permisos: solo el conductor asignado o admin puede ver
+    ruta = db.query(Ruta).filter(Ruta.id == parada.ruta_id).first()
+    if not ruta:
+        raise HTTPException(status_code=404, detail="Ruta no encontrada")
+    
+    if current_user.rol not in ["super_admin", "admin_transportes"]:
+        conductor_ruta = db.query(Conductor).filter(Conductor.id == ruta.conductor_id).first() if ruta.conductor_id else None
+        if not conductor_ruta or conductor_ruta.usuario_id != current_user.id:
+            raise HTTPException(status_code=403, detail="No tiene permisos para ver esta firma")
+    
+    if not parada.ruta_firma:
+        raise HTTPException(status_code=404, detail="Firma no encontrada")
+    
+    # Verificar que el archivo existe
+    if not os.path.exists(parada.ruta_firma):
+        raise HTTPException(status_code=404, detail="Archivo no encontrado en el servidor")
+    
+    # Determinar el tipo de contenido
+    media_type = "image/png"
+    if parada.ruta_firma.lower().endswith('.jpg') or parada.ruta_firma.lower().endswith('.jpeg'):
+        media_type = "image/jpeg"
+    elif parada.ruta_firma.lower().endswith('.webp'):
+        media_type = "image/webp"
+    
+    return FileResponse(
+        parada.ruta_firma,
+        media_type=media_type,
+        headers={"Content-Disposition": f"inline; filename={os.path.basename(parada.ruta_firma)}"}
+    )

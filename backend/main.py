@@ -2,6 +2,7 @@ from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
+from sqlalchemy import text
 from app.core.config import settings
 from app.api import auth, incidencias, vehiculos, comunidades, conductores, pedidos, rutas, mantenimientos, inmuebles, propietarios, proveedores, actuaciones, documentos, mensajes, usuarios
 from app.database import engine, Base
@@ -32,13 +33,52 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     )
 
 # Configurar CORS - Permitir llamadas desde Android y web
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS + ["*"],  # Permitir todas las origenes para desarrollo (cambiar en producción)
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# Nota: Si allow_credentials=True, no se puede usar ["*"], hay que especificar orígenes explícitos
+cors_origins = settings.CORS_ORIGINS
+if isinstance(cors_origins, str):
+    cors_origins = [origin.strip() for origin in cors_origins.split(",")]
+elif not isinstance(cors_origins, list):
+    cors_origins = list(cors_origins)
+
+# Añadir orígenes adicionales comunes para desarrollo
+cors_origins.extend([
+    "http://localhost:4200",
+    "http://localhost:80",
+    "http://localhost",
+    "http://127.0.0.1:4200",
+    "http://127.0.0.1:80",
+    "http://127.0.0.1:8000",
+    "http://localhost:8000",
+    "http://127.0.0.1"
+])
+
+# Eliminar duplicados manteniendo el orden
+cors_origins = list(dict.fromkeys(cors_origins))
+
+# Para desarrollo, también permitir todos los orígenes si está en modo debug
+import os
+if os.getenv("ENVIRONMENT", "development") == "development":
+    # En desarrollo, ser más permisivo con CORS
+    cors_origins.append("*")
+
+# Configurar CORS - Si hay "*" en los orígenes, no usar allow_credentials
+if "*" in cors_origins:
+    cors_origins.remove("*")
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],  # Permitir todos los orígenes en desarrollo
+        allow_credentials=False,  # No permitir credenciales cuando se usa "*"
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+else:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=cors_origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
 # Incluir routers
 app.include_router(auth.router, prefix="/api")
@@ -70,19 +110,28 @@ async def health_check():
     
     health_status = {
         "status": "healthy",
-        "checks": {}
+        "checks": {},
+        "service": "fyntra-api",
+        "version": "1.0.0"
     }
     
     # Verificar conexión a PostgreSQL
     try:
         db = SessionLocal()
-        db.execute("SELECT 1")
+        db.execute(text("SELECT 1"))
         db.close()
         health_status["checks"]["database"] = "ok"
     except Exception as e:
         # Durante el inicio, no marcar como unhealthy si la DB aún no está lista
-        health_status["status"] = "starting"
-        health_status["checks"]["database"] = f"connecting: {str(e)[:50]}"
+        health_status["status"] = "unhealthy"
+        error_msg = str(e)
+        # Acortar mensajes de error muy largos
+        if len(error_msg) > 100:
+            error_msg = error_msg[:100] + "..."
+        health_status["checks"]["database"] = {
+            "status": "error",
+            "message": error_msg
+        }
     
     # Verificar conexión a Redis
     try:
@@ -93,11 +142,18 @@ async def health_check():
         # Redis no es crítico, solo marcar como degraded
         if health_status["status"] == "healthy":
             health_status["status"] = "degraded"
-        health_status["checks"]["redis"] = f"error: {str(e)[:50]}"
+        error_msg = str(e)
+        if len(error_msg) > 100:
+            error_msg = error_msg[:100] + "..."
+        health_status["checks"]["redis"] = {
+            "status": "error",
+            "message": error_msg
+        }
     
     # Siempre devolver 200 para que el healthcheck de Docker funcione
     # El estado real se indica en el JSON
-    return JSONResponse(content=health_status, status_code=200)
+    status_code = 200 if health_status["status"] == "healthy" else (503 if health_status["status"] == "unhealthy" else 200)
+    return JSONResponse(content=health_status, status_code=status_code)
 
 if __name__ == "__main__":
     import uvicorn

@@ -325,6 +325,16 @@ export class ApiService {
     });
   }
 
+  finalizarRuta(id: number): Observable<any> {
+    return this.http.put(`${this.apiUrl}/rutas/${id}/finalizar`, {}, {
+      headers: this.getHeaders()
+    });
+  }
+
+  getBaseUrl(): string {
+    return this.apiUrl.replace('/api', '');
+  }
+
           deleteRuta(id: number): Observable<any> {
             return this.http.delete(`${this.apiUrl}/rutas/${id}`, {
               headers: this.getHeaders()

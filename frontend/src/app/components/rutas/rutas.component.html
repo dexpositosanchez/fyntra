@@ -47,9 +47,15 @@
     <!-- Sección de Rutas -->
     <div *ngIf="currentRoute.includes('/rutas')">
       <div class="form-container" *ngIf="mostrarFormulario">
-        <h2 class="form-title">{{ editandoRuta ? 'EDITAR RUTA' : 'NUEVA RUTA' }}</h2>
+        <h2 class="form-title">{{
+          editandoRuta
+            ? (rutaActual?.estado === 'en_curso'
+                ? 'VER RUTA EN PROGRESO'
+                : (rutaActual?.estado === 'completada' ? 'VER RUTA FINALIZADA' : 'EDITAR RUTA'))
+            : 'NUEVA RUTA'
+        }}</h2>
         
-        <form (ngSubmit)="onSubmit()" class="ruta-form">
+        <form (ngSubmit)="onSubmit()" class="ruta-form" [class.form-disabled]="rutaActual?.estado === 'en_curso' || rutaActual?.estado === 'completada'">
           <div class="form-row">
             <div class="form-group">
               <label>Fecha de Inicio (Salida desde empresa)</label>
@@ -59,6 +65,7 @@
                 [(ngModel)]="rutaForm.fecha_inicio"
                 name="fecha_inicio"
                 class="form-input"
+                [disabled]="rutaActual?.estado === 'en_curso' || rutaActual?.estado === 'completada'"
                 required
               />
             </div>
@@ -70,6 +77,7 @@
                 [(ngModel)]="rutaForm.fecha_fin"
                 name="fecha_fin"
                 class="form-input"
+                [disabled]="rutaActual?.estado === 'en_curso' || rutaActual?.estado === 'completada'"
                 required
               />
             </div>
@@ -82,6 +90,7 @@
                 [(ngModel)]="rutaForm.conductor_id"
                 name="conductor_id"
                 class="form-input"
+                [disabled]="rutaActual?.estado === 'en_curso' || rutaActual?.estado === 'completada'"
                 required
               >
                 <option value="">Seleccionar conductor...</option>
@@ -97,6 +106,7 @@
                 name="vehiculo_id"
                 class="form-input"
                 (change)="onVehiculoChange()"
+                [disabled]="rutaActual?.estado === 'en_curso' || rutaActual?.estado === 'completada'"
                 required
               >
                 <option value="">Seleccionar vehículo...</option>
@@ -116,11 +126,50 @@
                 name="observaciones"
                 placeholder="Observaciones opcionales"
                 class="form-input"
+                [disabled]="rutaActual?.estado === 'en_curso' || rutaActual?.estado === 'completada'"
               />
             </div>
           </div>
           
-          <div class="pedidos-section">
+          <!-- Sección de seguimiento (en progreso y finalizadas) -->
+          <div class="progreso-section" *ngIf="rutaActual?.estado === 'en_curso' || rutaActual?.estado === 'completada'">
+            <h3>Progreso de la Ruta</h3>
+            <div class="progreso-info">
+              <p><strong>Estado:</strong> {{ getEstadoTexto(rutaActual?.estado) }}</p>
+              <p *ngIf="rutaActual?.fecha_inicio"><strong>Iniciada:</strong> {{ rutaActual.fecha_inicio }}</p>
+              <p *ngIf="rutaActual?.estado === 'completada' && rutaActual?.fecha_fin"><strong>Finalizada:</strong> {{ rutaActual.fecha_fin }}</p>
+              <p><strong>Paradas completadas:</strong> {{ getParadasCompletadas() }} / {{ getTotalParadas() }}</p>
+            </div>
+            
+            <div class="paradas-progreso" *ngIf="rutaActual?.paradas">
+              <h4>Paradas</h4>
+              <div class="parada-progreso-item" *ngFor="let parada of getParadasOrdenadas()">
+                <div class="parada-progreso-header">
+                  <span class="parada-orden">#{{ parada.orden }}</span>
+                  <span class="parada-tipo-badge" [class.carga]="parada.tipo_operacion === 'carga'" [class.descarga]="parada.tipo_operacion === 'descarga'">
+                    {{ parada.tipo_operacion === 'carga' ? 'Carga' : 'Descarga' }}
+                  </span>
+                  <span class="parada-estado-badge" [class.completada]="parada.estado === 'entregado'">
+                    {{ parada.estado === 'entregado' ? 'Completada' : 'Pendiente' }}
+                  </span>
+                </div>
+                <div class="parada-progreso-content">
+                  <p><strong>Dirección:</strong> {{ parada.direccion }}</p>
+                  <p *ngIf="parada.fecha_hora_completada"><strong>Completada:</strong> {{ parada.fecha_hora_completada }}</p>
+                  <div class="parada-evidencias" *ngIf="parada.estado === 'entregado'">
+                    <a *ngIf="parada.ruta_foto" [href]="getUrlFoto(parada.ruta_foto, parada.id)" target="_blank" class="evidencia-icon-link" title="Ver foto">
+                      <span class="app-icon">photo_camera</span>
+                    </a>
+                    <a *ngIf="parada.ruta_firma" [href]="getUrlFirma(parada.ruta_firma, parada.id)" target="_blank" class="evidencia-icon-link" title="Ver firma">
+                      <span class="app-icon">draw</span>
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="pedidos-section" *ngIf="rutaActual?.estado !== 'en_curso' && rutaActual?.estado !== 'completada'">
             <div class="pedidos-header">
               <h3>Pedidos</h3>
               <p class="info-text">Se crearán automáticamente paradas de carga (origen) y descarga (destino) para cada pedido. Las paradas con la misma dirección se unirán.</p>
@@ -293,7 +342,12 @@
           
           <div class="form-actions">
             <button type="button" class="cancel-button" (click)="cancelarForm()">Cancelar</button>
-            <button type="submit" class="submit-button" [disabled]="loading">
+            <button
+              type="submit"
+              class="submit-button"
+              [disabled]="loading || rutaActual?.estado === 'en_curso' || rutaActual?.estado === 'completada'"
+              *ngIf="rutaActual?.estado !== 'en_curso' && rutaActual?.estado !== 'completada'"
+            >
               {{ loading ? 'Guardando...' : (editandoRuta ? 'GUARDAR CAMBIOS' : 'CREAR RUTA') }}
             </button>
           </div>
@@ -400,7 +454,7 @@
             <p *ngIf="ruta.estado">
               <strong>Estado:</strong> 
               <span [class]="'estado-' + getEstadoClass(ruta.estado)">
-                {{ getEstadoTexto(ruta.estado) }}
+                {{ getEstadoTexto(ruta.estado) }}{{ getProgresoParadasTexto(ruta) }}
               </span>
             </p>
             <p *ngIf="ruta.paradas && ruta.paradas.length > 0">

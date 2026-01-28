@@ -22,11 +22,20 @@ class RutaParadaUpdate(BaseModel):
     fecha_hora_llegada: Optional[datetime] = None
     estado: Optional[str] = None
 
-class RutaParadaResponse(RutaParadaBase):
+class RutaParadaResponse(BaseModel):
     id: int
     ruta_id: int
+    pedido_id: Optional[int] = None  # Opcional para compatibilidad
+    orden: int
+    direccion: str
+    tipo_operacion: str  # String para compatibilidad con valores del enum
+    ventana_horaria: Optional[str] = None
+    fecha_hora_llegada: Optional[str] = None  # String en formato ISO
+    fecha_hora_completada: Optional[str] = None  # String en formato ISO
     estado: str
-    creado_en: datetime
+    ruta_foto: Optional[str] = None
+    ruta_firma: Optional[str] = None
+    creado_en: str  # String en formato ISO para compatibilidad
     pedido: Optional[dict] = None
     
     class Config:
@@ -73,10 +82,16 @@ class RutaUpdate(BaseModel):
     paradas_orden: Optional[List[ParadaOrden]] = None  # Orden actualizado de las paradas
     paradas_con_fechas: Optional[List[ParadaConFecha]] = None  # Paradas con fechas según el orden establecido
 
-class RutaResponse(RutaBase):
+class RutaResponse(BaseModel):
     id: int
+    fecha: Optional[str] = None  # String en formato ISO para compatibilidad
+    fecha_inicio: Optional[str] = None  # String en formato ISO para compatibilidad
+    fecha_fin: Optional[str] = None  # String en formato ISO para compatibilidad
+    conductor_id: int
+    vehiculo_id: int
+    observaciones: Optional[str] = None
     estado: str
-    creado_en: datetime
+    creado_en: str  # String en formato ISO para compatibilidad
     paradas: List[RutaParadaResponse] = []
     conductor: Optional[dict] = None
     vehiculo: Optional[dict] = None

@@ -145,12 +145,12 @@ fun RutaCard(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Text(
-                text = ruta.nombre,
+                text = ruta.nombre ?: "Ruta #${ruta.id}",
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold
             )
             Text("Vehículo: ${ruta.vehiculo?.matricula ?: "N/A"}")
-            Text("Fecha: ${ruta.fecha}")
+            Text("Fecha: ${ruta.fecha ?: "N/A"}")
             Text("Estado: ${ruta.estado}")
             Text("Paradas: ${ruta.paradas?.size ?: 0}")
         }

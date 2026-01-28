@@ -528,7 +528,7 @@ export class IncidenciasComponent implements OnInit, OnDestroy {
     this.apiService.getActuacionesIncidencia(incidenciaId).subscribe({
       next: (data) => {
         // Ordenar actuaciones por fecha descendente (más reciente primero)
-        this.actuaciones = data.sort((a, b) => {
+        this.actuaciones = data.sort((a: any, b: any) => {
           const fechaA = new Date(a.fecha).getTime();
           const fechaB = new Date(b.fecha).getTime();
           return fechaB - fechaA; // Orden descendente
