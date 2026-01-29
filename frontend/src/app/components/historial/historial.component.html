@@ -1,0 +1,148 @@
+<div class="historial-container">
+  <header class="app-header">
+    <div class="header-left">
+      <div class="logo-section">
+        <img src="/assets/images/Isotipo.png" alt="Fyntra" class="logo-isotipo" />
+      </div>
+      <nav class="main-nav">
+        <a routerLink="/conductores" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">CONDUCTORES</a>
+        <a routerLink="/vehiculos" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">VEHÍCULOS</a>
+        <a routerLink="/mantenimientos" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">MANTENIMIENTOS</a>
+        <a routerLink="/rutas" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">RUTAS</a>
+        <a routerLink="/pedidos" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">PEDIDOS</a>
+        <a routerLink="/historial" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">HISTORIAL</a>
+      </nav>
+    </div>
+    <div class="user-section">
+      <div class="user-menu-container">
+        <button class="user-menu-button" (click)="toggleMenuUsuario()" title="Menú de usuario">
+          <span class="user-icon app-icon">person</span>
+          <span class="user-name">{{ usuario?.nombre || 'Usuario' }}</span>
+          <span class="dropdown-arrow">{{ mostrarMenuUsuario ? '▲' : '▼' }}</span>
+        </button>
+        <div class="user-menu-dropdown" *ngIf="mostrarMenuUsuario">
+          <button class="menu-item" *ngIf="estaEnModuloTransportes()" (click)="cambiarAModuloFincas()">
+            <span class="menu-icon app-icon">apartment</span>
+            <span>Módulo Fincas</span>
+          </button>
+          <button class="menu-item" *ngIf="!estaEnModuloTransportes()" (click)="cambiarAModuloTransportes()">
+            <span class="menu-icon app-icon">local_shipping</span>
+            <span>Módulo Transportes</span>
+          </button>
+          <div class="menu-divider"></div>
+          <button class="menu-item" *ngIf="usuario?.rol === 'super_admin'" (click)="irAUsuarios()">
+            <span class="menu-icon app-icon">people</span>
+            <span>Gestión de Usuarios</span>
+          </button>
+          <div class="menu-divider" *ngIf="usuario?.rol === 'super_admin'"></div>
+          <button class="menu-item logout-item" (click)="logout()">
+            <span class="menu-icon app-icon">logout</span>
+            <span>Salir</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="main-content">
+    <div class="historial-header">
+      <h1>Historial de rutas</h1>
+
+      <div class="header-controls">
+        <div class="filtros-row">
+          <div class="filtro-fechas">
+            <div class="fecha-group">
+              <label for="fechaDesde">Fecha entrega desde:</label>
+              <input type="date" id="fechaDesde" [(ngModel)]="fechaDesde" class="fecha-input">
+            </div>
+            <div class="fecha-group">
+              <label for="fechaHasta">Fecha entrega hasta:</label>
+              <input type="date" id="fechaHasta" [(ngModel)]="fechaHasta" class="fecha-input">
+            </div>
+          </div>
+          <div class="filtro-checkbox">
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="soloConRuta" (change)="cargarHistorial()">
+              Solo pedidos con ruta
+            </label>
+          </div>
+          <button class="btn-apply" (click)="aplicarFiltros()">Aplicar</button>
+        </div>
+        <div class="descarga-buttons">
+        <button class="btn-descarga btn-csv" (click)="descargar('csv')" [disabled]="loading" title="Descargar CSV">
+          <span class="app-icon">description</span>
+          <span>CSV</span>
+        </button>
+        <button class="btn-descarga btn-excel" (click)="descargar('excel')" [disabled]="loading" title="Descargar Excel">
+          <span class="app-icon">table_chart</span>
+          <span>Excel</span>
+        </button>
+        <button class="btn-descarga btn-pdf" (click)="descargar('pdf')" [disabled]="loading" title="Descargar PDF">
+          <span class="app-icon">picture_as_pdf</span>
+          <span>PDF</span>
+        </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="error-message" *ngIf="error">{{ error }}</div>
+    <div class="loading-message" *ngIf="loading">Cargando historial...</div>
+
+    <div class="table-wrapper" *ngIf="!loading && listado.length > 0">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Empresa</th>
+            <th>Origen / Destino</th>
+            <th>Tipo mercancía</th>
+            <th>Fecha entrega</th>
+            <th>Estado</th>
+            <th>Ruta</th>
+            <th>Fecha entregado</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let item of listado">
+            <td>{{ item.empresa || '-' }}</td>
+            <td>
+              <span class="origen-destino">{{ item.origen || '-' }}</span>
+              <span class="separador"> → </span>
+              <span class="origen-destino">{{ item.destino || '-' }}</span>
+            </td>
+            <td>{{ item.tipo_mercancia || '-' }}</td>
+            <td>{{ formatearFecha(item.fecha_entrega) }}</td>
+            <td>
+              <span class="estado-badge" [class]="'estado-' + (item.estado || '')">
+                {{ getEstadoLabel(item.estado) }}
+              </span>
+            </td>
+            <td class="ruta-cell">
+              <div class="ruta-tooltip-wrapper" *ngIf="item.ruta">
+                <span class="ruta-trigger tooltip-trigger">Ruta #{{ item.ruta.id }}</span>
+                <div class="tooltip-content">
+                  <div class="tooltip-header">Conductor y vehículo</div>
+                  <div class="tooltip-body">
+                    <div class="tooltip-item">
+                      <span class="tooltip-label">Conductor:</span>
+                      <span class="tooltip-value">{{ item.ruta.conductor || '-' }}</span>
+                    </div>
+                    <div class="tooltip-item">
+                      <span class="tooltip-label">Vehículo:</span>
+                      <span class="tooltip-value">{{ item.ruta.vehiculo || '-' }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <span *ngIf="!item.ruta">-</span>
+            </td>
+            <td>{{ formatearFechaHora(item.fecha_entregado) }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="no-data" *ngIf="!loading && listado.length === 0">
+      No hay pedidos que coincidan con los filtros.
+    </div>
+  </main>
+</div>

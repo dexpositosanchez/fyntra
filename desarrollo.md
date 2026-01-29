@@ -11,7 +11,7 @@
 | RF6. Gestión de Mantenimientos | Programación y registro de mantenimientos preventivos y correctivos, con alertas de mantenimientos próximos o vencidos. | ✅ | ✅ |  |
 | RF7. Reporte de Incidencias en Ruta | Registro desde la app móvil de incidencias en ruta (averías, retrasos, cliente ausente) con descripción y fotos. | ✅ | ✅ |  |
 | RF8. Informes de Operaciones | Informes de entregas, tiempos de ruta, eficiencia de conductores, costes de mantenimiento y rendimiento de la flota. | ⬜ | ⬜ / ✅ / ❌ |  |
-| RF9. Historial de Rutas | Historial completo de rutas realizadas con fecha, conductor, vehículo, pedidos entregados y tiempos. | ⬜ | ⬜ / ✅ / ❌ |  |
+| RF9. Historial de Rutas | Historial completo de rutas realizadas con fecha, conductor, vehículo, pedidos entregados y tiempos. | ✅ | ✅ |  |
 | **FINCAS** |  |  |  |  |
 | RF10. Gestión de Comunidades | El sistema debe permitir a los administradores crear, editar, eliminar y consultar comunidades de propietarios, con información básica y asociación a múltiples inmuebles. | ✅ | ✅ |  |
 | RF11. Gestión de Inmuebles | Registro de inmuebles asociados a comunidades, con datos como referencia catastral, dirección, metros cuadrados, tipo y múltiples propietarios asociados. | ✅ | ✅ |  |
@@ -27,7 +27,7 @@
 | RF20. Autenticación y Autorización | Sistema de autenticación segura mediante JWT, con diferentes roles y permisos granulares por módulo. | ⬜ | ⬜ / ✅ / ❌ |  |
 | RF21. Gestión de Usuarios | Gestión de usuarios por parte de super administradores: creación, edición, eliminación, desactivación y asignación de roles. | ✅ | ✅ |  |
 | RF22. Notificaciones | Envío de notificaciones automáticas (email, push) ante eventos relevantes como incidencias, cambios de estado o mantenimientos próximos. | ⬜ | ⬜ / ✅ / ❌ |  |
-| RF23. Búsqueda y Filtrado | Búsqueda y filtrado avanzado en incidencias, pedidos, rutas, vehículos y otras entidades por múltiples criterios. | ⬜ | ⬜ / ✅ / ❌ | Estan hechos los filtros en las secciones creadas, pero aún no están todas |
+| RF23. Búsqueda y Filtrado | Búsqueda y filtrado avanzado en incidencias, pedidos, rutas, vehículos y otras entidades por múltiples criterios. | ✅ | ✅ | Estan hechos los filtros en las secciones creadas, pero aún no están todas |
 | RF24. Exportación de Datos | Exportación de informes y listados a formatos estándar como PDF, Excel y CSV. | ⬜ | ⬜ / ✅ / ❌ |  |
 | RF25. Aplicación Móvil Android | App móvil nativa Android en Kotlin con autenticación JWT, sincronización online/offline, integración con Google Maps y soporte desde Android 8.0. | ⬜ | ⬜ / ✅ / ❌ |  |
 

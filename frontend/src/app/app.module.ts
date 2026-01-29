@@ -21,6 +21,7 @@ import { PropietariosComponent } from './components/propietarios/propietarios.co
 import { ProveedoresComponent } from './components/proveedores/proveedores.component';
 import { UsuariosComponent } from './components/usuarios/usuarios.component';
 import { InformesComponent } from './components/informes/informes.component';
+import { HistorialComponent } from './components/historial/historial.component';
 import { AppRoutingModule } from './app-routing.module';
 
 @NgModule({
@@ -39,7 +40,8 @@ import { AppRoutingModule } from './app-routing.module';
     PropietariosComponent,
     ProveedoresComponent,
     UsuariosComponent,
-    InformesComponent
+    InformesComponent,
+    HistorialComponent
   ],
   imports: [
     BrowserModule,

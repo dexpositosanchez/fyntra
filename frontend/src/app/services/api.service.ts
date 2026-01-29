@@ -558,5 +558,29 @@ export class ApiService {
       responseType: 'blob'
     });
   }
+
+  // Historial de rutas (RF9)
+  getHistorialPedidos(fechaDesde?: string, fechaHasta?: string, soloConRuta?: boolean): Observable<any[]> {
+    const params: any = {};
+    if (fechaDesde) params.fecha_desde = fechaDesde;
+    if (fechaHasta) params.fecha_hasta = fechaHasta;
+    if (soloConRuta !== undefined && soloConRuta !== null) params.solo_con_ruta = soloConRuta;
+    return this.http.get<any[]>(`${this.apiUrl}/historial/pedidos`, {
+      headers: this.getHeaders(),
+      params
+    });
+  }
+
+  exportarHistorialPedidos(formato: string, fechaDesde?: string, fechaHasta?: string, soloConRuta?: boolean): Observable<Blob> {
+    const params: any = {};
+    if (fechaDesde) params.fecha_desde = fechaDesde;
+    if (fechaHasta) params.fecha_hasta = fechaHasta;
+    if (soloConRuta !== undefined && soloConRuta !== null) params.solo_con_ruta = soloConRuta;
+    return this.http.get(`${this.apiUrl}/historial/pedidos/exportar/${formato}`, {
+      headers: this.getHeaders(),
+      params,
+      responseType: 'blob'
+    });
+  }
 }
 

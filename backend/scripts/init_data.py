@@ -547,7 +547,11 @@ def create_initial_data():
         
         if conductores_disponibles and vehiculos_disponibles and pedido_distribuidora and pedido_almacenes:
             # Ruta 1: Con los pedidos de Distribuidora Central SL y Almacenes Unidos SA
-            fecha_ruta1 = date.today() + timedelta(days=2)
+            # Fechas fijas: fin 31/01/2026; parada 1 completada 30/01, paradas 2 y 3 completadas 31/01
+            fecha_ruta1 = date(2026, 1, 31)
+            fecha_fin_ruta1 = datetime(2026, 1, 31, 18, 0)
+            fecha_hora_parada1_completada = datetime(2026, 1, 30, 10, 0)   # 30/01/2026
+            fecha_hora_paradas_2_3_completada = datetime(2026, 1, 31, 14, 0)  # 31/01/2026
             # Verificar si ya existe una ruta con estas características
             ruta1_existente = db.query(Ruta).filter(
                 Ruta.fecha == fecha_ruta1,
@@ -558,9 +562,9 @@ def create_initial_data():
             if not ruta1_existente:
                 ruta1 = Ruta(
                     fecha=fecha_ruta1,
-                    fecha_inicio=datetime.combine(fecha_ruta1, datetime.min.time().replace(hour=8, minute=0)),
-                    fecha_fin=datetime.combine(fecha_ruta1, datetime.min.time().replace(hour=18, minute=0)),
-                    estado=EstadoRuta.PLANIFICADA,
+                    fecha_inicio=datetime(2026, 1, 30, 8, 0),
+                    fecha_fin=fecha_fin_ruta1,
+                    estado=EstadoRuta.EN_CURSO,
                     conductor_id=conductores_disponibles[0].id,
                     vehiculo_id=vehiculos_disponibles[0].id,
                     observaciones="Ruta con pedidos de carga/descarga coincidentes"
@@ -575,16 +579,16 @@ def create_initial_data():
                 ).count()
                 
                 if paradas_existentes == 0:
-                    # Actualizar estado de los pedidos asignados a la ruta a EN_RUTA
-                    pedido_distribuidora.estado = EstadoPedido.EN_RUTA
+                    # Distribuidora: descarga completada (parada 3) -> ENTREGADO; Almacenes: parada 4 pendiente -> EN_RUTA
+                    pedido_distribuidora.estado = EstadoPedido.ENTREGADO
                     pedido_almacenes.estado = EstadoPedido.EN_RUTA
                     db.add(pedido_distribuidora)
                     db.add(pedido_almacenes)
                     
                     # Crear paradas para la ruta 1 (4 paradas: carga/descarga de ambos pedidos)
-                    fecha_hora_base = datetime.combine(fecha_ruta1, datetime.min.time().replace(hour=8, minute=0))
+                    fecha_hora_base = datetime(2026, 1, 30, 8, 0)
                     
-                    # Parada 1: Carga pedido Distribuidora Central SL
+                    # Parada 1: Carga pedido Distribuidora Central SL - completada 30/01/2026
                     parada1 = RutaParada(
                         ruta_id=ruta1.id,
                         pedido_id=pedido_distribuidora.id,
@@ -593,11 +597,12 @@ def create_initial_data():
                         tipo_operacion=TipoOperacion.CARGA,
                         ventana_horaria="08:00-09:00",
                         fecha_hora_llegada=fecha_hora_base + timedelta(hours=0),
-                        estado=EstadoParada.PENDIENTE
+                        fecha_hora_completada=fecha_hora_parada1_completada,
+                        estado=EstadoParada.ENTREGADO
                     )
                     db.add(parada1)
                     
-                    # Parada 2: Carga pedido Almacenes Unidos SA
+                    # Parada 2: Carga pedido Almacenes Unidos SA - completada 31/01/2026
                     parada2 = RutaParada(
                         ruta_id=ruta1.id,
                         pedido_id=pedido_almacenes.id,
@@ -606,11 +611,12 @@ def create_initial_data():
                         tipo_operacion=TipoOperacion.CARGA,
                         ventana_horaria="09:00-10:00",
                         fecha_hora_llegada=fecha_hora_base + timedelta(hours=1),
-                        estado=EstadoParada.PENDIENTE
+                        fecha_hora_completada=fecha_hora_paradas_2_3_completada,
+                        estado=EstadoParada.ENTREGADO
                     )
                     db.add(parada2)
                     
-                    # Parada 3: Descarga pedido Distribuidora Central SL
+                    # Parada 3: Descarga pedido Distribuidora Central SL - completada 31/01/2026
                     parada3 = RutaParada(
                         ruta_id=ruta1.id,
                         pedido_id=pedido_distribuidora.id,
@@ -619,11 +625,12 @@ def create_initial_data():
                         tipo_operacion=TipoOperacion.DESCARGA,
                         ventana_horaria="14:00-15:00",
                         fecha_hora_llegada=fecha_hora_base + timedelta(hours=6),
-                        estado=EstadoParada.PENDIENTE
+                        fecha_hora_completada=fecha_hora_paradas_2_3_completada,
+                        estado=EstadoParada.ENTREGADO
                     )
                     db.add(parada3)
                     
-                    # Parada 4: Descarga pedido Almacenes Unidos SA
+                    # Parada 4: Descarga pedido Almacenes Unidos SA - pendiente
                     parada4 = RutaParada(
                         ruta_id=ruta1.id,
                         pedido_id=pedido_almacenes.id,
@@ -637,15 +644,15 @@ def create_initial_data():
                     db.add(parada4)
             else:
                 ruta1 = ruta1_existente
+                # Si se reutiliza ruta existente, asegurar que los pedidos estén al menos EN_RUTA
+                pedido_distribuidora.estado = EstadoPedido.EN_RUTA
+                pedido_almacenes.estado = EstadoPedido.EN_RUTA
+                db.add(pedido_distribuidora)
+                db.add(pedido_almacenes)
             
-            # Actualizar estado de los pedidos asignados a la ruta a EN_RUTA
-            pedido_distribuidora.estado = EstadoPedido.EN_RUTA
-            pedido_almacenes.estado = EstadoPedido.EN_RUTA
-            db.add(pedido_distribuidora)
-            db.add(pedido_almacenes)
-            
-            # Ruta 2: Ruta planificada adicional
-            fecha_ruta2 = date.today() + timedelta(days=4)
+            # Ruta 2: Ruta completada y finalizada (todas las paradas completadas)
+            fecha_ruta2 = date(2026, 2, 1)
+            fecha_fin_ruta2 = datetime(2026, 2, 1, 17, 30)
             # Verificar si ya existe una ruta con estas características
             ruta2_existente = db.query(Ruta).filter(
                 Ruta.fecha == fecha_ruta2,
@@ -655,9 +662,9 @@ def create_initial_data():
             if not ruta2_existente:
                 ruta2 = Ruta(
                     fecha=fecha_ruta2,
-                    fecha_inicio=datetime.combine(fecha_ruta2, datetime.min.time().replace(hour=7, minute=30)),
-                    fecha_fin=datetime.combine(fecha_ruta2, datetime.min.time().replace(hour=17, minute=30)),
-                    estado=EstadoRuta.PLANIFICADA,
+                    fecha_inicio=datetime(2026, 2, 1, 7, 30),
+                    fecha_fin=fecha_fin_ruta2,
+                    estado=EstadoRuta.COMPLETADA,
                     conductor_id=conductores_disponibles[1].id if len(conductores_disponibles) > 1 else conductores_disponibles[0].id,
                     vehiculo_id=vehiculos_disponibles[1].id if len(vehiculos_disponibles) > 1 else vehiculos_disponibles[0].id,
                     observaciones="Ruta planificada adicional"
@@ -674,13 +681,13 @@ def create_initial_data():
                     ).first()
                     
                     if not pedido_en_ruta:
-                        # Actualizar estado del pedido asignado a la ruta a EN_RUTA
-                        pedido_ruta2.estado = EstadoPedido.EN_RUTA
+                        # Ruta finalizada: pedido entregado
+                        pedido_ruta2.estado = EstadoPedido.ENTREGADO
                         db.add(pedido_ruta2)
                         
-                        fecha_hora_base2 = datetime.combine(fecha_ruta2, datetime.min.time().replace(hour=7, minute=30))
+                        fecha_hora_base2 = datetime(2026, 2, 1, 7, 30)
                         
-                        # Parada carga
+                        # Parada carga - completada
                         parada_carga = RutaParada(
                             ruta_id=ruta2.id,
                             pedido_id=pedido_ruta2.id,
@@ -689,11 +696,12 @@ def create_initial_data():
                             tipo_operacion=TipoOperacion.CARGA,
                             ventana_horaria="07:30-08:30",
                             fecha_hora_llegada=fecha_hora_base2 + timedelta(hours=0),
-                            estado=EstadoParada.PENDIENTE
+                            fecha_hora_completada=datetime(2026, 2, 1, 8, 30),
+                            estado=EstadoParada.ENTREGADO
                         )
                         db.add(parada_carga)
                         
-                        # Parada descarga
+                        # Parada descarga - completada
                         parada_descarga = RutaParada(
                             ruta_id=ruta2.id,
                             pedido_id=pedido_ruta2.id,
@@ -702,7 +710,8 @@ def create_initial_data():
                             tipo_operacion=TipoOperacion.DESCARGA,
                             ventana_horaria="12:00-13:00",
                             fecha_hora_llegada=fecha_hora_base2 + timedelta(hours=4, minutes=30),
-                            estado=EstadoParada.PENDIENTE
+                            fecha_hora_completada=datetime(2026, 2, 1, 13, 0),
+                            estado=EstadoParada.ENTREGADO
                         )
                         db.add(parada_descarga)
         

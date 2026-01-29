@@ -14,6 +14,7 @@ import { PropietariosComponent } from './components/propietarios/propietarios.co
 import { ProveedoresComponent } from './components/proveedores/proveedores.component';
 import { UsuariosComponent } from './components/usuarios/usuarios.component';
 import { InformesComponent } from './components/informes/informes.component';
+import { HistorialComponent } from './components/historial/historial.component';
 import { AuthGuard } from './guards/auth.guard';
 import { AdminFincasGuard } from './guards/admin-fincas.guard';
 import { AdminOnlyGuard } from './guards/admin-only.guard';
@@ -35,6 +36,7 @@ const routes: Routes = [
   { path: 'mantenimientos', component: MantenimientosComponent, canActivate: [AuthGuard] },
   { path: 'rutas', component: RutasComponent, canActivate: [AuthGuard] },
   { path: 'pedidos', component: PedidosComponent, canActivate: [AuthGuard] },
+  { path: 'historial', component: HistorialComponent, canActivate: [AuthGuard] },
   { path: '**', redirectTo: '/login' }
 ];
 
