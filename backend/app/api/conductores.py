@@ -1,10 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from typing import List, Optional
 from datetime import date, timedelta
 from app.database import get_db
 from app.models.conductor import Conductor
 from app.models.usuario import Usuario
+from app.models.ruta import Ruta
+from app.models.mantenimiento import Mantenimiento
 from app.schemas.conductor import ConductorCreate, ConductorUpdate, ConductorResponse
 from app.api.dependencies import get_current_user
 from app.core.security import get_password_hash
@@ -64,7 +67,8 @@ async def listar_conductores(
         if licencias_proximas_caducar and not proxima_caducar:
             continue
         
-        # Crear respuesta con campos adicionales
+        # Crear respuesta con campos adicionales (incl. num_rutas)
+        num_rutas = db.query(func.count(Ruta.id)).filter(Ruta.conductor_id == conductor.id).scalar() or 0
         conductor_data = {
             "id": conductor.id,
             "nombre": conductor.nombre,
@@ -78,7 +82,8 @@ async def listar_conductores(
             "usuario_id": conductor.usuario_id,
             "creado_en": conductor.creado_en,
             "dias_restantes_licencia": dias_restantes,
-            "licencia_proxima_caducar": proxima_caducar
+            "licencia_proxima_caducar": proxima_caducar,
+            "num_rutas": num_rutas
         }
         resultados.append(ConductorResponse(**conductor_data))
     
@@ -123,6 +128,7 @@ async def obtener_alertas_licencias(
     
     for conductor in conductores:
         dias_restantes = calcular_dias_restantes(conductor.fecha_caducidad_licencia)
+        num_rutas = db.query(func.count(Ruta.id)).filter(Ruta.conductor_id == conductor.id).scalar() or 0
         conductor_data = {
             "id": conductor.id,
             "nombre": conductor.nombre,
@@ -136,7 +142,8 @@ async def obtener_alertas_licencias(
             "usuario_id": conductor.usuario_id,
             "creado_en": conductor.creado_en,
             "dias_restantes_licencia": dias_restantes,
-            "licencia_proxima_caducar": True
+            "licencia_proxima_caducar": True,
+            "num_rutas": num_rutas
         }
         resultados.append(ConductorResponse(**conductor_data))
     
@@ -171,6 +178,7 @@ async def obtener_conductor(
     
     dias_restantes = calcular_dias_restantes(conductor.fecha_caducidad_licencia)
     proxima_caducar = licencia_proxima_caducar(conductor.fecha_caducidad_licencia)
+    num_rutas = db.query(func.count(Ruta.id)).filter(Ruta.conductor_id == conductor.id).scalar() or 0
     conductor_data = {
         "id": conductor.id,
         "nombre": conductor.nombre,
@@ -184,10 +192,90 @@ async def obtener_conductor(
         "usuario_id": conductor.usuario_id,
         "creado_en": conductor.creado_en,
         "dias_restantes_licencia": dias_restantes,
-        "licencia_proxima_caducar": proxima_caducar
+        "licencia_proxima_caducar": proxima_caducar,
+        "num_rutas": num_rutas
     }
     
     return ConductorResponse(**conductor_data)
+
+
+@router.get("/{conductor_id}/historial", response_model=dict)
+async def obtener_historial_conductor(
+    conductor_id: int,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user)
+):
+    """Obtener historial del conductor: rutas (con vehículo, estado, fechas) y mantenimientos de los vehículos que ha usado."""
+    conductor = db.query(Conductor).filter(Conductor.id == conductor_id).first()
+    if not conductor:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Conductor no encontrado"
+        )
+    
+    rutas_data = []
+    vehiculo_ids_usados = set()
+    for r in sorted(conductor.rutas, key=lambda x: (x.fecha or "", x.id or 0), reverse=True):
+        vehiculo_nombre = None
+        if r.vehiculo:
+            vehiculo_nombre = r.vehiculo.nombre or r.vehiculo.matricula
+            vehiculo_ids_usados.add(r.vehiculo_id)
+        rutas_data.append({
+            "id": r.id,
+            "fecha": r.fecha.isoformat() if r.fecha else None,
+            "estado": r.estado.value if r.estado else None,
+            "vehiculo": vehiculo_nombre,
+            "vehiculo_id": r.vehiculo_id,
+            "fecha_inicio": r.fecha_inicio.isoformat() if r.fecha_inicio else None,
+            "fecha_fin": r.fecha_fin.isoformat() if r.fecha_fin else None,
+            "observaciones": r.observaciones,
+        })
+    
+    # Mantenimientos de los vehículos que este conductor ha usado en sus rutas
+    mantenimientos_data = []
+    if vehiculo_ids_usados:
+        mantenimientos = db.query(Mantenimiento).filter(
+            Mantenimiento.vehiculo_id.in_(vehiculo_ids_usados)
+        ).order_by(Mantenimiento.fecha_programada.desc().nullslast()).all()
+        for m in mantenimientos:
+            vehiculo_nombre = m.vehiculo.nombre if m.vehiculo else None
+            mantenimientos_data.append({
+                "id": m.id,
+                "vehiculo": vehiculo_nombre,
+                "vehiculo_id": m.vehiculo_id,
+                "tipo": m.tipo.value if m.tipo else None,
+                "descripcion": m.descripcion,
+                "estado": m.estado.value if m.estado else None,
+                "fecha_programada": m.fecha_programada.isoformat() if m.fecha_programada else None,
+                "fecha_inicio": m.fecha_inicio.isoformat() if m.fecha_inicio else None,
+                "fecha_fin": m.fecha_fin.isoformat() if m.fecha_fin else None,
+                "coste": m.coste,
+                "proveedor": m.proveedor,
+                "kilometraje": m.kilometraje,
+                "observaciones": m.observaciones,
+            })
+    
+    conductor_resp = {
+        "id": conductor.id,
+        "nombre": conductor.nombre,
+        "apellidos": conductor.apellidos,
+        "dni": conductor.dni,
+        "telefono": conductor.telefono,
+        "email": conductor.email,
+        "licencia": conductor.licencia,
+        "fecha_caducidad_licencia": conductor.fecha_caducidad_licencia,
+        "activo": conductor.activo,
+        "usuario_id": conductor.usuario_id,
+        "creado_en": conductor.creado_en,
+        "num_rutas": len(conductor.rutas),
+    }
+    
+    return {
+        "conductor": conductor_resp,
+        "rutas": rutas_data,
+        "mantenimientos": mantenimientos_data
+    }
+
 
 @router.post("/", response_model=ConductorResponse, status_code=status.HTTP_201_CREATED)
 async def crear_conductor(
@@ -419,6 +507,7 @@ async def actualizar_conductor(
     
     dias_restantes = calcular_dias_restantes(conductor.fecha_caducidad_licencia)
     proxima_caducar = licencia_proxima_caducar(conductor.fecha_caducidad_licencia)
+    num_rutas = db.query(func.count(Ruta.id)).filter(Ruta.conductor_id == conductor.id).scalar() or 0
     conductor_data = {
         "id": conductor.id,
         "nombre": conductor.nombre,
@@ -432,7 +521,8 @@ async def actualizar_conductor(
         "usuario_id": conductor.usuario_id,
         "creado_en": conductor.creado_en,
         "dias_restantes_licencia": dias_restantes,
-        "licencia_proxima_caducar": proxima_caducar
+        "licencia_proxima_caducar": proxima_caducar,
+        "num_rutas": num_rutas
     }
     
     return ConductorResponse(**conductor_data)

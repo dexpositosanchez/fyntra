@@ -346,6 +346,7 @@
                   </button>
                 </div>
                 <p *ngIf="mantenimiento.vehiculo"><strong>Vehículo:</strong> {{ mantenimiento.vehiculo.nombre }} ({{ mantenimiento.vehiculo.matricula }})</p>
+                <p *ngIf="mantenimiento.estado"><strong>Estado:</strong> {{ getEstadoTexto(mantenimiento.estado) }}</p>
                 <p *ngIf="mantenimiento.descripcion"><strong>Descripción:</strong> {{ mantenimiento.descripcion }}</p>
                 <p><strong>📅 Fecha Programada:</strong> {{ formatearFechaHora(mantenimiento.fecha_programada) }}</p>
                 <p *ngIf="mantenimiento.fecha_inicio"><strong>🔧 Fecha de Asistencia:</strong> {{ formatearFechaHora(mantenimiento.fecha_inicio) }}</p>

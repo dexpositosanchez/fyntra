@@ -169,6 +169,68 @@
             </button>
           </div>
         </form>
+
+        <!-- Listados en la ficha de edición -->
+        <div class="form-listados" *ngIf="editandoVehiculo">
+          <div class="listados-section" *ngIf="historialCargando">
+            <p class="loading">Cargando rutas y mantenimientos...</p>
+          </div>
+          <div class="listados-section" *ngIf="!historialCargando && historialVehiculo">
+            <h4>Rutas de este vehículo</h4>
+            <div class="table-wrapper" *ngIf="historialVehiculo.rutas?.length > 0">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Ruta</th>
+                    <th>Conductor</th>
+                    <th>Estado</th>
+                    <th>Fecha inicio</th>
+                    <th>Fecha fin</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let r of historialVehiculo.rutas">
+                    <td>Ruta #{{ r.id }} ({{ r.fecha | date:'dd/MM/yyyy' }})</td>
+                    <td>{{ r.conductor || '—' }}</td>
+                    <td>{{ getEstadoRutaTexto(r.estado) }}</td>
+                    <td>{{ formatearFechaISO(r.fecha_inicio) }}</td>
+                    <td>{{ formatearFechaISO(r.fecha_fin) }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p *ngIf="!historialVehiculo.rutas?.length" class="no-data">No hay rutas registradas.</p>
+
+            <h4>Mantenimientos de este vehículo</h4>
+            <div class="table-wrapper" *ngIf="historialVehiculo.mantenimientos?.length > 0">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Tipo</th>
+                    <th>Descripción</th>
+                    <th>Estado</th>
+                    <th>Fecha programada</th>
+                    <th>Fecha fin</th>
+                    <th>Coste</th>
+                    <th>Proveedor</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let m of historialVehiculo.mantenimientos">
+                    <td>{{ getTipoMantenimientoTexto(m.tipo) }}</td>
+                    <td>{{ m.descripcion || '—' }}</td>
+                    <td>{{ getEstadoMantenimientoTexto(m.estado) }}</td>
+                    <td>{{ formatearFechaISO(m.fecha_programada) }}</td>
+                    <td>{{ formatearFechaISO(m.fecha_fin) }}</td>
+                    <td>{{ m.coste != null ? (m.coste + ' €') : '—' }}</td>
+                    <td>{{ m.proveedor || '—' }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p *ngIf="historialVehiculo && !historialVehiculo.mantenimientos?.length" class="no-data">No hay mantenimientos registrados.</p>
+          </div>
+        </div>
       </div>
 
       <div class="list-container" *ngIf="!mostrarFormulario">
@@ -286,6 +348,7 @@
                 <p *ngIf="vehiculo.ano"><strong>Año:</strong> {{ vehiculo.ano }}</p>
                 <p *ngIf="vehiculo.capacidad"><strong>Capacidad:</strong> {{ vehiculo.capacidad }} kg</p>
                 <p *ngIf="vehiculo.tipo_combustible"><strong>Combustible:</strong> {{ vehiculo.tipo_combustible | titlecase }}</p>
+                <p class="card-counts"><strong>Rutas asignadas:</strong> {{ vehiculo.num_rutas ?? 0 }} · <strong>Mantenimientos:</strong> {{ vehiculo.num_mantenimientos ?? 0 }}</p>
               </div>
             </div>
             <div *ngIf="getVehiculosTabActiva().length === 0" class="no-items">

@@ -29,6 +29,8 @@ class VehiculoResponse(VehiculoBase):
     id: int
     estado: EstadoVehiculo
     creado_en: datetime
+    num_rutas: Optional[int] = None
+    num_mantenimientos: Optional[int] = None
     
     class Config:
         from_attributes = True

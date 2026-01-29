@@ -32,6 +32,7 @@ class ConductorResponse(ConductorBase):
     creado_en: datetime
     dias_restantes_licencia: Optional[int] = None
     licencia_proxima_caducar: Optional[bool] = None
+    num_rutas: Optional[int] = None
     
     class Config:
         from_attributes = True

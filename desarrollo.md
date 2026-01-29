@@ -3,7 +3,7 @@
 | Nº y nombre de requisito | Explicación | Desarrollado | Revisado | Observaciones |
 | --- | --- | --- | --- | --- |
 | **TRANSPORTES** |  |  |  |  |
-| RF1. Gestión de Flota | Registro de vehículos con información técnica y de estado, con consulta del historial completo de cada vehículo. | ✅ | ❌ | Falta el historial |
+| RF1. Gestión de Flota | Registro de vehículos con información técnica y de estado, con consulta del historial completo de cada vehículo. | ✅ | ✅ | Falta el historial |
 | RF2. Gestión de Conductores | Registro de conductores con datos personales, licencia, fecha de caducidad y estado, con alertas de licencias próximas a caducar. | ✅ | ✅ |  |
 | RF3. Gestión de Pedidos | Creación de pedidos con datos de origen, destino, cliente, volumen, peso, tipo de mercancía, fecha deseada y gestión de sus estados. | ✅ | ✅ |  |
 | RF4. Planificación de Rutas | Creación de rutas asignando conductor y vehículo, con múltiples pedidos y orden de entrega, validando capacidades y disponibilidad. | ✅ | ✅ |  |

@@ -244,49 +244,68 @@ def create_initial_data():
             if not existing:
                 db.add(vehiculo)
         
-        # Crear 2 mantenimientos programados de ejemplo
-        vehiculos_para_mant = db.query(Vehiculo).filter(Vehiculo.estado == EstadoVehiculo.ACTIVO).all()
+        # Asegurar que los vehículos tienen ID antes de crear mantenimientos
+        db.flush()
+        
+        # Crear mantenimientos por defecto: 1 por cada uno de los 4 vehículos, y 1 adicional para el primero (5 en total)
+        vehiculos_para_mant = db.query(Vehiculo).order_by(Vehiculo.id).all()
         if vehiculos_para_mant:
-            vehiculo_mant_1 = vehiculos_para_mant[0]
-            vehiculo_mant_2 = vehiculos_para_mant[1] if len(vehiculos_para_mant) > 1 else vehiculos_para_mant[0]
-
             fecha_base = datetime.now()
-
-            mantenimientos = [
-                Mantenimiento(
-                    vehiculo_id=vehiculo_mant_1.id,
-                    tipo=TipoMantenimiento.REVISION,
-                    descripcion="Revisión general programada",
-                    fecha_programada=fecha_base + timedelta(days=7),
-                    fecha_proximo_mantenimiento=fecha_base + timedelta(days=180),
-                    estado=EstadoMantenimiento.PROGRAMADO,
-                    observaciones="Revisión completa antes de campaña de verano",
-                    kilometraje=120000,
-                    proveedor="Taller Madrid Centro"
-                ),
-                Mantenimiento(
-                    vehiculo_id=vehiculo_mant_2.id,
-                    tipo=TipoMantenimiento.CAMBIO_ACEITE,
-                    descripcion="Cambio de aceite y filtros",
-                    fecha_programada=fecha_base + timedelta(days=14),
-                    fecha_proximo_mantenimiento=fecha_base + timedelta(days=365),
-                    estado=EstadoMantenimiento.PROGRAMADO,
-                    observaciones="Usar aceite sintético 5W30",
-                    kilometraje=85000,
-                    proveedor="Servicio Oficial"
-                ),
+            # Plantillas: uno por cada posición (vehículo 0, 1, 2, 3). Se crean solo si existe ese vehículo.
+            plantillas = [
+                (TipoMantenimiento.REVISION, "Revisión general programada", 7, 180, "Revisión completa antes de campaña de verano", 120000, "Taller Madrid Centro", None),
+                (TipoMantenimiento.CAMBIO_ACEITE, "Cambio de aceite y filtros", 14, 365, "Usar aceite sintético 5W30", 85000, "Servicio Oficial", None),
+                (TipoMantenimiento.ITV, "Inspección técnica de vehículos", 30, 730, "ITV anual", 95000, "Estación ITV Norte", None),
+                (TipoMantenimiento.PREVENTIVO, "Revisión preventiva de frenos y neumáticos", 21, 365, "Comprobar desgaste", 25000, "Taller Multimarca", None),
             ]
-
-            for mant in mantenimientos:
-                # Evitar duplicados si se ejecuta varias veces el init-data
+            for i, v in enumerate(vehiculos_para_mant[:4]):  # Máximo 4 vehículos
+                tipo, desc, dias_prog, dias_prox, obs, km, prov, _ = plantillas[i]
+                mant = Mantenimiento(
+                    vehiculo_id=v.id,
+                    tipo=tipo,
+                    descripcion=desc,
+                    fecha_programada=fecha_base + timedelta(days=dias_prog),
+                    fecha_proximo_mantenimiento=fecha_base + timedelta(days=dias_prox),
+                    estado=EstadoMantenimiento.PROGRAMADO,
+                    observaciones=obs,
+                    kilometraje=km,
+                    proveedor=prov
+                )
                 existing_mant = db.query(Mantenimiento).filter(
                     Mantenimiento.vehiculo_id == mant.vehiculo_id,
                     Mantenimiento.tipo == mant.tipo,
-                    Mantenimiento.fecha_programada == mant.fecha_programada,
                     Mantenimiento.descripcion == mant.descripcion,
                 ).first()
                 if not existing_mant:
                     db.add(mant)
+            # Mantenimiento adicional para el primer vehículo (correctivo, ya completado)
+            v0 = vehiculos_para_mant[0]
+            mant_extra = Mantenimiento(
+                vehiculo_id=v0.id,
+                tipo=TipoMantenimiento.CORRECTIVO,
+                descripcion="Sustitución de pastillas de freno",
+                fecha_programada=fecha_base - timedelta(days=5),
+                fecha_inicio=fecha_base - timedelta(days=5),
+                fecha_fin=fecha_base - timedelta(days=4),
+                fecha_proximo_mantenimiento=fecha_base + timedelta(days=365),
+                estado=EstadoMantenimiento.COMPLETADO,
+                observaciones="Frenos delanteros sustituidos",
+                kilometraje=118500,
+                coste=185.50,
+                proveedor="Taller Madrid Centro"
+            )
+            existing_extra = db.query(Mantenimiento).filter(
+                Mantenimiento.vehiculo_id == mant_extra.vehiculo_id,
+                Mantenimiento.tipo == mant_extra.tipo,
+                Mantenimiento.descripcion == mant_extra.descripcion,
+            ).first()
+            if not existing_extra:
+                db.add(mant_extra)
+            db.flush()
+            print("  Mantenimientos creados para vehículos.")
+        
+        # Persistir mantenimientos (y todo lo anterior) ya; si algo falla después, los mantenimientos no se pierden
+        db.commit()
         
         # Crear conductores de prueba (todos con usuarios)
         conductores_data = [

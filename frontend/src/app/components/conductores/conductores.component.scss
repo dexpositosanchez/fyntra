@@ -307,6 +307,169 @@
   text-align: center;
 }
 
+.form-listados {
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.form-listados .listados-section {
+  margin-bottom: 28px;
+
+  h4 {
+    color: #2f343d;
+    font-size: 16px;
+    margin: 0 0 12px 0;
+    font-weight: 600;
+  }
+
+  .loading, .no-data {
+    color: #8a94a6;
+    font-size: 14px;
+    margin: 10px 0;
+  }
+
+  .table-wrapper {
+    overflow-x: auto;
+    margin-bottom: 20px;
+  }
+
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+
+    th, td {
+      padding: 10px 12px;
+      text-align: left;
+      border-bottom: 1px solid #e0e0e0;
+    }
+
+    th {
+      background: #f2f4f7;
+      color: #2f343d;
+      font-weight: 600;
+    }
+
+    td {
+      color: #5b6270;
+    }
+
+    tr:hover td {
+      background: #f8f9fa;
+    }
+  }
+}
+
+.detail-container {
+  background: white;
+  border-radius: 8px;
+  padding: 25px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  margin-bottom: 25px;
+}
+
+.detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 25px;
+  flex-wrap: wrap;
+  gap: 15px;
+
+  h2 {
+    color: #1b9d8a;
+    font-size: 22px;
+    margin: 0;
+  }
+}
+
+.detail-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.detail-body {
+  .detail-info {
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #e0e0e0;
+
+    h3 {
+      color: #2f343d;
+      font-size: 20px;
+      margin: 0 0 15px 0;
+    }
+
+    p {
+      margin: 8px 0;
+      color: #5b6270;
+      font-size: 14px;
+    }
+
+    .counts {
+      margin-top: 12px;
+      font-weight: 600;
+      color: #1b9d8a;
+    }
+  }
+
+  .detail-section {
+    margin-bottom: 28px;
+
+    h4 {
+      color: #2f343d;
+      font-size: 16px;
+      margin: 0 0 12px 0;
+      font-weight: 600;
+    }
+
+    .no-data, .loading {
+      color: #8a94a6;
+      font-size: 14px;
+      margin: 10px 0;
+    }
+  }
+
+  .table-wrapper {
+    overflow-x: auto;
+    margin-bottom: 20px;
+  }
+
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+
+    th, td {
+      padding: 10px 12px;
+      text-align: left;
+      border-bottom: 1px solid #e0e0e0;
+    }
+
+    th {
+      background: #f2f4f7;
+      color: #2f343d;
+      font-weight: 600;
+    }
+
+    td {
+      color: #5b6270;
+    }
+
+    tr:hover td {
+      background: #f8f9fa;
+    }
+  }
+}
+
+.conductor-card .card-counts {
+  margin-top: 12px;
+  font-size: 13px;
+  color: #1b9d8a;
+  font-weight: 500;
+}
+
 .list-container {
   background: white;
   border-radius: 8px;

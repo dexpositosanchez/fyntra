@@ -82,6 +82,12 @@ export class ApiService {
     });
   }
 
+  getHistorialVehiculo(id: number): Observable<any> {
+    return this.http.get(`${this.apiUrl}/vehiculos/${id}/historial`, {
+      headers: this.getHeaders()
+    });
+  }
+
   createVehiculo(data: any): Observable<any> {
     return this.http.post(`${this.apiUrl}/vehiculos`, data, {
       headers: this.getHeaders()
@@ -238,6 +244,12 @@ export class ApiService {
 
   getConductor(id: number): Observable<any> {
     return this.http.get(`${this.apiUrl}/conductores/${id}`, {
+      headers: this.getHeaders()
+    });
+  }
+
+  getHistorialConductor(id: number): Observable<any> {
+    return this.http.get(`${this.apiUrl}/conductores/${id}/historial`, {
       headers: this.getHeaders()
     });
   }

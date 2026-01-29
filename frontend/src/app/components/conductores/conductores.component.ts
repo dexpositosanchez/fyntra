@@ -16,6 +16,8 @@ export class ConductoresComponent implements OnInit, OnDestroy {
   tabs: { estado: string, label: string, count: number }[] = [];
   tabActiva: string = '';
   mostrarFormulario: boolean = false;
+  historialConductor: any = null;
+  historialCargando: boolean = false;
   editandoConductor: boolean = false;
   conductorIdEditando: number | null = null;
   conductorForm: any = {
@@ -61,13 +63,12 @@ export class ConductoresComponent implements OnInit, OnDestroy {
   }
 
   actualizarVista(): void {
-    // Ocultar formulario si cambiamos de ruta
     if (!this.currentRoute.includes('/conductores')) {
       this.mostrarFormulario = false;
+      return;
     }
-    
-    // Solo cargar conductores si estamos en la ruta de conductores
-    if (this.currentRoute.includes('/conductores') && this.conductores.length === 0) {
+    this.error = '';
+    if (!this.loading) {
       this.cargarConductores();
     }
   }
@@ -206,6 +207,8 @@ export class ConductoresComponent implements OnInit, OnDestroy {
     this.editandoConductor = true;
     this.conductorIdEditando = conductor.id;
     this.mostrarFormulario = true;
+    this.historialConductor = null;
+    this.historialCargando = true;
     
     // Formatear fecha para el input date (YYYY-MM-DD)
     let fechaFormateada = '';
@@ -230,12 +233,23 @@ export class ConductoresComponent implements OnInit, OnDestroy {
       fecha_caducidad_licencia: fechaFormateada,
       activo: activoValue
     };
+    this.apiService.getHistorialConductor(conductor.id).subscribe({
+      next: (data) => {
+        this.historialConductor = data;
+        this.historialCargando = false;
+      },
+      error: () => {
+        this.historialCargando = false;
+        this.historialConductor = null;
+      }
+    });
   }
 
   cancelarForm(): void {
     this.mostrarFormulario = false;
     this.editandoConductor = false;
     this.conductorIdEditando = null;
+    this.historialConductor = null;
     this.conductorForm = {
       nombre: '',
       apellidos: '',
@@ -420,6 +434,46 @@ export class ConductoresComponent implements OnInit, OnDestroy {
   logout(): void {
     this.mostrarMenuUsuario = false;
     this.authService.logout();
+  }
+
+  getEstadoRutaTexto(estado: string): string {
+    const textos: { [key: string]: string } = {
+      'planificada': 'Planificada',
+      'en_curso': 'En curso',
+      'completada': 'Completada',
+      'cancelada': 'Cancelada'
+    };
+    return textos[estado?.toLowerCase()] || estado || '—';
+  }
+
+  getEstadoMantenimientoTexto(estado: string): string {
+    const textos: { [key: string]: string } = {
+      'programado': 'Programado',
+      'en_curso': 'En curso',
+      'completado': 'Completado',
+      'vencido': 'Vencido',
+      'cancelado': 'Cancelado'
+    };
+    return textos[estado?.toLowerCase()] || estado || '—';
+  }
+
+  getTipoMantenimientoTexto(tipo: string): string {
+    const textos: { [key: string]: string } = {
+      'preventivo': 'Preventivo',
+      'correctivo': 'Correctivo',
+      'revision': 'Revisión',
+      'itv': 'ITV',
+      'cambio_aceite': 'Cambio de aceite'
+    };
+    return textos[tipo?.toLowerCase()] || tipo || '—';
+  }
+
+  formatearFechaISO(fechaISO: string | null): string {
+    if (!fechaISO) return '—';
+    const d = new Date(fechaISO);
+    if (isNaN(d.getTime())) return '—';
+    return d.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }) +
+      (fechaISO.includes('T') ? ' ' + d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) : '');
   }
 }
 

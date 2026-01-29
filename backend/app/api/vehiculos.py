@@ -1,9 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from typing import List, Optional
 from app.database import get_db
 from app.models.vehiculo import Vehiculo, EstadoVehiculo
 from app.models.usuario import Usuario
+from app.models.ruta import Ruta
+from app.models.mantenimiento import Mantenimiento
 from app.schemas.vehiculo import VehiculoCreate, VehiculoUpdate, VehiculoResponse
 from app.api.dependencies import get_current_user
 from app.core.cache import (
@@ -29,29 +32,37 @@ async def listar_vehiculos(
         limit=limit
     )
     
-    # Intentar obtener de caché (versión async con hilos - no bloquea el event loop)
+    # Intentar obtener de caché
     cached_result = await get_from_cache_async(cache_key)
     if cached_result is not None:
         return cached_result
     
-    # Consultar base de datos directamente (forzar lectura fresca)
-    query = db.query(Vehiculo)
-    
-    if estado:
-        query = query.filter(Vehiculo.estado == estado)
-    
-    vehiculos = query.offset(skip).limit(limit).all()
-    
-    # Forzar refresh de cada vehículo para asegurar que tenemos los datos más recientes
-    for vehiculo in vehiculos:
-        db.refresh(vehiculo)
-    
-    result = [VehiculoResponse.model_validate(veh).model_dump() for veh in vehiculos]
-    
-    # Almacenar en caché (5 minutos) - versión async con hilos
-    await set_to_cache_async(cache_key, result, expire=300)
-    
-    return result
+    try:
+        query = db.query(Vehiculo)
+        if estado:
+            query = query.filter(Vehiculo.estado == estado)
+        vehiculos = query.offset(skip).limit(limit).all()
+        
+        for vehiculo in vehiculos:
+            db.refresh(vehiculo)
+        
+        result = []
+        for veh in vehiculos:
+            data = VehiculoResponse.model_validate(veh).model_dump()
+            data["num_rutas"] = db.query(func.count(Ruta.id)).filter(Ruta.vehiculo_id == veh.id).scalar() or 0
+            data["num_mantenimientos"] = db.query(func.count(Mantenimiento.id)).filter(Mantenimiento.vehiculo_id == veh.id).scalar() or 0
+            result.append(VehiculoResponse(**data))
+        
+        # Guardar en caché como list de dicts para evitar problemas de serialización
+        result_dicts = [r.model_dump() if hasattr(r, 'model_dump') else r for r in result]
+        await set_to_cache_async(cache_key, result_dicts, expire=300)
+        return result
+    except Exception as e:
+        invalidate_vehiculos_cache()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error al listar vehículos: {str(e)}"
+        )
 
 @router.get("/{vehiculo_id}/historial", response_model=dict)
 async def obtener_historial_vehiculo(
@@ -59,7 +70,7 @@ async def obtener_historial_vehiculo(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user)
 ):
-    """Obtener historial completo de un vehículo (rutas y mantenimientos)"""
+    """Obtener historial completo de un vehículo (rutas con conductor y mantenimientos con datos importantes)"""
     vehiculo = db.query(Vehiculo).filter(Vehiculo.id == vehiculo_id).first()
     if not vehiculo:
         raise HTTPException(
@@ -67,19 +78,47 @@ async def obtener_historial_vehiculo(
             detail="Vehículo no encontrado"
         )
     
+    rutas_data = []
+    for r in sorted(vehiculo.rutas, key=lambda x: (x.fecha or "", x.id or 0), reverse=True):
+        conductor_nombre = None
+        if r.conductor:
+            conductor_nombre = f"{r.conductor.nombre or ''} {r.conductor.apellidos or ''}".strip() or r.conductor.licencia
+        rutas_data.append({
+            "id": r.id,
+            "fecha": r.fecha.isoformat() if r.fecha else None,
+            "estado": r.estado.value if r.estado else None,
+            "conductor": conductor_nombre,
+            "conductor_id": r.conductor_id,
+            "fecha_inicio": r.fecha_inicio.isoformat() if r.fecha_inicio else None,
+            "fecha_fin": r.fecha_fin.isoformat() if r.fecha_fin else None,
+            "observaciones": r.observaciones,
+        })
+    
+    mantenimientos_data = []
+    for m in sorted(vehiculo.mantenimientos, key=lambda x: x.fecha_programada or "", reverse=True):
+        mantenimientos_data.append({
+            "id": m.id,
+            "tipo": m.tipo.value if m.tipo else None,
+            "descripcion": m.descripcion,
+            "estado": m.estado.value if m.estado else None,
+            "fecha_programada": m.fecha_programada.isoformat() if m.fecha_programada else None,
+            "fecha_inicio": m.fecha_inicio.isoformat() if m.fecha_inicio else None,
+            "fecha_fin": m.fecha_fin.isoformat() if m.fecha_fin else None,
+            "fecha_proximo_mantenimiento": m.fecha_proximo_mantenimiento.isoformat() if m.fecha_proximo_mantenimiento else None,
+            "coste": m.coste,
+            "proveedor": m.proveedor,
+            "kilometraje": m.kilometraje,
+            "observaciones": m.observaciones,
+        })
+    
+    vehiculo_resp = VehiculoResponse.model_validate(vehiculo).model_dump()
+    vehiculo_resp["num_rutas"] = len(vehiculo.rutas)
+    vehiculo_resp["num_mantenimientos"] = len(vehiculo.mantenimientos)
+    
     return {
-        "vehiculo": VehiculoResponse.model_validate(vehiculo),
-        "rutas": [{"id": r.id, "fecha": r.fecha, "estado": r.estado} for r in vehiculo.rutas],
-        "mantenimientos": [
-            {
-                "id": m.id,
-                "tipo": m.tipo,
-                "fecha_programada": m.fecha_programada,
-                "fecha_real": m.fecha_real,
-                "observaciones": m.observaciones
-            }
-            for m in vehiculo.mantenimientos
-        ]
+        "vehiculo": vehiculo_resp,
+        "rutas": rutas_data,
+        "mantenimientos": mantenimientos_data
     }
 
 @router.get("/{vehiculo_id}", response_model=VehiculoResponse)

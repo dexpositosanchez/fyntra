@@ -191,6 +191,39 @@
             </button>
           </div>
         </form>
+
+        <!-- Listados en la ficha de edición -->
+        <div class="form-listados" *ngIf="editandoConductor">
+          <div class="listados-section" *ngIf="historialCargando">
+            <p class="loading">Cargando rutas y mantenimientos...</p>
+          </div>
+          <div class="listados-section" *ngIf="!historialCargando && historialConductor">
+            <h4>Rutas de este conductor</h4>
+            <div class="table-wrapper" *ngIf="historialConductor.rutas?.length > 0">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Ruta</th>
+                    <th>Vehículo</th>
+                    <th>Estado</th>
+                    <th>Fecha inicio</th>
+                    <th>Fecha fin</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let r of historialConductor.rutas">
+                    <td>Ruta #{{ r.id }} ({{ r.fecha | date:'dd/MM/yyyy' }})</td>
+                    <td>{{ r.vehiculo || '—' }}</td>
+                    <td>{{ getEstadoRutaTexto(r.estado) }}</td>
+                    <td>{{ formatearFechaISO(r.fecha_inicio) }}</td>
+                    <td>{{ formatearFechaISO(r.fecha_fin) }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p *ngIf="!historialConductor.rutas?.length" class="no-data">No hay rutas registradas.</p>
+          </div>
+        </div>
       </div>
 
       <div class="list-container" *ngIf="!mostrarFormulario">
@@ -273,6 +306,7 @@
             <p *ngIf="conductor.email"><strong>Email:</strong> {{ conductor.email }}</p>
             <p><strong>Licencia:</strong> {{ conductor.licencia }}</p>
             <p><strong>Caducidad:</strong> {{ formatearFecha(conductor.fecha_caducidad_licencia) }}</p>
+            <p class="card-counts"><strong>Rutas asignadas:</strong> {{ conductor.num_rutas ?? 0 }}</p>
             <div class="licencia-info">
               <span [class]="'alerta-badge ' + getAlertaClass(conductor.dias_restantes_licencia || 0)">
                 {{ getAlertaTexto(conductor.dias_restantes_licencia || 0) }}

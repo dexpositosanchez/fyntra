@@ -17,6 +17,8 @@ export class VehiculosComponent implements OnInit, OnDestroy {
   tabs: { estado: string, label: string, count: number }[] = [];
   tabActiva: string = '';
   mostrarFormulario: boolean = false;
+  historialVehiculo: any = null;
+  historialCargando: boolean = false;
   editandoVehiculo: boolean = false;
   vehiculoIdEditando: number | null = null;
   vehiculoForm: any = {
@@ -76,13 +78,13 @@ export class VehiculosComponent implements OnInit, OnDestroy {
   }
 
   actualizarVista(): void {
-    // Ocultar formulario si cambiamos de ruta
     if (!this.currentRoute.includes('/vehiculos')) {
       this.mostrarFormulario = false;
+      return;
     }
-    
-    // Solo cargar vehículos si estamos en la ruta de vehículos
-    if (this.currentRoute.includes('/vehiculos') && this.vehiculos.length === 0) {
+    this.error = '';
+    // Evitar doble petición: solo cargar si no hay una carga ya en curso (ngOnInit y NavigationEnd pueden disparar casi a la vez)
+    if (!this.loading) {
       this.cargarVehiculos();
     }
   }
@@ -137,6 +139,8 @@ export class VehiculosComponent implements OnInit, OnDestroy {
     this.editandoVehiculo = true;
     this.vehiculoIdEditando = vehiculo.id;
     this.mostrarFormulario = true;
+    this.historialVehiculo = null;
+    this.historialCargando = true;
     this.vehiculoForm = {
       nombre: vehiculo.nombre || '',
       matricula: vehiculo.matricula,
@@ -147,12 +151,23 @@ export class VehiculosComponent implements OnInit, OnDestroy {
       tipo_combustible: vehiculo.tipo_combustible || '',
       estado: vehiculo.estado || 'activo'
     };
+    this.apiService.getHistorialVehiculo(vehiculo.id).subscribe({
+      next: (data) => {
+        this.historialVehiculo = data;
+        this.historialCargando = false;
+      },
+      error: () => {
+        this.historialCargando = false;
+        this.historialVehiculo = null;
+      }
+    });
   }
 
   cancelarForm(): void {
     this.mostrarFormulario = false;
     this.editandoVehiculo = false;
     this.vehiculoIdEditando = null;
+    this.historialVehiculo = null;
   }
 
   onSubmit(): void {
@@ -470,13 +485,52 @@ export class VehiculosComponent implements OnInit, OnDestroy {
   }
 
   getEstadoClass(estado: string): string {
-    // Bordes dinámicos según el estado del vehículo
     const clases: { [key: string]: string } = {
       'activo': 'estado-activo',
       'en_mantenimiento': 'estado-en-mantenimiento',
       'inactivo': 'estado-inactivo'
     };
     return clases[estado?.toLowerCase()] || 'estado-activo';
+  }
+
+  getEstadoRutaTexto(estado: string): string {
+    const textos: { [key: string]: string } = {
+      'planificada': 'Planificada',
+      'en_curso': 'En curso',
+      'completada': 'Completada',
+      'cancelada': 'Cancelada'
+    };
+    return textos[estado?.toLowerCase()] || estado || '—';
+  }
+
+  getEstadoMantenimientoTexto(estado: string): string {
+    const textos: { [key: string]: string } = {
+      'programado': 'Programado',
+      'en_curso': 'En curso',
+      'completado': 'Completado',
+      'vencido': 'Vencido',
+      'cancelado': 'Cancelado'
+    };
+    return textos[estado?.toLowerCase()] || estado || '—';
+  }
+
+  getTipoMantenimientoTexto(tipo: string): string {
+    const textos: { [key: string]: string } = {
+      'preventivo': 'Preventivo',
+      'correctivo': 'Correctivo',
+      'revision': 'Revisión',
+      'itv': 'ITV',
+      'cambio_aceite': 'Cambio de aceite'
+    };
+    return textos[tipo?.toLowerCase()] || tipo || '—';
+  }
+
+  formatearFechaISO(fechaISO: string | null): string {
+    if (!fechaISO) return '—';
+    const d = new Date(fechaISO);
+    if (isNaN(d.getTime())) return '—';
+    return d.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }) +
+      (fechaISO.includes('T') ? ' ' + d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) : '');
   }
 }
 
