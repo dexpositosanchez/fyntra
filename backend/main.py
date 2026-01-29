@@ -4,7 +4,7 @@ from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from sqlalchemy import text
 from app.core.config import settings
-from app.api import auth, incidencias, vehiculos, comunidades, conductores, pedidos, rutas, mantenimientos, inmuebles, propietarios, proveedores, actuaciones, documentos, mensajes, usuarios
+from app.api import auth, incidencias, vehiculos, comunidades, conductores, pedidos, rutas, mantenimientos, inmuebles, propietarios, proveedores, actuaciones, documentos, mensajes, usuarios, informes
 from app.database import engine, Base
 import app.models  # noqa: F401  (asegura que se registren todos los modelos)
 
@@ -97,6 +97,7 @@ app.include_router(actuaciones.router, prefix="/api")
 app.include_router(documentos.router, prefix="/api")
 app.include_router(mensajes.router, prefix="/api")
 app.include_router(usuarios.router, prefix="/api")
+app.include_router(informes.router, prefix="/api")
 
 @app.get("/")
 async def root():

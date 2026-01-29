@@ -1,0 +1,259 @@
+<div class="informes-container">
+  <header class="app-header">
+    <div class="header-left">
+      <div class="logo-section">
+        <img src="/assets/images/Isotipo.png" alt="Fyntra" class="logo-isotipo" />
+      </div>
+      <nav class="main-nav">
+        <a routerLink="/incidencias" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">INCIDENCIAS</a>
+        <a routerLink="/comunidades" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">COMUNIDADES</a>
+        <a routerLink="/inmuebles" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">INMUEBLES</a>
+        <a routerLink="/propietarios" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">PROPIETARIOS</a>
+        <a routerLink="/proveedores" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">PROVEEDORES</a>
+        <a *ngIf="usuario?.rol === 'super_admin' || usuario?.rol === 'admin_fincas' || usuario?.rol === 'admin_transportes'" routerLink="/informes" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">INFORMES</a>
+      </nav>
+    </div>
+    <div class="user-section">
+      <div class="user-menu-container">
+        <button class="user-menu-button" (click)="toggleMenuUsuario()">
+          <span class="user-icon app-icon">person</span>
+          <span class="user-name">{{ usuario?.nombre || 'Usuario' }}</span>
+          <span class="dropdown-arrow">{{ mostrarMenuUsuario ? '▲' : '▼' }}</span>
+        </button>
+        <div class="user-menu-dropdown" *ngIf="mostrarMenuUsuario">
+          <button class="menu-item" (click)="cambiarAModuloTransportes()">
+            <span class="menu-icon app-icon">local_shipping</span>
+            <span>Módulo Transportes</span>
+          </button>
+          <div class="menu-divider"></div>
+          <button class="menu-item" *ngIf="usuario?.rol === 'super_admin'" (click)="irAUsuarios()">
+            <span class="menu-icon app-icon">people</span>
+            <span>Gestión de Usuarios</span>
+          </button>
+          <div class="menu-divider" *ngIf="usuario?.rol === 'super_admin'"></div>
+          <button class="menu-item logout-item" (click)="logout()">
+            <span class="menu-icon app-icon">logout</span>
+            <span>Salir</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="main-content">
+    <div class="informes-header">
+      <h1>Informes</h1>
+      
+      <!-- Filtro de fechas -->
+      <div class="filtro-fechas">
+        <div class="fecha-group">
+          <label for="fechaInicio">Fecha Inicio:</label>
+          <input type="date" id="fechaInicio" [(ngModel)]="fechaInicio" class="fecha-input">
+        </div>
+        <div class="fecha-group">
+          <label for="fechaFin">Fecha Fin:</label>
+          <input type="date" id="fechaFin" [(ngModel)]="fechaFin" class="fecha-input">
+        </div>
+        <button class="btn-apply" (click)="aplicarFiltroFechas()">Aplicar</button>
+      </div>
+
+      <!-- Botones de descarga -->
+      <div class="descarga-buttons">
+        <button class="btn-descarga btn-csv" (click)="descargarInforme('csv')" [disabled]="loading" title="Descargar CSV">
+          <span class="app-icon">description</span>
+          <span>CSV</span>
+        </button>
+        <button class="btn-descarga btn-excel" (click)="descargarInforme('excel')" [disabled]="loading" title="Descargar Excel">
+          <span class="app-icon">table_chart</span>
+          <span>Excel</span>
+        </button>
+        <button class="btn-descarga btn-pdf" (click)="descargarInforme('pdf')" [disabled]="loading" title="Descargar PDF">
+          <span class="app-icon">picture_as_pdf</span>
+          <span>PDF</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Pestañas -->
+    <div class="tabs-container">
+      <button 
+        class="tab-button" 
+        [class.active]="tabActiva === 'comunidades'"
+        (click)="cambiarTab('comunidades')">
+        Comunidades
+      </button>
+      <button 
+        class="tab-button" 
+        [class.active]="tabActiva === 'proveedores'"
+        (click)="cambiarTab('proveedores')">
+        Proveedores
+      </button>
+    </div>
+
+    <!-- Mensaje de error -->
+    <div class="error-message" *ngIf="error">
+      {{ error }}
+    </div>
+
+    <!-- Loading -->
+    <div class="loading-message" *ngIf="loading">
+      Cargando informes...
+    </div>
+
+    <!-- Contenido de Comunidades -->
+    <div class="tab-content" *ngIf="tabActiva === 'comunidades' && !loading && informesComunidades">
+      <div class="info-periodo">
+        <p>Período: {{ formatearFecha(informesComunidades.fecha_inicio) }} - {{ formatearFecha(informesComunidades.fecha_fin) }}</p>
+      </div>
+
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Comunidad</th>
+              <th>CIF</th>
+              <th>Dirección</th>
+              <th>Nº Incidencias</th>
+              <th>Coste Total</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <ng-container *ngFor="let comunidad of informesComunidades.comunidades">
+              <tr class="comunidad-row">
+                <td><strong>{{ comunidad.nombre }}</strong></td>
+                <td>{{ comunidad.cif || '-' }}</td>
+                <td>{{ comunidad.direccion || '-' }}</td>
+                <td class="incidencias-cell">
+                  <div class="incidencias-tooltip-wrapper" 
+                       *ngIf="tieneIncidenciasPorEstado(comunidad.incidencias_por_estado)">
+                    <span class="incidencias-total tooltip-trigger">{{ comunidad.num_incidencias }}</span>
+                    <div class="tooltip-content">
+                      <div class="tooltip-header">Incidencias por estado</div>
+                      <div class="tooltip-body">
+                        <div *ngFor="let estado of getEstadosArray(comunidad.incidencias_por_estado)" 
+                             class="tooltip-item">
+                          <span class="estado-badge-tooltip" [class]="'estado-' + estado.key">
+                            {{ getEstadoLabel(estado.key) }}
+                          </span>
+                          <span class="tooltip-count">{{ estado.value.count }}</span>
+                          <span class="tooltip-coste">{{ formatearMoneda(estado.value.coste) }}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <span class="incidencias-total" *ngIf="!tieneIncidenciasPorEstado(comunidad.incidencias_por_estado)">
+                    {{ comunidad.num_incidencias }}
+                  </span>
+                </td>
+                <td>{{ formatearMoneda(comunidad.coste_total) }}</td>
+                <td>
+                  <button 
+                    class="btn-expand" 
+                    (click)="toggleExpandirComunidad(comunidad.id)"
+                    *ngIf="comunidad.inmuebles && comunidad.inmuebles.length > 0">
+                    <span class="app-icon">{{ estaExpandida(comunidad.id) ? 'arrow_drop_up' : 'arrow_drop_down' }}</span>
+                  </button>
+                </td>
+              </tr>
+              <!-- Filas de inmuebles (expandidas) -->
+              <ng-container *ngFor="let inmueble of comunidad.inmuebles">
+                <tr class="inmueble-row" 
+                    [class.expanded]="estaExpandida(comunidad.id)">
+                  <td></td>
+                  <td></td>
+                  <td>
+                    <span class="inmueble-indicator">└─</span>
+                    {{ inmueble.referencia }} - {{ inmueble.direccion }}
+                  </td>
+                  <td class="incidencias-cell">
+                    <div class="incidencias-tooltip-wrapper" 
+                         *ngIf="tieneIncidenciasPorEstado(inmueble.incidencias_por_estado)">
+                      <span class="incidencias-total tooltip-trigger">{{ inmueble.num_incidencias }}</span>
+                      <div class="tooltip-content">
+                        <div class="tooltip-header">Incidencias por estado</div>
+                        <div class="tooltip-body">
+                          <div *ngFor="let estado of getEstadosArray(inmueble.incidencias_por_estado)" 
+                               class="tooltip-item">
+                            <span class="estado-badge-tooltip" [class]="'estado-' + estado.key">
+                              {{ getEstadoLabel(estado.key) }}
+                            </span>
+                            <span class="tooltip-count">{{ estado.value.count }}</span>
+                            <span class="tooltip-coste">{{ formatearMoneda(estado.value.coste) }}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <span class="incidencias-total" *ngIf="!tieneIncidenciasPorEstado(inmueble.incidencias_por_estado)">
+                      {{ inmueble.num_incidencias }}
+                    </span>
+                  </td>
+                  <td>{{ formatearMoneda(inmueble.coste_total) }}</td>
+                  <td></td>
+                </tr>
+              </ng-container>
+            </ng-container>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Contenido de Proveedores -->
+    <div class="tab-content" *ngIf="tabActiva === 'proveedores' && !loading && informesProveedores">
+      <div class="info-periodo">
+        <p>Período: {{ formatearFecha(informesProveedores.fecha_inicio) }} - {{ formatearFecha(informesProveedores.fecha_fin) }}</p>
+      </div>
+
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Proveedor</th>
+              <th>Email</th>
+              <th>Teléfono</th>
+              <th>Especialidad</th>
+              <th>Nº Incidencias</th>
+              <th>Coste Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let proveedor of informesProveedores.proveedores">
+              <td><strong>{{ proveedor.nombre }}</strong></td>
+              <td>{{ proveedor.email || '-' }}</td>
+              <td>{{ proveedor.telefono || '-' }}</td>
+              <td>{{ proveedor.especialidad || '-' }}</td>
+              <td class="incidencias-cell">
+                <div class="incidencias-tooltip-wrapper" 
+                     *ngIf="tieneIncidenciasPorEstado(proveedor.incidencias_por_estado)">
+                  <span class="incidencias-total tooltip-trigger">{{ proveedor.num_incidencias }}</span>
+                  <div class="tooltip-content">
+                    <div class="tooltip-header">Incidencias por estado</div>
+                    <div class="tooltip-body">
+                      <div *ngFor="let estado of getEstadosArray(proveedor.incidencias_por_estado)" 
+                           class="tooltip-item">
+                        <span class="estado-badge-tooltip" [class]="'estado-' + estado.key">
+                          {{ getEstadoLabel(estado.key) }}
+                        </span>
+                        <span class="tooltip-count">{{ estado.value.count }}</span>
+                        <span class="tooltip-coste">{{ formatearMoneda(estado.value.coste) }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <span class="incidencias-total" *ngIf="!tieneIncidenciasPorEstado(proveedor.incidencias_por_estado)">
+                  {{ proveedor.num_incidencias }}
+                </span>
+              </td>
+              <td>{{ formatearMoneda(proveedor.coste_total) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Mensaje cuando no hay datos -->
+    <div class="no-data" *ngIf="!loading && ((tabActiva === 'comunidades' && (!informesComunidades || informesComunidades.comunidades.length === 0)) || (tabActiva === 'proveedores' && (!informesProveedores || informesProveedores.proveedores.length === 0)))">
+      <p>No hay datos para el período seleccionado.</p>
+    </div>
+  </main>
+</div>

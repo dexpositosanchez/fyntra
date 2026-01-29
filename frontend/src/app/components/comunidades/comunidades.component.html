@@ -10,6 +10,7 @@
         <a routerLink="/inmuebles" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">INMUEBLES</a>
         <a routerLink="/propietarios" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">PROPIETARIOS</a>
         <a routerLink="/proveedores" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">PROVEEDORES</a>
+        <a *ngIf="usuario?.rol === 'super_admin' || usuario?.rol === 'admin_fincas' || usuario?.rol === 'admin_transportes'" routerLink="/informes" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">INFORMES</a>
       </nav>
     </div>
     <div class="user-section">

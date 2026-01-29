@@ -20,6 +20,7 @@ import { InmueblesComponent } from './components/inmuebles/inmuebles.component';
 import { PropietariosComponent } from './components/propietarios/propietarios.component';
 import { ProveedoresComponent } from './components/proveedores/proveedores.component';
 import { UsuariosComponent } from './components/usuarios/usuarios.component';
+import { InformesComponent } from './components/informes/informes.component';
 import { AppRoutingModule } from './app-routing.module';
 
 @NgModule({
@@ -37,7 +38,8 @@ import { AppRoutingModule } from './app-routing.module';
     InmueblesComponent,
     PropietariosComponent,
     ProveedoresComponent,
-    UsuariosComponent
+    UsuariosComponent,
+    InformesComponent
   ],
   imports: [
     BrowserModule,

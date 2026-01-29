@@ -515,5 +515,48 @@ export class ApiService {
               { headers: this.getHeaders() }
             );
           }
-        }
+
+  // Informes
+  getInformesComunidades(fechaInicio?: string, fechaFin?: string): Observable<any> {
+    const params: any = {};
+    if (fechaInicio) params.fecha_inicio = fechaInicio;
+    if (fechaFin) params.fecha_fin = fechaFin;
+    return this.http.get(`${this.apiUrl}/informes/comunidades`, {
+      headers: this.getHeaders(),
+      params
+    });
+  }
+
+  getInformesProveedores(fechaInicio?: string, fechaFin?: string): Observable<any> {
+    const params: any = {};
+    if (fechaInicio) params.fecha_inicio = fechaInicio;
+    if (fechaFin) params.fecha_fin = fechaFin;
+    return this.http.get(`${this.apiUrl}/informes/proveedores`, {
+      headers: this.getHeaders(),
+      params
+    });
+  }
+
+  exportarInformesComunidades(formato: string, fechaInicio?: string, fechaFin?: string): Observable<Blob> {
+    const params: any = {};
+    if (fechaInicio) params.fecha_inicio = fechaInicio;
+    if (fechaFin) params.fecha_fin = fechaFin;
+    return this.http.get(`${this.apiUrl}/informes/comunidades/exportar/${formato}`, {
+      headers: this.getHeaders(),
+      params,
+      responseType: 'blob'
+    });
+  }
+
+  exportarInformesProveedores(formato: string, fechaInicio?: string, fechaFin?: string): Observable<Blob> {
+    const params: any = {};
+    if (fechaInicio) params.fecha_inicio = fechaInicio;
+    if (fechaFin) params.fecha_fin = fechaFin;
+    return this.http.get(`${this.apiUrl}/informes/proveedores/exportar/${formato}`, {
+      headers: this.getHeaders(),
+      params,
+      responseType: 'blob'
+    });
+  }
+}
 

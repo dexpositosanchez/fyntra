@@ -18,10 +18,19 @@ from app.models.incidencia import EstadoIncidencia, PrioridadIncidencia
 from app.models.mantenimiento import TipoMantenimiento, EstadoMantenimiento
 from app.core.security import get_password_hash
 from datetime import date, timedelta, datetime
+import random
 
 def init_db():
     """Crear todas las tablas"""
-    Base.metadata.create_all(bind=engine)
+    try:
+        Base.metadata.create_all(bind=engine)
+    except Exception as e:
+        # Si las tablas ya existen o hay tipos ENUM duplicados, continuar
+        # Esto es normal cuando se ejecuta el script múltiples veces
+        if "already exists" in str(e) or "duplicate" in str(e).lower():
+            print("⚠️  Las tablas ya existen, continuando con la carga de datos...")
+        else:
+            raise
 
 def create_initial_data():
     """Crear datos iniciales de prueba"""
@@ -153,7 +162,9 @@ def create_initial_data():
                         titulo="Incidencia de Prueba para Load Testing",
                         descripcion="Esta incidencia se crea para pruebas de carga del sistema. Puede ser utilizada para verificar el rendimiento del endpoint GET /api/incidencias/1",
                         estado=EstadoIncidencia.ABIERTA,
-                        prioridad=PrioridadIncidencia.MEDIA
+                        prioridad=PrioridadIncidencia.MEDIA,
+                        # Para informes: dejarla como reciente (ayer)
+                        fecha_alta=(datetime.now() - timedelta(days=1)).replace(hour=15, minute=0, second=0, microsecond=0)
                     )
                     db.add(incidencia_test)
                     db.flush()
@@ -170,7 +181,8 @@ def create_initial_data():
                         usuario_id=admin_user.id,
                         estado_anterior=None,
                         estado_nuevo=EstadoIncidencia.ABIERTA.value,
-                        comentario="Incidencia creada para pruebas de carga"
+                        comentario="Incidencia creada para pruebas de carga",
+                        fecha=incidencia_test.fecha_alta
                     )
                     db.add(historial)
         
@@ -857,20 +869,72 @@ def create_initial_data():
             EstadoIncidencia.RESUELTA,
             EstadoIncidencia.CERRADA
         ]
+
+        # Fechas coherentes para informes: desde noviembre hasta ayer (incluido)
+        # - Cerradas/resueltas: más antiguas
+        # - Abiertas/asignadas/en progreso: más recientes
+        hoy = date.today()
+        ayer = hoy - timedelta(days=1)
+        # Si estamos antes de noviembre, usar noviembre del año anterior
+        start_year = hoy.year if hoy.month >= 11 else (hoy.year - 1)
+        inicio_informes = date(start_year, 11, 1)
+        fin_informes = ayer if ayer >= inicio_informes else hoy  # fallback (por si se ejecuta en noviembre muy pronto)
+
+        def dt_dia(d: date, h: int = 10, m: int = 0) -> datetime:
+            return datetime(d.year, d.month, d.day, h, m, 0)
+
+        def fecha_para_estado(estado: EstadoIncidencia, extra_idx: int = 0) -> datetime:
+            # Distribución simple y determinista dentro del rango
+            total_days = max(1, (fin_informes - inicio_informes).days)
+            if estado in (EstadoIncidencia.CERRADA, EstadoIncidencia.RESUELTA):
+                # Primer tercio del rango
+                offset = min(total_days - 1, 2 + extra_idx * 3)
+                return dt_dia(inicio_informes + timedelta(days=offset), 9, 15)
+            if estado == EstadoIncidencia.EN_PROGRESO:
+                # Mitad del rango
+                offset = total_days // 2
+                return dt_dia(inicio_informes + timedelta(days=offset), 11, 0)
+            if estado == EstadoIncidencia.ASIGNADA:
+                # Último tercio pero no tan al final
+                offset = max(0, total_days - 21 + extra_idx)
+                return dt_dia(inicio_informes + timedelta(days=min(total_days - 1, offset)), 12, 30)
+            # ABIERTA: muy reciente (últimos días)
+            offset = max(0, total_days - 3 - extra_idx)
+            return dt_dia(inicio_informes + timedelta(days=min(total_days - 1, offset)), 16, 45)
+
+        def fecha_cierre_para_alta(fecha_alta: datetime, dias: int) -> datetime:
+            cierre = fecha_alta + timedelta(days=dias)
+            max_cierre = dt_dia(fin_informes, 19, 0)
+            return cierre if cierre <= max_cierre else max_cierre
+
+        # Proveedores para asignar incidencias (para que el informe de proveedores tenga datos)
+        proveedores = db.query(Proveedor).filter(Proveedor.activo == True).all()  # noqa: E712
+        random.seed(42)
         
         # Crear una incidencia por cada estado
         if propietarios_con_usuarios and todos_inmuebles:
             for idx, estado in enumerate(estados_incidencia):
                 prop_idx = idx % len(propietarios_con_usuarios)
                 inmueble_idx = idx % len(todos_inmuebles)
+
+                fecha_alta_dt = fecha_para_estado(estado, idx)
+                proveedor_id = None
+                if estado != EstadoIncidencia.ABIERTA and proveedores:
+                    proveedor_id = proveedores[idx % len(proveedores)].id
+                fecha_cierre_dt = None
+                if estado in (EstadoIncidencia.RESUELTA, EstadoIncidencia.CERRADA):
+                    fecha_cierre_dt = fecha_cierre_para_alta(fecha_alta_dt, dias=7 + (idx % 5))
                 
                 incidencia = Incidencia(
                     inmueble_id=todos_inmuebles[inmueble_idx].id,
                     creador_usuario_id=propietarios_con_usuarios[prop_idx]["usuario"].id,
+                    proveedor_id=proveedor_id,
                     titulo=f"Incidencia {estado.value.capitalize()} - {idx + 1}",
                     descripcion=f"Descripción de la incidencia en estado {estado.value}",
                     estado=estado,
-                    prioridad=PrioridadIncidencia.MEDIA
+                    prioridad=PrioridadIncidencia.MEDIA,
+                    fecha_alta=fecha_alta_dt,
+                    fecha_cierre=fecha_cierre_dt
                 )
                 db.add(incidencia)
                 db.flush()
@@ -881,14 +945,41 @@ def create_initial_data():
                     usuario_id=propietarios_con_usuarios[prop_idx]["usuario"].id,
                     estado_anterior=None,
                     estado_nuevo=estado.value,
-                    comentario=f"Incidencia creada en estado {estado.value}"
+                    comentario=f"Incidencia creada en estado {estado.value}",
+                    fecha=fecha_alta_dt
                 )
                 db.add(historial)
+
+                # Crear actuaciones para que haya costes en los informes (solo si hay proveedor asignado)
+                if proveedor_id:
+                    if estado == EstadoIncidencia.ASIGNADA:
+                        actuaciones_count = 0
+                    elif estado == EstadoIncidencia.EN_PROGRESO:
+                        actuaciones_count = 1
+                    else:
+                        # RESUELTA/CERRADA
+                        actuaciones_count = 2
+
+                    for j in range(actuaciones_count):
+                        fecha_act = fecha_alta_dt + timedelta(days=1 + j)
+                        if fecha_cierre_dt and fecha_act >= fecha_cierre_dt:
+                            fecha_act = fecha_cierre_dt - timedelta(hours=2)
+                        coste = round(random.uniform(50, 450), 2)
+                        actuacion = Actuacion(
+                            incidencia_id=incidencia.id,
+                            proveedor_id=proveedor_id,
+                            descripcion=f"Actuación {j + 1} sobre incidencia {incidencia.id}",
+                            fecha=fecha_act,
+                            coste=coste
+                        )
+                        db.add(actuacion)
             
             # Crear 5 incidencias adicionales abiertas
             for i in range(5):
                 prop_idx = (len(estados_incidencia) + i) % len(propietarios_con_usuarios)
                 inmueble_idx = (len(estados_incidencia) + i) % len(todos_inmuebles)
+
+                fecha_alta_dt = fecha_para_estado(EstadoIncidencia.ABIERTA, i + 1)
                 
                 incidencia_abierta = Incidencia(
                     inmueble_id=todos_inmuebles[inmueble_idx].id,
@@ -896,7 +987,8 @@ def create_initial_data():
                     titulo=f"Incidencia Abierta {i + 1}",
                     descripcion=f"Descripción de la incidencia abierta número {i + 1}",
                     estado=EstadoIncidencia.ABIERTA,
-                    prioridad=PrioridadIncidencia.MEDIA if i % 2 == 0 else PrioridadIncidencia.ALTA
+                    prioridad=PrioridadIncidencia.MEDIA if i % 2 == 0 else PrioridadIncidencia.ALTA,
+                    fecha_alta=fecha_alta_dt
                 )
                 db.add(incidencia_abierta)
                 db.flush()
@@ -907,49 +999,13 @@ def create_initial_data():
                     usuario_id=propietarios_con_usuarios[prop_idx]["usuario"].id,
                     estado_anterior=None,
                     estado_nuevo=EstadoIncidencia.ABIERTA.value,
-                    comentario=f"Incidencia abierta creada por propietario"
+                    comentario=f"Incidencia abierta creada por propietario",
+                    fecha=fecha_alta_dt
                 )
                 db.add(historial_abierta)
         
-        # Crear incidencia de prueba con ID 1 (para pruebas de carga)
-        # Esto se hace después de crear los pedidos para asegurar que tenemos todos los datos necesarios
-        admin_user = db.query(Usuario).filter(Usuario.email == "admin@fyntra.com").first()
-        inmueble = db.query(Inmueble).filter(Inmueble.referencia == "PROP-001").first()
-        
-        if admin_user and inmueble:
-            # Verificar si ya existe una incidencia con ID 1
-            incidencia_existente = db.query(Incidencia).filter(Incidencia.id == 1).first()
-            if not incidencia_existente:
-                # Resetear secuencia a 1
-                db.execute(text("SELECT setval('incidencias_id_seq', 1, false)"))
-                
-                # Crear incidencia con ID 1
-                incidencia_test = Incidencia(
-                    id=1,  # Forzar ID 1
-                    inmueble_id=inmueble.id,
-                    creador_usuario_id=admin_user.id,
-                    titulo="Incidencia de Prueba para Load Testing",
-                    descripcion="Esta incidencia se crea para pruebas de carga del sistema. Puede ser utilizada para verificar el rendimiento del endpoint GET /api/incidencias/1",
-                    estado=EstadoIncidencia.ABIERTA,
-                    prioridad=PrioridadIncidencia.MEDIA
-                )
-                db.add(incidencia_test)
-                db.flush()
-                
-                # Registrar en historial
-                historial = HistorialIncidencia(
-                    incidencia_id=incidencia_test.id,
-                    usuario_id=admin_user.id,
-                    estado_anterior=None,
-                    estado_nuevo=EstadoIncidencia.ABIERTA.value,
-                    comentario="Incidencia creada para pruebas de carga"
-                )
-                db.add(historial)
-                
-                # Ajustar secuencia después de crear el registro con ID 1
-                max_id_result = db.execute(text("SELECT MAX(id) FROM incidencias"))
-                max_id = max_id_result.scalar() or 1
-                db.execute(text(f"SELECT setval('incidencias_id_seq', {max_id})"))
+        # NOTA: La incidencia con ID 1 ya se creó anteriormente cuando se creó la primera comunidad
+        # No es necesario crearla de nuevo aquí para evitar duplicados
         
         db.commit()
         print("✅ Datos iniciales creados correctamente")
