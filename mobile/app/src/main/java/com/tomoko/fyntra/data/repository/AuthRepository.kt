@@ -41,8 +41,14 @@ class AuthRepository(
                 )
                 Result.success(loginResponse)
             } else {
-                val errorMsg = when {
+                val bodyDetail = response.errorBody()?.string()?.let { body ->
+                    try {
+                        com.google.gson.Gson().fromJson(body, Map::class.java)["detail"]?.toString()
+                    } catch (e: Exception) { null }
+                }
+                val errorMsg = bodyDetail ?: when {
                     response.code() == 401 -> "Credenciales incorrectas"
+                    response.code() == 429 -> "Demasiados intentos. Acceso bloqueado temporalmente."
                     response.code() == 404 -> "Servidor no encontrado. Verifica que el backend esté corriendo en http://192.168.1.128:8000"
                     response.code() >= 500 -> "Error del servidor"
                     else -> response.message() ?: "Error de autenticación (código: ${response.code()})"

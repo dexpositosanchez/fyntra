@@ -10,6 +10,11 @@ class Settings(BaseSettings):
     CORS_ORIGINS: Union[List[str], str] = ["http://localhost:4200", "http://localhost:80", "http://localhost"]
     REDIS_URL: str = os.getenv("REDIS_URL", "redis://localhost:6379/0")
     CACHE_EXPIRE_SECONDS: int = 300  # 5 minutos por defecto
+
+    # Protección contra fuerza bruta (login)
+    LOGIN_MAX_ATTEMPTS: int = 5  # intentos fallidos antes de bloquear
+    LOGIN_BLOCK_SECONDS: int = 900  # 15 minutos de bloqueo
+    LOGIN_ATTEMPT_WINDOW_SECONDS: int = 300  # ventana de 5 min para contar intentos
     
     class Config:
         env_file = ".env"

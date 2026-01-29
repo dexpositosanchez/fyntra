@@ -3,7 +3,7 @@
 | Nº y nombre de requisito | Explicación | Desarrollado | Revisado | Observaciones |
 | --- | --- | --- | --- | --- |
 | **TRANSPORTES** |  |  |  |  |
-| RF1. Gestión de Flota | Registro de vehículos con información técnica y de estado, con consulta del historial completo de cada vehículo. | ✅ | ✅ | Falta el historial |
+| RF1. Gestión de Flota | Registro de vehículos con información técnica y de estado, con consulta del historial completo de cada vehículo. | ✅ | ✅ | |
 | RF2. Gestión de Conductores | Registro de conductores con datos personales, licencia, fecha de caducidad y estado, con alertas de licencias próximas a caducar. | ✅ | ✅ |  |
 | RF3. Gestión de Pedidos | Creación de pedidos con datos de origen, destino, cliente, volumen, peso, tipo de mercancía, fecha deseada y gestión de sus estados. | ✅ | ✅ |  |
 | RF4. Planificación de Rutas | Creación de rutas asignando conductor y vehículo, con múltiples pedidos y orden de entrega, validando capacidades y disponibilidad. | ✅ | ✅ |  |
@@ -24,12 +24,12 @@
 | RF18. Generación de Informes | Generación de informes de costes por comunidad, período, proveedor y análisis de incidencias (tiempos medios, tipos frecuentes, etc.). | ✅ | ✅ |  |
 | RF19. Gestión de Proveedores | Gestión de catálogo de proveedores con información de contacto, especialidades y estado (activo/inactivo). | ✅ | ✅ |  |
 | **COMUNES** |  |  |  |  |
-| RF20. Autenticación y Autorización | Sistema de autenticación segura mediante JWT, con diferentes roles y permisos granulares por módulo. | ⬜ | ⬜ / ✅ / ❌ |  |
+| RF20. Autenticación y Autorización | Sistema de autenticación segura mediante JWT, con diferentes roles y permisos granulares por módulo. | ✅ | ✅ |  |
 | RF21. Gestión de Usuarios | Gestión de usuarios por parte de super administradores: creación, edición, eliminación, desactivación y asignación de roles. | ✅ | ✅ |  |
 | RF22. Notificaciones | Envío de notificaciones automáticas (email, push) ante eventos relevantes como incidencias, cambios de estado o mantenimientos próximos. | ⬜ | ⬜ / ✅ / ❌ |  |
-| RF23. Búsqueda y Filtrado | Búsqueda y filtrado avanzado en incidencias, pedidos, rutas, vehículos y otras entidades por múltiples criterios. | ✅ | ✅ | Estan hechos los filtros en las secciones creadas, pero aún no están todas |
-| RF24. Exportación de Datos | Exportación de informes y listados a formatos estándar como PDF, Excel y CSV. | ⬜ | ⬜ / ✅ / ❌ |  |
-| RF25. Aplicación Móvil Android | App móvil nativa Android en Kotlin con autenticación JWT, sincronización online/offline, integración con Google Maps y soporte desde Android 8.0. | ⬜ | ⬜ / ✅ / ❌ |  |
+| RF23. Búsqueda y Filtrado | Búsqueda y filtrado avanzado en incidencias, pedidos, rutas, vehículos y otras entidades por múltiples criterios. | ✅ | ✅ | |
+| RF24. Exportación de Datos | Exportación de informes y listados a formatos estándar como PDF, Excel y CSV. | ✅ | ✅ |  |
+| RF25. Aplicación Móvil Android | App móvil nativa Android en Kotlin con autenticación JWT, sincronización online/offline y soporte desde Android 8.0. | ✅ | ✅ |  |
 
 ### Requisitos no funcionales
 
@@ -37,7 +37,7 @@
 | --- | --- | --- | --- | --- |
 | RNF1. Tiempo de Respuesta | El sistema debe responder a las peticiones del usuario en menos de 2 segundos en el 95% de los casos, incluso con 100 usuarios concurrentes. | ✅ | ✅ |  |
 | RNF2. Disponibilidad | El sistema debe tener una disponibilidad del 99.5% (máximo 43 horas de inactividad no planificada al año). | ✅ | ✅ | |
-| RNF3. Escalabilidad | El sistema debe poder escalar horizontalmente para soportar el crecimiento de usuarios y datos sin requerir cambios arquitectónicos mayores. | ⬜ | ⬜ / ✅ / ❌ |  |
+| RNF3. Escalabilidad | El sistema debe poder escalar horizontalmente para soportar el crecimiento de usuarios y datos sin requerir cambios arquitectónicos mayores. | ✅ | ✅ |  |
 | RNF4. Autenticación Segura | Las contraseñas deben almacenarse mediante hash seguro (bcrypt o similar) y nunca en texto plano. Debe implementarse protección contra ataques de fuerza bruta. | ⬜ | ⬜ / ✅ / ❌ |  |
 | RNF5. Autorización Granular | El sistema debe implementar control de acceso basado en roles (RBAC) que restrinja las funcionalidades según el perfil del usuario. | ⬜ | ⬜ / ✅ / ❌ |  |
 | RNF6. Protección de Datos | El sistema debe cumplir con el Reglamento General de Protección de Datos (RGPD), implementando medidas técnicas y organizativas adecuadas. | ⬜ | ⬜ / ✅ / ❌ |  |
