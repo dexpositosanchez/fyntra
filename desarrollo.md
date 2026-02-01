@@ -38,9 +38,9 @@
 | RNF1. Tiempo de Respuesta | El sistema debe responder a las peticiones del usuario en menos de 2 segundos en el 95% de los casos, incluso con 100 usuarios concurrentes. | ✅ | ✅ |  |
 | RNF2. Disponibilidad | El sistema debe tener una disponibilidad del 99.5% (máximo 43 horas de inactividad no planificada al año). | ✅ | ✅ | |
 | RNF3. Escalabilidad | El sistema debe poder escalar horizontalmente para soportar el crecimiento de usuarios y datos sin requerir cambios arquitectónicos mayores. | ✅ | ✅ |  |
-| RNF4. Autenticación Segura | Las contraseñas deben almacenarse mediante hash seguro (bcrypt o similar) y nunca en texto plano. Debe implementarse protección contra ataques de fuerza bruta. | ⬜ | ⬜ / ✅ / ❌ |  |
-| RNF5. Autorización Granular | El sistema debe implementar control de acceso basado en roles (RBAC) que restrinja las funcionalidades según el perfil del usuario. | ⬜ | ⬜ / ✅ / ❌ |  |
-| RNF6. Protección de Datos | El sistema debe cumplir con el Reglamento General de Protección de Datos (RGPD), implementando medidas técnicas y organizativas adecuadas. | ⬜ | ⬜ / ✅ / ❌ |  |
+| RNF4. Autenticación Segura | Las contraseñas deben almacenarse mediante hash seguro (bcrypt o similar) y nunca en texto plano. Debe implementarse protección contra ataques de fuerza bruta. | ✅ | ✅ |  |
+| RNF5. Autorización Granular | El sistema debe implementar control de acceso basado en roles (RBAC) que restrinja las funcionalidades según el perfil del usuario. | ✅ | ✅ |  |
+| RNF6. Protección de Datos | El sistema debe cumplir con el Reglamento General de Protección de Datos (RGPD), implementando medidas técnicas y organizativas adecuadas. | ✅ | ✅ |  |
 | RNF7. Comunicación Segura | Todas las comunicaciones entre cliente y servidor deben realizarse mediante HTTPS/TLS para garantizar la confidencialidad de los datos. | ⬜ | ⬜ / ✅ / ❌ |  |
 | RNF8. Validación de Entrada | El sistema debe validar y sanitizar todas las entradas del usuario para prevenir inyecciones SQL, XSS y otros ataques comunes. | ⬜ | ⬜ / ✅ / ❌ |  |
 | RNF9. Interfaz Intuitiva | La interfaz web debe ser intuitiva y fácil de usar, siguiendo principios de diseño UX/UI modernos y con tiempo de aprendizaje mínimo. | ⬜ | ⬜ / ✅ / ❌ |  |
@@ -54,4 +54,11 @@
 | RNF17. Rendimiento Móvil | La aplicación móvil debe cargar las pantallas principales en menos de 2 segundos y responder a las interacciones del usuario en menos de 100 ms. | ⬜ | ⬜ / ✅ / ❌ |  |
 | RNF18. Optimización Móvil | La aplicación móvil debe optimizar el uso de batería y datos (GPS solo cuando sea necesario, compresión de imágenes, sincronización incremental, opción de solo WiFi). | ⬜ | ⬜ / ✅ / ❌ |  |
 
+### Arrancar con Docker (después de make clean)
+
+1. Construir e iniciar: `make build` y `make up` (o `make start`).
+2. Esperar a que los servicios estén listos: `make ps`.
+3. Crear datos iniciales (make clean borra volúmenes): `make init-data`.
+4. Abrir **http://localhost** (puerto 80). No uses http://localhost:4200: Nginx en el 80 hace de proxy y sirve frontend y reenvía `/api` al backend.
+5. Login con los usuarios del script init_data (p. ej. admin@fyntra.com).
 

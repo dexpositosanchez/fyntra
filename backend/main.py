@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -8,13 +9,22 @@ from app.api import auth, incidencias, vehiculos, comunidades, conductores, pedi
 from app.database import engine, Base
 import app.models  # noqa: F401  (asegura que se registren todos los modelos)
 
-# Crear tablas en la base de datos
-Base.metadata.create_all(bind=engine)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Crear tablas al arrancar; si la DB no está lista, la app sigue y las creará después."""
+    try:
+        Base.metadata.create_all(bind=engine)
+    except Exception:
+        pass
+    yield
+
 
 app = FastAPI(
     title="Fyntra API",
     description="API REST para el sistema ERP de Transportes y Administración de Fincas",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan,
 )
 
 # Handler para errores de validación de Pydantic
@@ -33,53 +43,23 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         }
     )
 
-# Configurar CORS - Permitir llamadas desde Android y web
-# Nota: Si allow_credentials=True, no se puede usar ["*"], hay que especificar orígenes explícitos
-cors_origins = settings.CORS_ORIGINS
-if isinstance(cors_origins, str):
-    cors_origins = [origin.strip() for origin in cors_origins.split(",")]
-elif not isinstance(cors_origins, list):
-    cors_origins = list(cors_origins)
-
-# Añadir orígenes adicionales comunes para desarrollo
-cors_origins.extend([
-    "http://localhost:4200",
-    "http://localhost:80",
-    "http://localhost",
-    "http://127.0.0.1:4200",
-    "http://127.0.0.1:80",
-    "http://127.0.0.1:8000",
-    "http://localhost:8000",
-    "http://127.0.0.1"
-])
-
-# Eliminar duplicados manteniendo el orden
-cors_origins = list(dict.fromkeys(cors_origins))
-
-# Para desarrollo, también permitir todos los orígenes si está en modo debug
-import os
-if os.getenv("ENVIRONMENT", "development") == "development":
-    # En desarrollo, ser más permisivo con CORS
-    cors_origins.append("*")
-
-# Configurar CORS - Si hay "*" en los orígenes, no usar allow_credentials
-if "*" in cors_origins:
-    cors_origins.remove("*")
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"],  # Permitir todos los orígenes en desarrollo
-        allow_credentials=False,  # No permitir credenciales cuando se usa "*"
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
-else:
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=cors_origins,
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+# CORS: usar orígenes de config (Docker: CORS_ORIGINS=http://localhost:4200,...) + 127.0.0.1 para que el login funcione
+_origins = getattr(settings, "CORS_ORIGINS", [])
+if isinstance(_origins, str):
+    _origins = [o.strip() for o in _origins.split(",")]
+if not isinstance(_origins, list):
+    _origins = []
+_origins = list(_origins) + ["http://127.0.0.1:4200", "http://127.0.0.1:80", "http://127.0.0.1"]
+_origins = list(dict.fromkeys(_origins))
+if not _origins:
+    _origins = ["*"]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_origins,
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Incluir routers
 app.include_router(auth.router, prefix="/api")
@@ -103,6 +83,11 @@ app.include_router(historial.router, prefix="/api")
 @app.get("/")
 async def root():
     return JSONResponse(content={"message": "Fyntra API - Sistema ERP de Transportes y Administración de Fincas"})
+
+@app.get("/ping")
+async def ping():
+    """Respuesta mínima sin DB ni Redis; para comprobar que el servidor responde."""
+    return JSONResponse(content={"ok": True})
 
 @app.get("/health")
 async def health_check():
@@ -136,11 +121,16 @@ async def health_check():
             "message": error_msg
         }
     
-    # Verificar conexión a Redis
+    # Verificar conexión a Redis (get_redis_client puede devolver None si Redis no está)
     try:
         redis_client = get_redis_client()
-        redis_client.ping()
-        health_status["checks"]["redis"] = "ok"
+        if redis_client is not None:
+            redis_client.ping()
+            health_status["checks"]["redis"] = "ok"
+        else:
+            health_status["checks"]["redis"] = {"status": "error", "message": "Redis no disponible"}
+            if health_status["status"] == "healthy":
+                health_status["status"] = "degraded"
     except Exception as e:
         # Redis no es crítico, solo marcar como degraded
         if health_status["status"] == "healthy":

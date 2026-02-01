@@ -56,6 +56,8 @@ export class IncidenciasComponent implements OnInit, OnDestroy {
   incidenciasPorEstado: { [key: string]: any[] } = {};
   tabs: { estado: string, label: string, count: number }[] = [];
   tabActiva: string = '';
+  exportandoDatos: boolean = false;
+  eliminandoCuenta: boolean = false;
   private routerSubscription?: Subscription;
 
   incidenciaForm: any = {
@@ -507,6 +509,42 @@ export class IncidenciasComponent implements OnInit, OnDestroy {
   logout(): void {
     this.mostrarMenuUsuario = false;
     this.authService.logout();
+  }
+
+  /** RGPD Art. 15 y 20: exportar datos personales */
+  exportarMisDatos(): void {
+    this.exportandoDatos = true;
+    this.apiService.getMisDatos().subscribe({
+      next: (datos) => {
+        const blob = new Blob([JSON.stringify(datos, null, 2)], { type: 'application/json' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `mis-datos-${this.usuario?.email?.replace('@', '-at-') || 'usuario'}-${new Date().toISOString().slice(0, 10)}.json`;
+        a.click();
+        window.URL.revokeObjectURL(url);
+        this.exportandoDatos = false;
+      },
+      error: () => { this.exportandoDatos = false; }
+    });
+  }
+
+  /** RGPD Art. 17: eliminar mi cuenta */
+  eliminarMiCuenta(): void {
+    if (!confirm('¿Está seguro de que desea eliminar su cuenta? Se anonimizarán sus datos y no podrá volver a iniciar sesión. Esta acción no se puede deshacer.')) return;
+    const password = prompt('Opcional: introduzca su contraseña para confirmar (o deje en blanco):');
+    this.eliminandoCuenta = true;
+    this.apiService.eliminarMiCuenta(password || undefined).subscribe({
+      next: () => {
+        this.eliminandoCuenta = false;
+        this.authService.logout();
+        this.router.navigate(['/login']);
+      },
+      error: (err) => {
+        alert(err.error?.detail || 'Error al eliminar la cuenta.');
+        this.eliminandoCuenta = false;
+      }
+    });
   }
 
   // Métodos para proveedores y actuaciones

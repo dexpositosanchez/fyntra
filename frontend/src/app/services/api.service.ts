@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 
@@ -28,6 +28,20 @@ export class ApiService {
 
   register(userData: any): Observable<any> {
     return this.http.post(`${this.apiUrl}/auth/register`, userData);
+  }
+
+  /** RGPD Art. 15 y 20: exportar datos personales del usuario autenticado */
+  getMisDatos(): Observable<any> {
+    return this.http.get(`${this.apiUrl}/auth/me/datos`, { headers: this.getHeaders() });
+  }
+
+  /** RGPD Art. 17: eliminar cuenta del usuario autenticado (opcional: contraseña para confirmar) */
+  eliminarMiCuenta(password?: string): Observable<void> {
+    const options: { headers: HttpHeaders; body?: { password: string } } = { headers: this.getHeaders() };
+    if (password != null && password !== '') {
+      options.body = { password };
+    }
+    return this.http.delete<void>(`${this.apiUrl}/auth/me`, options);
   }
 
   // Incidencias
@@ -490,10 +504,15 @@ export class ApiService {
             });
           }
 
-          // Usuarios (solo super_admin)
-          getUsuarios(): Observable<any> {
+          // Usuarios (solo super_admin). incluirEliminados=true muestra cuentas anonimizadas (RGPD).
+          getUsuarios(incluirEliminados?: boolean): Observable<any> {
+            let params = new HttpParams();
+            if (incluirEliminados === true) {
+              params = params.set('incluir_eliminados', 'true');
+            }
             return this.http.get(`${this.apiUrl}/usuarios`, {
-              headers: this.getHeaders()
+              headers: this.getHeaders(),
+              params
             });
           }
 

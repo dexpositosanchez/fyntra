@@ -45,6 +45,15 @@
             <span>Gestión de Usuarios</span>
           </button>
           <div class="menu-divider" *ngIf="usuario?.rol === 'super_admin'"></div>
+          <button class="menu-item" (click)="exportarMisDatos(); toggleMenuUsuario()" [disabled]="exportandoDatos">
+            <span class="menu-icon app-icon">download</span>
+            <span>{{ exportandoDatos ? 'Exportando...' : 'Exportar mis datos (RGPD)' }}</span>
+          </button>
+          <button class="menu-item menu-item-danger" (click)="eliminarMiCuenta(); toggleMenuUsuario()" [disabled]="eliminandoCuenta">
+            <span class="menu-icon app-icon">delete_forever</span>
+            <span>{{ eliminandoCuenta ? 'Eliminando...' : 'Eliminar mi cuenta' }}</span>
+          </button>
+          <div class="menu-divider"></div>
           <button class="menu-item logout-item" (click)="logout()">
             <span class="menu-icon app-icon">logout</span>
             <span>Salir</span>

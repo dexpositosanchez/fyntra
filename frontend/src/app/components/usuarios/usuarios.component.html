@@ -144,6 +144,17 @@
                 <option *ngFor="let rol of roles" [value]="rol.value">{{ rol.label }}</option>
               </select>
             </div>
+            <div class="filter-group filter-checkbox">
+              <label class="checkbox-label">
+                <input
+                  type="checkbox"
+                  [(ngModel)]="mostrarEliminados"
+                  (ngModelChange)="onMostrarEliminadosChange($event)"
+                  name="mostrarEliminados"
+                />
+                <span>Mostrar usuarios eliminados</span>
+              </label>
+            </div>
             <button 
               class="clear-filters-button" 
               *ngIf="filtroRol || textoBusqueda" 
@@ -196,7 +207,7 @@
                   <span class="value">{{ usuario.creado_en | date:'dd/MM/yyyy' }}</span>
                 </div>
               </div>
-              <div class="card-actions">
+              <div class="card-actions" *ngIf="!esUsuarioEliminado(usuario)">
                 <button class="action-btn toggle-btn" (click)="toggleActivo(usuario, $event)" 
                         [title]="usuario.activo ? 'Desactivar' : 'Activar'">
                   <span class="app-icon">{{ usuario.activo ? 'toggle_on' : 'toggle_off' }}</span>
@@ -207,6 +218,9 @@
                 <button class="action-btn delete-btn" (click)="eliminarUsuario(usuario)" title="Eliminar">
                   <span class="app-icon">delete</span>
                 </button>
+              </div>
+              <div class="card-actions card-actions-eliminado" *ngIf="esUsuarioEliminado(usuario)">
+                <span class="eliminado-info">Cuenta anonimizada (RGPD)</span>
               </div>
             </div>
           </div>

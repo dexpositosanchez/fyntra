@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from typing import List
 from app.database import get_db
@@ -32,22 +32,41 @@ def verificar_super_admin(usuario: Usuario):
 async def listar_usuarios(
     skip: int = 0,
     limit: int = 100,
+    incluir_eliminados: bool = Query(False, description="Incluir cuentas anonimizadas (RGPD)"),
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user)
 ):
-    """Lista todos los usuarios (solo super_admin)"""
+    """Lista todos los usuarios (solo super_admin). incluir_eliminados=True muestra cuentas anonimizadas (RGPD)."""
     verificar_super_admin(current_user)
     
-    # Generar clave de caché
-    cache_key = generate_cache_key("usuarios:list", skip=skip, limit=limit)
+    # Generar clave de caché (incluir parámetro para listas distintas)
+    cache_key = generate_cache_key("usuarios:list", skip=skip, limit=limit, incluir_eliminados=incluir_eliminados)
     
     # Intentar obtener de caché (versión async con hilos - no bloquea el event loop)
     cached_result = await get_from_cache_async(cache_key)
     if cached_result is not None:
         return cached_result
     
-    usuarios = db.query(Usuario).offset(skip).limit(limit).all()
-    result = [UsuarioResponse.model_validate(u).model_dump() for u in usuarios]
+    query = db.query(Usuario)
+    if not incluir_eliminados:
+        # Excluir cuentas anonimizadas (RGPD: usuario ejerció derecho de supresión)
+        query = query.filter(~Usuario.email.like("eliminado_%@cuenta-eliminada.local"))
+    usuarios = query.offset(skip).limit(limit).all()
+    result = []
+    for u in usuarios:
+        try:
+            result.append(UsuarioResponse.model_validate(u).model_dump())
+        except Exception:
+            # Usuario con datos incompletos o anonimizados: representación mínima para no romper la lista
+            creado = getattr(u, "creado_en", None)
+            result.append({
+                "id": u.id,
+                "nombre": getattr(u, "nombre", None) or "Usuario eliminado",
+                "email": getattr(u, "email", None) or f"eliminado_{u.id}@cuenta-eliminada.local",
+                "rol": getattr(u, "rol", None) or "—",
+                "activo": getattr(u, "activo", False),
+                "creado_en": creado.isoformat() if hasattr(creado, "isoformat") else creado,
+            })
     
     # Almacenar en caché (5 minutos)
     await set_to_cache_async(cache_key, result, expire=300)

@@ -439,6 +439,15 @@
       text-align: center;
     }
     
+    &.menu-item-danger {
+      color: #c62828;
+
+      &:hover:not(:disabled) {
+        background: #ffebee;
+        color: #c62828;
+      }
+    }
+
     &.logout-item {
       color: #d32f2f;
       

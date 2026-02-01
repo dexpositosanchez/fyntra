@@ -23,6 +23,7 @@ export class UsuariosComponent implements OnInit {
   filtroRol: string = '';
   textoBusqueda: string = '';
   usuariosFiltrados: any[] = [];
+  mostrarEliminados: boolean = false;
 
   usuarioForm: any = {
     nombre: '',
@@ -61,17 +62,24 @@ export class UsuariosComponent implements OnInit {
 
   cargarUsuarios(): void {
     this.loading = true;
-    this.apiService.getUsuarios().subscribe({
+    this.error = '';
+    this.apiService.getUsuarios(this.mostrarEliminados).subscribe({
       next: (data) => {
         this.usuarios = data;
         this.aplicarFiltroTexto();
         this.loading = false;
       },
       error: (err) => {
-        this.error = 'Error al cargar usuarios';
+        this.error = err?.error?.detail || 'Error al cargar usuarios';
         this.loading = false;
       }
     });
+  }
+
+  /** Llamado al cambiar el checkbox de usuarios eliminados; usa el valor nuevo explícitamente. */
+  onMostrarEliminadosChange(checked: boolean): void {
+    this.mostrarEliminados = checked;
+    this.cargarUsuarios();
   }
 
   aplicarFiltroTexto(): void {
@@ -301,6 +309,12 @@ export class UsuariosComponent implements OnInit {
     }
   }
 
+
+  /** Indica si el usuario es una cuenta anonimizada (ejerció derecho de supresión RGPD). */
+  esUsuarioEliminado(usuario: any): boolean {
+    const email = (usuario?.email || '').toString();
+    return email.startsWith('eliminado_') && email.includes('@cuenta-eliminada.local');
+  }
 
   getRolLabel(rol: string): string {
     const rolObj = this.roles.find(r => r.value === rol);

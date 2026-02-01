@@ -288,8 +288,29 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
-  
+
   label { font-size: 12px; color: #666; }
+
+  &.filter-checkbox {
+    flex-direction: row;
+    align-items: center;
+
+    .checkbox-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      color: #2f343d;
+      user-select: none;
+
+      input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+      }
+    }
+  }
 }
 
 .filter-input {
@@ -354,7 +375,12 @@
     opacity: 0.7;
     background: #f9f9f9;
   }
-  
+
+  &.usuario-eliminado {
+    border-left: 4px solid #9e9e9e;
+    background: #fafafa;
+  }
+
   .card-header {
     display: flex;
     justify-content: space-between;
@@ -373,6 +399,25 @@
     .usuario-email {
       font-size: 13px;
       color: #666;
+    }
+
+    .badge-eliminado {
+      display: inline-block;
+      margin-top: 6px;
+      padding: 2px 8px;
+      font-size: 11px;
+      font-weight: 500;
+      color: #616161;
+      background: #e0e0e0;
+      border-radius: 4px;
+    }
+  }
+
+  .card-actions-eliminado {
+    .eliminado-info {
+      font-size: 12px;
+      color: #757575;
+      font-style: italic;
     }
   }
   

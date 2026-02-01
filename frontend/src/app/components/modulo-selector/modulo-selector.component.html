@@ -48,7 +48,30 @@
           <span class="feature">Roles</span>
         </div>
       </div>
+
+      <div class="modulo-card" (click)="!exportando && exportarMisDatos(); $event.stopPropagation()" [class.disabled]="exportando" title="Descargar mis datos en JSON (RGPD)">
+        <div class="modulo-icon app-icon">download</div>
+        <h2>{{ exportando ? 'Exportando...' : 'Exportar mis datos' }}</h2>
+        <p>Descargar mis datos personales en formato JSON (Art. 15 y 20 RGPD)</p>
+        <div class="modulo-features">
+          <span class="feature">Datos personales</span>
+          <span class="feature">Portabilidad</span>
+        </div>
+      </div>
+
+      <div class="modulo-card" (click)="!eliminando && eliminarMiCuenta(); $event.stopPropagation()" [class.disabled]="eliminando" title="Eliminar mi cuenta (derecho al olvido)">
+        <div class="modulo-icon app-icon">person_off</div>
+        <h2>{{ eliminando ? 'Eliminando...' : 'Eliminar mi cuenta' }}</h2>
+        <p>Solicitar la eliminación de mi cuenta y datos personales (Art. 17 RGPD)</p>
+        <div class="modulo-features">
+          <span class="feature">Derecho al olvido</span>
+          <span class="feature">Supresión</span>
+        </div>
+      </div>
     </div>
+
+    <p *ngIf="mensajeRGPD" class="rgpd-feedback success">{{ mensajeRGPD }}</p>
+    <p *ngIf="errorRGPD" class="rgpd-feedback error">{{ errorRGPD }}</p>
   </main>
 </div>
 

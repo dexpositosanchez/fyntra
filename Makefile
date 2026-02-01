@@ -1,4 +1,4 @@
-.PHONY: help build up down restart logs clean
+.PHONY: help build up down restart logs clean start
 
 help: ## Mostrar esta ayuda
 	@echo "Comandos disponibles:"
@@ -9,6 +9,10 @@ build: ## Construir las imágenes Docker
 
 up: ## Iniciar todos los servicios
 	docker-compose up -d
+
+start: build up ## Arrancar todo desde cero (tras make clean): build + up. Luego: make init-data y abrir http://localhost
+	@echo "Servicios iniciados. Espera a que estén listos (make ps) y ejecuta: make init-data"
+	@echo "Abre en el navegador: http://localhost  (no uses el puerto 4200 directamente)"
 
 down: ## Detener todos los servicios
 	docker-compose down
