@@ -19,7 +19,7 @@
     </div>
     <div class="user-section">
       <div class="user-menu-container">
-        <button class="user-menu-button" (click)="toggleMenuUsuario()" title="Menú de usuario">
+        <button class="user-menu-button" (click)="toggleMenuUsuario()" title="Menú de usuario" aria-label="Menú de usuario">
           <span class="user-icon app-icon">person</span>
           <span class="user-name">{{ usuario?.nombre || 'Usuario' }}</span>
           <span class="dropdown-arrow">{{ mostrarMenuUsuario ? '▲' : '▼' }}</span>
@@ -59,7 +59,7 @@
     </div>
   </header>
 
-  <main class="main-content">
+  <main id="main-content" class="main-content">
     <!-- Sección de Vehículos -->
     <div *ngIf="currentRoute.includes('/vehiculos')">
       <div class="form-container" *ngIf="mostrarFormulario">
@@ -68,8 +68,9 @@
         <form (ngSubmit)="onSubmit()" class="vehiculo-form">
           <div class="form-row">
             <div class="form-group">
-              <label>Nombre</label>
+              <label for="vehiculo-nombre">Nombre</label>
               <input
+                id="vehiculo-nombre"
                 type="text"
                 [(ngModel)]="vehiculoForm.nombre"
                 name="nombre"
@@ -79,8 +80,9 @@
               />
             </div>
             <div class="form-group">
-              <label>Matrícula</label>
+              <label for="vehiculo-matricula">Matrícula</label>
               <input
+                id="vehiculo-matricula"
                 type="text"
                 [(ngModel)]="vehiculoForm.matricula"
                 name="matricula"
@@ -93,8 +95,9 @@
           
           <div class="form-row">
             <div class="form-group">
-              <label>Marca</label>
+              <label for="vehiculo-marca">Marca</label>
               <input
+                id="vehiculo-marca"
                 type="text"
                 [(ngModel)]="vehiculoForm.marca"
                 name="marca"
@@ -104,8 +107,9 @@
               />
             </div>
             <div class="form-group">
-              <label>Modelo</label>
+              <label for="vehiculo-modelo">Modelo</label>
               <input
+                id="vehiculo-modelo"
                 type="text"
                 [(ngModel)]="vehiculoForm.modelo"
                 name="modelo"
@@ -118,8 +122,9 @@
           
           <div class="form-row">
             <div class="form-group">
-              <label>Año</label>
+              <label for="vehiculo-ano">Año</label>
               <input
+                id="vehiculo-ano"
                 type="number"
                 [(ngModel)]="vehiculoForm.ano"
                 name="ano"
@@ -130,8 +135,9 @@
               />
             </div>
             <div class="form-group">
-              <label>Capacidad (kg)</label>
+              <label for="vehiculo-capacidad">Capacidad (kg)</label>
               <input
+                id="vehiculo-capacidad"
                 type="number"
                 [(ngModel)]="vehiculoForm.capacidad"
                 name="capacidad"
@@ -145,8 +151,9 @@
           
           <div class="form-row">
             <div class="form-group">
-              <label>Tipo de Combustible</label>
+              <label for="vehiculo-tipo-combustible">Tipo de Combustible</label>
               <select
+                id="vehiculo-tipo-combustible"
                 [(ngModel)]="vehiculoForm.tipo_combustible"
                 name="tipo_combustible"
                 class="form-input"
@@ -157,8 +164,8 @@
                 </option>
               </select>
             </div>
-            <div class="form-group form-group-estado">
-              <label>Estado</label>
+            <div class="form-group form-group-estado" role="group" aria-label="Estado">
+              <label class="estado-legend">Estado</label>
               <div class="radio-group">
                 <label class="radio-label" *ngFor="let estado of estados">
                   <input
@@ -191,6 +198,7 @@
             <p class="loading">Cargando rutas y mantenimientos...</p>
           </div>
           <div class="listados-section" *ngIf="!historialCargando && historialVehiculo">
+            <h3 class="visually-hidden">Datos complementarios del vehículo</h3>
             <h4>Rutas de este vehículo</h4>
             <div class="table-wrapper" *ngIf="historialVehiculo.rutas?.length > 0">
               <table class="data-table">
@@ -250,7 +258,7 @@
 
       <div class="list-container" *ngIf="!mostrarFormulario">
         <div class="list-header">
-          <h2>Vehículos</h2>
+          <h1>Vehículos</h1>
           <button class="add-button add-button-icon" (click)="mostrarForm()" title="Nuevo Vehículo" aria-label="Nuevo Vehículo">+</button>
         </div>
         

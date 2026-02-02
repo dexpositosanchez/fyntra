@@ -127,7 +127,7 @@
   }
   
   &::placeholder {
-    color: #8a94a6;
+    color: #6b7280;
   }
   
   &[type="date"] {
@@ -285,7 +285,7 @@
     }
     
     .pedido-peso {
-      color: #888;
+      color: #666;
       font-size: 12px;
       margin: 5px 0 0 0;
     }
@@ -491,7 +491,7 @@
 
 .no-pedidos {
   text-align: center;
-  color: #8a94a6;
+  color: #6b7280;
   padding: 20px;
   font-style: italic;
 }
@@ -615,7 +615,7 @@
     }
     
     .parada-drag-handle {
-      color: #8a94a6;
+      color: #6b7280;
       cursor: grab;
       display: flex;
       align-items: center;

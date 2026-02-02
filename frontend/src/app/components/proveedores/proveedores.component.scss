@@ -240,7 +240,7 @@
   }
   
   .search-icon {
-    color: #8a94a6;
+    color: #6b7280;
     font-size: 20px;
     margin-right: 12px;
     flex-shrink: 0;
@@ -255,7 +255,7 @@
     background: transparent;
     
     &::placeholder {
-      color: #8a94a6;
+      color: #6b7280;
     }
   }
   
@@ -268,7 +268,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #8a94a6;
+    color: #6b7280;
     border-radius: 4px;
     transition: background 0.2s, color 0.2s;
     flex-shrink: 0;
@@ -400,7 +400,7 @@
   padding: 60px 20px;
   color: #666;
   
-  .empty-icon { font-size: 48px; color: #ccc; display: block; margin-bottom: 16px; }
+  .empty-icon { font-size: 48px; color: #9ca3af; display: block; margin-bottom: 16px; }
 }
 
 // Pestañas por estado

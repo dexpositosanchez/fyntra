@@ -23,7 +23,7 @@
     </div>
     <div class="user-section">
       <div class="user-menu-container">
-        <button class="user-menu-button" (click)="toggleMenuUsuario()" title="Menú de usuario">
+        <button class="user-menu-button" (click)="toggleMenuUsuario()" title="Menú de usuario" aria-label="Menú de usuario">
           <span class="user-icon app-icon">person</span>
           <span class="user-name">{{ usuario?.nombre || 'Usuario' }}</span>
           <span class="dropdown-arrow">{{ mostrarMenuUsuario ? '▲' : '▼' }}</span>
@@ -63,15 +63,16 @@
     </div>
   </header>
 
-  <main class="main-content">
+  <main id="main-content" class="main-content">
     <div class="form-container" *ngIf="mostrarFormulario">
       <h2 class="form-title">{{ editandoInmueble ? 'EDITAR INMUEBLE' : 'NUEVO INMUEBLE' }}</h2>
       
       <form (ngSubmit)="onSubmit()" class="inmueble-form">
         <div class="form-row">
           <div class="form-group">
-            <label>Comunidad *</label>
+            <label for="inm-comunidad">Comunidad *</label>
             <select
+              id="inm-comunidad"
               [(ngModel)]="inmuebleForm.comunidad_id"
               name="comunidad_id"
               class="form-input"
@@ -84,8 +85,9 @@
             </select>
           </div>
           <div class="form-group">
-            <label>Referencia Catastral *</label>
+            <label for="inm-referencia">Referencia Catastral *</label>
             <input
+              id="inm-referencia"
               type="text"
               [(ngModel)]="inmuebleForm.referencia"
               name="referencia"
@@ -98,8 +100,9 @@
         
         <div class="form-row">
           <div class="form-group full-width">
-            <label>Dirección</label>
+            <label for="inm-direccion">Dirección</label>
             <input
+              id="inm-direccion"
               type="text"
               [(ngModel)]="inmuebleForm.direccion"
               name="direccion"
@@ -111,8 +114,9 @@
         
         <div class="form-row">
           <div class="form-group">
-            <label>Metros Cuadrados</label>
+            <label for="inm-metros">Metros Cuadrados</label>
             <input
+              id="inm-metros"
               type="number"
               [(ngModel)]="inmuebleForm.metros"
               name="metros"
@@ -123,8 +127,9 @@
             />
           </div>
           <div class="form-group">
-            <label>Tipo</label>
+            <label for="inm-tipo">Tipo</label>
             <select
+              id="inm-tipo"
               [(ngModel)]="inmuebleForm.tipo"
               name="tipo"
               class="form-input"
@@ -173,7 +178,7 @@
 
     <div class="list-container" *ngIf="!mostrarFormulario">
       <div class="list-header">
-        <h2>{{ esPropietario ? 'Mis Inmuebles' : 'Inmuebles' }}</h2>
+        <h1>{{ esPropietario ? 'Mis Inmuebles' : 'Inmuebles' }}</h1>
         <div class="header-actions" *ngIf="!esPropietario">
           <button class="add-button add-button-icon" (click)="mostrarForm()" title="Nuevo Inmueble" aria-label="Nuevo Inmueble">+</button>
         </div>

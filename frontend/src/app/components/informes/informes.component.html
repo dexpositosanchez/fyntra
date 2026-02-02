@@ -19,7 +19,7 @@
     </div>
     <div class="user-section">
       <div class="user-menu-container">
-        <button class="user-menu-button" (click)="toggleMenuUsuario()">
+        <button class="user-menu-button" (click)="toggleMenuUsuario()" title="Menú de usuario" aria-label="Menú de usuario">
           <span class="user-icon app-icon">person</span>
           <span class="user-name">{{ usuario?.nombre || 'Usuario' }}</span>
           <span class="dropdown-arrow">{{ mostrarMenuUsuario ? '▲' : '▼' }}</span>
@@ -59,7 +59,7 @@
     </div>
   </header>
 
-  <main class="main-content">
+  <main id="main-content" class="main-content">
     <div class="informes-header">
       <h1>Informes</h1>
       

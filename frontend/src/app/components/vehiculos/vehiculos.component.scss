@@ -96,7 +96,7 @@
   }
 
   .loading, .no-data {
-    color: #8a94a6;
+    color: #6b7280;
     font-size: 14px;
     margin: 10px 0;
   }
@@ -185,7 +185,7 @@
   }
   
   &::placeholder {
-    color: #8a94a6;
+    color: #6b7280;
   }
   
   &[type="number"] {
@@ -373,7 +373,7 @@
     }
 
     .no-data, .loading {
-      color: #8a94a6;
+      color: #6b7280;
       font-size: 14px;
       margin: 10px 0;
     }
@@ -591,7 +591,7 @@
 .placeholder-text {
   text-align: center;
   padding: 60px 20px;
-  color: #8a94a6;
+  color: #6b7280;
   font-size: 16px;
 }
 
@@ -620,7 +620,7 @@
   }
   
   .search-icon {
-    color: #8a94a6;
+    color: #6b7280;
     font-size: 20px;
     margin-right: 12px;
     flex-shrink: 0;
@@ -636,7 +636,7 @@
     background: transparent;
     
     &::placeholder {
-      color: #8a94a6;
+      color: #6b7280;
     }
   }
   
@@ -649,7 +649,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #8a94a6;
+    color: #6b7280;
     border-radius: 4px;
     transition: background 0.2s, color 0.2s;
     flex-shrink: 0;
@@ -705,7 +705,7 @@
   }
   
   &::placeholder {
-    color: #8a94a6;
+    color: #6b7280;
   }
   
   &[type="number"] {

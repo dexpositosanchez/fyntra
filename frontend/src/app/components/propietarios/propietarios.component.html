@@ -19,7 +19,7 @@
     </div>
     <div class="user-section">
       <div class="user-menu-container">
-        <button class="user-menu-button" (click)="toggleMenuUsuario()" title="Menú de usuario">
+        <button class="user-menu-button" (click)="toggleMenuUsuario()" title="Menú de usuario" aria-label="Menú de usuario">
           <span class="user-icon app-icon">person</span>
           <span class="user-name">{{ usuario?.nombre || 'Usuario' }}</span>
           <span class="dropdown-arrow">{{ mostrarMenuUsuario ? '▲' : '▼' }}</span>
@@ -59,15 +59,16 @@
     </div>
   </header>
 
-  <main class="main-content">
+  <main id="main-content" class="main-content">
     <div class="form-container" *ngIf="mostrarFormulario">
       <h2 class="form-title">{{ editandoPropietario ? 'EDITAR PROPIETARIO' : 'NUEVO PROPIETARIO' }}</h2>
       
       <form (ngSubmit)="onSubmit()" class="propietario-form">
         <div class="form-row">
           <div class="form-group">
-            <label>Nombre *</label>
+            <label for="prop-nombre">Nombre *</label>
             <input
+              id="prop-nombre"
               type="text"
               [(ngModel)]="propietarioForm.nombre"
               name="nombre"
@@ -77,8 +78,9 @@
             />
           </div>
           <div class="form-group">
-            <label>Apellidos</label>
+            <label for="prop-apellidos">Apellidos</label>
             <input
+              id="prop-apellidos"
               type="text"
               [(ngModel)]="propietarioForm.apellidos"
               name="apellidos"
@@ -90,8 +92,9 @@
         
         <div class="form-row">
           <div class="form-group">
-            <label>DNI/NIE</label>
+            <label for="prop-dni">DNI/NIE</label>
             <input
+              id="prop-dni"
               type="text"
               [(ngModel)]="propietarioForm.dni"
               name="dni"
@@ -100,8 +103,9 @@
             />
           </div>
           <div class="form-group">
-            <label>Teléfono</label>
+            <label for="prop-telefono">Teléfono</label>
             <input
+              id="prop-telefono"
               type="text"
               [(ngModel)]="propietarioForm.telefono"
               name="telefono"
@@ -113,8 +117,9 @@
         
         <div class="form-row">
           <div class="form-group full-width">
-            <label>Email</label>
+            <label for="prop-email">Email</label>
             <input
+              id="prop-email"
               type="email"
               [(ngModel)]="propietarioForm.email"
               name="email"
@@ -139,8 +144,9 @@
           </div>
           <div class="form-row" *ngIf="propietarioForm.crear_usuario">
             <div class="form-group full-width">
-              <label>Contraseña *</label>
+              <label for="prop-password">Contraseña *</label>
               <input
+                id="prop-password"
                 type="password"
                 [(ngModel)]="propietarioForm.password"
                 name="password"

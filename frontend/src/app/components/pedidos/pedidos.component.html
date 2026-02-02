@@ -19,7 +19,7 @@
     </div>
     <div class="user-section">
       <div class="user-menu-container">
-        <button class="user-menu-button" (click)="toggleMenuUsuario()" title="Menú de usuario">
+        <button class="user-menu-button" (click)="toggleMenuUsuario()" title="Menú de usuario" aria-label="Menú de usuario">
           <span class="user-icon app-icon">person</span>
           <span class="user-name">{{ usuario?.nombre || 'Usuario' }}</span>
           <span class="dropdown-arrow">{{ mostrarMenuUsuario ? '▲' : '▼' }}</span>
@@ -59,7 +59,7 @@
     </div>
   </header>
 
-  <main class="main-content">
+  <main id="main-content" class="main-content">
     <!-- Sección de Pedidos -->
     <div *ngIf="currentRoute.includes('/pedidos')">
       <div class="form-container" *ngIf="mostrarFormulario">
@@ -181,7 +181,7 @@
 
       <div class="list-container" *ngIf="!mostrarFormulario">
         <div class="list-header">
-          <h2>Pedidos</h2>
+          <h1>Pedidos</h1>
           <button class="add-button add-button-icon" (click)="mostrarForm()" title="Nuevo Pedido" aria-label="Nuevo Pedido">+</button>
         </div>
         

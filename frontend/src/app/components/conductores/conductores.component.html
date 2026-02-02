@@ -19,7 +19,7 @@
     </div>
     <div class="user-section">
       <div class="user-menu-container">
-        <button class="user-menu-button" (click)="toggleMenuUsuario()" title="Menú de usuario">
+        <button class="user-menu-button" (click)="toggleMenuUsuario()" title="Menú de usuario" aria-label="Menú de usuario">
           <span class="user-icon app-icon">person</span>
           <span class="user-name">{{ usuario?.nombre || 'Usuario' }}</span>
           <span class="dropdown-arrow">{{ mostrarMenuUsuario ? '▲' : '▼' }}</span>
@@ -59,7 +59,7 @@
     </div>
   </header>
 
-  <main class="main-content">
+  <main id="main-content" class="main-content">
     <!-- Sección de Conductores -->
     <div *ngIf="currentRoute.includes('/conductores')">
       <div class="form-container" *ngIf="mostrarFormulario">
@@ -68,8 +68,9 @@
         <form (ngSubmit)="onSubmit()" class="conductor-form">
           <div class="form-row">
             <div class="form-group">
-              <label>Nombre</label>
+              <label for="conductor-nombre">Nombre</label>
               <input
+                id="conductor-nombre"
                 type="text"
                 [(ngModel)]="conductorForm.nombre"
                 name="nombre"
@@ -79,8 +80,9 @@
               />
             </div>
             <div class="form-group">
-              <label>Apellidos</label>
+              <label for="conductor-apellidos">Apellidos</label>
               <input
+                id="conductor-apellidos"
                 type="text"
                 [(ngModel)]="conductorForm.apellidos"
                 name="apellidos"
@@ -92,8 +94,9 @@
           
           <div class="form-row">
             <div class="form-group">
-              <label>DNI</label>
+              <label for="conductor-dni">DNI</label>
               <input
+                id="conductor-dni"
                 type="text"
                 [(ngModel)]="conductorForm.dni"
                 name="dni"
@@ -102,8 +105,9 @@
               />
             </div>
             <div class="form-group">
-              <label>Teléfono</label>
+              <label for="conductor-telefono">Teléfono</label>
               <input
+                id="conductor-telefono"
                 type="text"
                 [(ngModel)]="conductorForm.telefono"
                 name="telefono"
@@ -115,8 +119,9 @@
           
           <div class="form-row">
             <div class="form-group">
-              <label>Email</label>
+              <label for="conductor-email">Email</label>
               <input
+                id="conductor-email"
                 type="email"
                 [(ngModel)]="conductorForm.email"
                 name="email"
@@ -125,8 +130,9 @@
               />
             </div>
             <div class="form-group">
-              <label>Licencia</label>
+              <label for="conductor-licencia">Licencia</label>
               <input
+                id="conductor-licencia"
                 type="text"
                 [(ngModel)]="conductorForm.licencia"
                 name="licencia"
@@ -139,8 +145,9 @@
           
           <div class="form-row">
             <div class="form-group">
-              <label>Fecha Caducidad Licencia</label>
+              <label for="conductor-fecha-caducidad">Fecha Caducidad Licencia</label>
               <input
+                id="conductor-fecha-caducidad"
                 type="date"
                 lang="es-ES"
                 [(ngModel)]="conductorForm.fecha_caducidad_licencia"
@@ -149,8 +156,8 @@
                 required
               />
             </div>
-            <div class="form-group">
-              <label>Estado</label>
+            <div class="form-group" role="group" aria-label="Estado">
+              <label class="estado-legend">Estado</label>
               <div class="radio-group">
                 <label class="radio-label">
                   <input
@@ -213,6 +220,7 @@
             <p class="loading">Cargando rutas y mantenimientos...</p>
           </div>
           <div class="listados-section" *ngIf="!historialCargando && historialConductor">
+            <h3 class="visually-hidden">Datos complementarios del conductor</h3>
             <h4>Rutas de este conductor</h4>
             <div class="table-wrapper" *ngIf="historialConductor.rutas?.length > 0">
               <table class="data-table">
@@ -243,7 +251,7 @@
 
       <div class="list-container" *ngIf="!mostrarFormulario">
         <div class="list-header">
-          <h2>Conductores</h2>
+          <h1>Conductores</h1>
           <div class="header-actions">
             <button 
               class="filter-button" 

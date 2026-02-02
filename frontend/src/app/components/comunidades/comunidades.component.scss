@@ -230,7 +230,7 @@
   }
   
   &::placeholder {
-    color: #8a94a6;
+    color: #6b7280;
   }
   
   &[type="email"] {
@@ -431,13 +431,13 @@
   
   .empty-icon {
     font-size: 64px;
-    color: #ccc;
+    color: #9ca3af;
     display: block;
     margin-bottom: 20px;
   }
   
   p {
-    color: #8a94a6;
+    color: #6b7280;
     font-size: 16px;
     margin-bottom: 20px;
   }
@@ -464,7 +464,7 @@
   }
   
   .search-icon {
-    color: #8a94a6;
+    color: #6b7280;
     font-size: 20px;
     margin-right: 12px;
     flex-shrink: 0;
@@ -479,7 +479,7 @@
     background: transparent;
     
     &::placeholder {
-      color: #8a94a6;
+      color: #6b7280;
     }
   }
   
@@ -492,7 +492,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #8a94a6;
+    color: #6b7280;
     border-radius: 4px;
     transition: background 0.2s, color 0.2s;
     flex-shrink: 0;

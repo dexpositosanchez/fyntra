@@ -45,7 +45,7 @@
 | RNF8. Validación de Entrada | El sistema debe validar y sanitizar todas las entradas del usuario para prevenir inyecciones SQL, XSS y otros ataques comunes. | ✅ | ✅ |  |
 | RNF9. Interfaz Intuitiva | La interfaz web debe ser intuitiva y fácil de usar, siguiendo principios de diseño UX/UI modernos y con tiempo de aprendizaje mínimo. | ✅ | ✅ |  |
 | RNF10. Diseño Responsive | La interfaz web debe adaptarse correctamente a diferentes tamaños de pantalla (ordenadores, tablets, smartphones). | ✅ | ✅ | |
-| RNF11. Accesibilidad | El sistema debe cumplir con las pautas de accesibilidad WCAG 2.1 nivel AA para garantizar el acceso a usuarios con discapacidades. | ⬜ | ⬜ / ✅ / ❌ |  |
+| RNF11. Accesibilidad | El sistema debe cumplir con las pautas de accesibilidad WCAG 2.1 nivel AA para garantizar el acceso a usuarios con discapacidades. | ✅ | ✅ |  |
 | RNF12. Código Limpio y Documentado | El código fuente debe estar bien documentado, seguir estándares de codificación y ser fácilmente mantenible por otros desarrolladores. | ⬜ | ⬜ / ✅ / ❌ |  |
 | RNF13. Arquitectura Modular | El sistema debe estar diseñado con arquitectura modular que permita modificar o añadir funcionalidades sin afectar otras partes del sistema. | ⬜ | ⬜ / ✅ / ❌ |  |
 | RNF14. Versionado | El sistema debe utilizar control de versiones (Git) y mantener un historial completo de cambios. | ✅ | ✅ |  |

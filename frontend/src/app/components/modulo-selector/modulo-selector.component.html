@@ -3,13 +3,13 @@
     <div class="logo-section">
       <img src="/assets/images/Imagotipo.png" alt="Fyntra" class="logo-image" />
     </div>
-    <button class="logout-button" (click)="logout()" title="Cerrar sesión">
+    <button class="logout-button" (click)="logout()" title="Cerrar sesión" aria-label="Cerrar sesión">
       <span class="logout-icon app-icon">logout</span>
       <span class="logout-text">Salir</span>
     </button>
   </header>
 
-  <main class="selector-main">
+  <main id="main-content" class="selector-main">
     <div class="welcome-section">
       <h1>Bienvenido, {{ usuario?.nombre }}</h1>
       <p>Selecciona el módulo al que deseas acceder</p>

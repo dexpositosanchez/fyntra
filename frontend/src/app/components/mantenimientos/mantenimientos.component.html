@@ -19,7 +19,7 @@
     </div>
     <div class="user-section">
       <div class="user-menu-container">
-        <button class="user-menu-button" (click)="toggleMenuUsuario()" title="Menú de usuario">
+        <button class="user-menu-button" (click)="toggleMenuUsuario()" title="Menú de usuario" aria-label="Menú de usuario">
           <span class="user-icon app-icon">person</span>
           <span class="user-name">{{ usuario?.nombre || 'Usuario' }}</span>
           <span class="dropdown-arrow">{{ mostrarMenuUsuario ? '▲' : '▼' }}</span>
@@ -59,7 +59,7 @@
     </div>
   </header>
 
-  <main class="main-content">
+  <main id="main-content" class="main-content">
     <div *ngIf="currentRoute.includes('/mantenimientos')">
       <div class="form-container" *ngIf="mostrarFormulario">
         <h2 class="form-title">{{ editandoMantenimiento ? 'EDITAR MANTENIMIENTO' : 'NUEVO MANTENIMIENTO' }}</h2>
@@ -67,8 +67,9 @@
         <form #mantenimientoFormRef="ngForm" (ngSubmit)="onSubmit()" class="mantenimiento-form">
           <div class="form-row">
             <div class="form-group">
-              <label>Vehículo *</label>
+              <label for="mant-vehiculo">Vehículo *</label>
               <select
+                id="mant-vehiculo"
                 [(ngModel)]="mantenimientoForm.vehiculo_id"
                 name="vehiculo_id"
                 class="form-input"
@@ -98,8 +99,9 @@
           
           <div class="form-row">
             <div class="form-group">
-              <label>Descripción</label>
+              <label for="mant-descripcion">Descripción</label>
               <input
+                id="mant-descripcion"
                 type="text"
                 [(ngModel)]="mantenimientoForm.descripcion"
                 name="descripcion"
@@ -108,8 +110,9 @@
               />
             </div>
             <div class="form-group">
-              <label>Fecha Programada *</label>
+              <label for="mant-fecha-programada">Fecha Programada *</label>
               <input
+                id="mant-fecha-programada"
                 type="datetime-local"
                 lang="es-ES"
                 [(ngModel)]="mantenimientoForm.fecha_programada"
@@ -122,8 +125,9 @@
           
           <div class="form-row">
             <div class="form-group">
-              <label>Fecha de Asistencia</label>
+              <label for="mant-fecha-inicio">Fecha de Asistencia</label>
               <input
+                id="mant-fecha-inicio"
                 type="datetime-local"
                 lang="es-ES"
                 [(ngModel)]="mantenimientoForm.fecha_inicio"
@@ -149,8 +153,9 @@
           
           <div class="form-row">
             <div class="form-group">
-              <label>Fecha de Fin</label>
+              <label for="mant-fecha-fin">Fecha de Fin</label>
               <input
+                id="mant-fecha-fin"
                 type="datetime-local"
                 lang="es-ES"
                 [(ngModel)]="mantenimientoForm.fecha_fin"
@@ -166,8 +171,9 @@
           
           <div class="form-row">
             <div class="form-group">
-              <label>Estado</label>
+              <label for="mant-estado">Estado</label>
               <select
+                id="mant-estado"
                 [(ngModel)]="mantenimientoForm.estado"
                 name="estado"
                 class="form-input"
@@ -178,8 +184,9 @@
               </select>
             </div>
             <div class="form-group">
-              <label>Proveedor/Taller</label>
+              <label for="mant-proveedor">Proveedor/Taller</label>
               <input
+                id="mant-proveedor"
                 type="text"
                 [(ngModel)]="mantenimientoForm.proveedor"
                 name="proveedor"
@@ -191,8 +198,9 @@
           
           <div class="form-row">
             <div class="form-group">
-              <label>Coste (€)</label>
+              <label for="mant-coste">Coste (€)</label>
               <input
+                id="mant-coste"
                 type="number"
                 [(ngModel)]="mantenimientoForm.coste"
                 name="coste"
@@ -203,8 +211,9 @@
               />
             </div>
             <div class="form-group">
-              <label>Kilometraje</label>
+              <label for="mant-kilometraje">Kilometraje</label>
               <input
+                id="mant-kilometraje"
                 type="number"
                 [(ngModel)]="mantenimientoForm.kilometraje"
                 name="kilometraje"
@@ -216,8 +225,9 @@
           </div>
           
           <div class="form-group">
-            <label>Observaciones</label>
+            <label for="mant-observaciones">Observaciones</label>
             <textarea
+              id="mant-observaciones"
               [(ngModel)]="mantenimientoForm.observaciones"
               name="observaciones"
               placeholder="Observaciones adicionales..."
@@ -239,7 +249,7 @@
 
       <div class="list-container" *ngIf="!mostrarFormulario">
         <div class="list-header">
-          <h2>Mantenimientos</h2>
+          <h1>Mantenimientos</h1>
           <div class="list-actions">
             <button class="filter-button alertas-button" (click)="toggleAlertas()" [class.active]="mostrarSoloAlertas" [class.has-alerts]="numeroAlertas > 0">
               <span class="alertas-icon-wrapper">

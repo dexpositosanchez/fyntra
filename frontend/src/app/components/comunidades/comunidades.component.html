@@ -19,7 +19,7 @@
     </div>
     <div class="user-section">
       <div class="user-menu-container">
-        <button class="user-menu-button" (click)="toggleMenuUsuario()" title="Menú de usuario">
+        <button class="user-menu-button" (click)="toggleMenuUsuario()" title="Menú de usuario" aria-label="Menú de usuario">
           <span class="user-icon app-icon">person</span>
           <span class="user-name">{{ usuario?.nombre || 'Usuario' }}</span>
           <span class="dropdown-arrow">{{ mostrarMenuUsuario ? '▲' : '▼' }}</span>
@@ -59,15 +59,16 @@
     </div>
   </header>
 
-  <main class="main-content">
+  <main id="main-content" class="main-content">
     <div class="form-container" *ngIf="mostrarFormulario">
       <h2 class="form-title">{{ editandoComunidad ? 'EDITAR COMUNIDAD' : 'NUEVA COMUNIDAD' }}</h2>
       
       <form (ngSubmit)="onSubmit()" class="comunidad-form">
         <div class="form-row">
           <div class="form-group">
-            <label>Nombre *</label>
+            <label for="comunidad-nombre">Nombre *</label>
             <input
+              id="comunidad-nombre"
               type="text"
               [(ngModel)]="comunidadForm.nombre"
               name="nombre"
@@ -77,8 +78,9 @@
             />
           </div>
           <div class="form-group">
-            <label>CIF</label>
+            <label for="comunidad-cif">CIF</label>
             <input
+              id="comunidad-cif"
               type="text"
               [(ngModel)]="comunidadForm.cif"
               name="cif"
@@ -90,8 +92,9 @@
         
         <div class="form-row">
           <div class="form-group full-width">
-            <label>Dirección</label>
+            <label for="comunidad-direccion">Dirección</label>
             <input
+              id="comunidad-direccion"
               type="text"
               [(ngModel)]="comunidadForm.direccion"
               name="direccion"
@@ -103,8 +106,9 @@
         
         <div class="form-row">
           <div class="form-group">
-            <label>Teléfono</label>
+            <label for="comunidad-telefono">Teléfono</label>
             <input
+              id="comunidad-telefono"
               type="text"
               [(ngModel)]="comunidadForm.telefono"
               name="telefono"
@@ -113,8 +117,9 @@
             />
           </div>
           <div class="form-group">
-            <label>Email</label>
+            <label for="comunidad-email">Email</label>
             <input
+              id="comunidad-email"
               type="email"
               [(ngModel)]="comunidadForm.email"
               name="email"
@@ -137,7 +142,7 @@
 
     <div class="list-container" *ngIf="!mostrarFormulario">
       <div class="list-header">
-        <h2>Comunidades</h2>
+        <h1>Comunidades</h1>
         <div class="header-actions">
           <button class="add-button add-button-icon" (click)="mostrarForm()" title="Nueva Comunidad" aria-label="Nueva Comunidad">+</button>
         </div>
