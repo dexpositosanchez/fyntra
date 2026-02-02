@@ -1,10 +1,14 @@
 <div class="vehiculos-container">
-  <header class="app-header">
+  <div class="nav-overlay" *ngIf="mostrarMenuNav" (click)="cerrarMenuMobile()"></div>
+  <header class="app-header" [class.nav-open]="mostrarMenuNav">
     <div class="header-left">
       <div class="logo-section">
         <img src="/assets/images/Isotipo.png" alt="Fyntra" class="logo-isotipo" />
       </div>
-      <nav class="main-nav">
+      <button class="hamburger-button" (click)="toggleMenuNav()" type="button" [attr.aria-label]="mostrarMenuNav ? 'Cerrar menú' : 'Abrir menú'">
+        <span class="app-icon">{{ mostrarMenuNav ? 'close' : 'menu' }}</span>
+      </button>
+      <nav class="main-nav" (click)="cerrarMenuMobile()">
         <a routerLink="/conductores" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">CONDUCTORES</a>
         <a routerLink="/vehiculos" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">VEHÍCULOS</a>
         <a routerLink="/mantenimientos" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">MANTENIMIENTOS</a>
@@ -20,21 +24,32 @@
           <span class="user-name">{{ usuario?.nombre || 'Usuario' }}</span>
           <span class="dropdown-arrow">{{ mostrarMenuUsuario ? '▲' : '▼' }}</span>
         </button>
-        <div class="user-menu-dropdown" *ngIf="mostrarMenuUsuario">
-          <button class="menu-item" *ngIf="estaEnModuloTransportes()" (click)="cambiarAModuloFincas()">
-            <span class="menu-icon app-icon">apartment</span>
-            <span>Módulo Fincas</span>
-          </button>
-          <button class="menu-item" *ngIf="!estaEnModuloTransportes()" (click)="cambiarAModuloTransportes()">
-            <span class="menu-icon app-icon">local_shipping</span>
-            <span>Módulo Transportes</span>
-          </button>
-          <div class="menu-divider" *ngIf="estaEnModuloTransportes() || !estaEnModuloTransportes()"></div>
+        <div class="user-menu-dropdown" *ngIf="mostrarMenuUsuario || mostrarMenuNav" (click)="cerrarMenuMobile()">
+          <ng-container *ngIf="puedeCambiarModulo()">
+            <button class="menu-item" *ngIf="estaEnModuloTransportes()" (click)="cambiarAModuloFincas()">
+              <span class="menu-icon app-icon">apartment</span>
+              <span>Módulo Fincas</span>
+            </button>
+            <button class="menu-item" *ngIf="!estaEnModuloTransportes()" (click)="cambiarAModuloTransportes()">
+              <span class="menu-icon app-icon">local_shipping</span>
+              <span>Módulo Transportes</span>
+            </button>
+            <div class="menu-divider"></div>
+          </ng-container>
           <button class="menu-item" *ngIf="usuario?.rol === 'super_admin'" (click)="irAUsuarios()">
             <span class="menu-icon app-icon">people</span>
             <span>Gestión de Usuarios</span>
           </button>
           <div class="menu-divider" *ngIf="usuario?.rol === 'super_admin'"></div>
+          <button class="menu-item" (click)="exportarMisDatos()" [disabled]="exportandoDatos">
+            <span class="menu-icon app-icon">download</span>
+            <span>{{ exportandoDatos ? 'Exportando...' : 'Exportar mis datos (RGPD)' }}</span>
+          </button>
+          <button class="menu-item menu-item-danger" (click)="eliminarMiCuenta()" [disabled]="eliminandoCuenta">
+            <span class="menu-icon app-icon">delete_forever</span>
+            <span>{{ eliminandoCuenta ? 'Eliminando...' : 'Eliminar mi cuenta' }}</span>
+          </button>
+          <div class="menu-divider"></div>
           <button class="menu-item logout-item" (click)="logout()">
             <span class="menu-icon app-icon">logout</span>
             <span>Salir</span>
@@ -142,7 +157,7 @@
                 </option>
               </select>
             </div>
-            <div class="form-group">
+            <div class="form-group form-group-estado">
               <label>Estado</label>
               <div class="radio-group">
                 <label class="radio-label" *ngFor="let estado of estados">
@@ -236,7 +251,7 @@
       <div class="list-container" *ngIf="!mostrarFormulario">
         <div class="list-header">
           <h2>Vehículos</h2>
-          <button class="add-button" (click)="mostrarForm()">+ Nuevo Vehículo</button>
+          <button class="add-button add-button-icon" (click)="mostrarForm()" title="Nuevo Vehículo" aria-label="Nuevo Vehículo">+</button>
         </div>
         
         <div *ngIf="loading" class="loading">Cargando...</div>
@@ -252,7 +267,7 @@
                 type="text"
                 [(ngModel)]="textoBusqueda"
                 (input)="aplicarFiltros()"
-                placeholder="Buscar por nombre, matrícula, marca o modelo..."
+                placeholder="Buscar vehículos..."
                 class="search-input"
               />
               <button 

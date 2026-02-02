@@ -395,6 +395,10 @@ async def crear_pedido(...):
 
 ## 🔐 Seguridad
 
+### Comunicación cliente-servidor
+
+En **desarrollo** las comunicaciones se realizan por HTTP (puerto 80). En **producción** debe habilitarse HTTPS/TLS para garantizar la confidencialidad de los datos.
+
 ### Variables de Entorno Importantes
 
 ⚠️ **IMPORTANTE**: Antes de desplegar en producción, cambiar las siguientes variables:

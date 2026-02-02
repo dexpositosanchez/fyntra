@@ -1,10 +1,14 @@
 <div class="propietarios-container">
-  <header class="app-header">
+  <div class="nav-overlay" *ngIf="mostrarMenuNav" (click)="cerrarMenuMobile()"></div>
+  <header class="app-header" [class.nav-open]="mostrarMenuNav">
     <div class="header-left">
       <div class="logo-section">
         <img src="/assets/images/Isotipo.png" alt="Fyntra" class="logo-isotipo" />
       </div>
-      <nav class="main-nav">
+      <button class="hamburger-button" (click)="toggleMenuNav()" type="button" aria-label="Abrir menú">
+        <span class="app-icon">{{ mostrarMenuNav ? 'close' : 'menu' }}</span>
+      </button>
+      <nav class="main-nav" (click)="cerrarMenuMobile()">
         <a routerLink="/incidencias" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">INCIDENCIAS</a>
         <a routerLink="/comunidades" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">COMUNIDADES</a>
         <a routerLink="/inmuebles" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">INMUEBLES</a>
@@ -20,17 +24,32 @@
           <span class="user-name">{{ usuario?.nombre || 'Usuario' }}</span>
           <span class="dropdown-arrow">{{ mostrarMenuUsuario ? '▲' : '▼' }}</span>
         </button>
-        <div class="user-menu-dropdown" *ngIf="mostrarMenuUsuario">
-          <button class="menu-item" (click)="cambiarAModuloTransportes()">
-            <span class="menu-icon app-icon">local_shipping</span>
-            <span>Módulo Transportes</span>
-          </button>
-          <div class="menu-divider"></div>
+        <div class="user-menu-dropdown" *ngIf="mostrarMenuUsuario || mostrarMenuNav" (click)="cerrarMenuMobile()">
+          <ng-container *ngIf="puedeCambiarModulo()">
+            <button class="menu-item" *ngIf="estaEnModuloFincas()" (click)="cambiarAModuloTransportes()">
+              <span class="menu-icon app-icon">local_shipping</span>
+              <span>Módulo Transportes</span>
+            </button>
+            <button class="menu-item" *ngIf="!estaEnModuloFincas()" (click)="cambiarAModuloFincas()">
+              <span class="menu-icon app-icon">apartment</span>
+              <span>Módulo Fincas</span>
+            </button>
+            <div class="menu-divider"></div>
+          </ng-container>
           <button class="menu-item" *ngIf="usuario?.rol === 'super_admin'" (click)="irAUsuarios()">
             <span class="menu-icon app-icon">people</span>
             <span>Gestión de Usuarios</span>
           </button>
           <div class="menu-divider" *ngIf="usuario?.rol === 'super_admin'"></div>
+          <button class="menu-item" (click)="exportarMisDatos()" [disabled]="exportandoDatos">
+            <span class="menu-icon app-icon">download</span>
+            <span>{{ exportandoDatos ? 'Exportando...' : 'Exportar mis datos (RGPD)' }}</span>
+          </button>
+          <button class="menu-item menu-item-danger" (click)="eliminarMiCuenta()" [disabled]="eliminandoCuenta">
+            <span class="menu-icon app-icon">delete_forever</span>
+            <span>{{ eliminandoCuenta ? 'Eliminando...' : 'Eliminar mi cuenta' }}</span>
+          </button>
+          <div class="menu-divider"></div>
           <button class="menu-item logout-item" (click)="logout()">
             <span class="menu-icon app-icon">logout</span>
             <span>Salir</span>
@@ -174,7 +193,7 @@
       <div class="list-header">
         <h2>Propietarios</h2>
         <div class="header-actions">
-          <button class="add-button" (click)="mostrarForm()">+ Nuevo Propietario</button>
+          <button class="add-button add-button-icon" (click)="mostrarForm()" title="Nuevo Propietario" aria-label="Nuevo Propietario">+</button>
         </div>
       </div>
       
@@ -190,7 +209,7 @@
               type="text"
               [(ngModel)]="textoBusqueda"
               (input)="aplicarFiltroBusqueda()"
-              placeholder="Buscar por nombre, apellidos, teléfono, email o DNI..."
+              placeholder="Buscar propietarios..."
               class="search-input"
             />
             <button 
@@ -230,7 +249,7 @@
           <div class="empty-state" *ngIf="propietariosFiltrados.length === 0">
             <span class="app-icon empty-icon">people</span>
             <p>No hay propietarios registrados</p>
-            <button class="add-button" (click)="mostrarForm()">Crear primer propietario</button>
+            <button class="add-button add-button-icon" (click)="mostrarForm()" title="Crear primer propietario" aria-label="Crear primer propietario">+</button>
           </div>
         </div>
       </div>

@@ -35,6 +35,15 @@
   gap: 30px;
 }
 
+@media (max-width: 768px) {
+  .main-nav {
+    display: none !important;
+  }
+  .app-header.nav-open .main-nav {
+    display: flex !important;
+  }
+}
+
 .nav-link {
   color: #2f343d;
   text-decoration: none;
@@ -469,7 +478,8 @@
   background: white;
   border-radius: 12px;
   padding: 24px;
-  margin: 20px;
+  margin: 20px auto;
+  max-width: 700px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 

@@ -1,10 +1,14 @@
 <div class="usuarios-container">
-  <header class="app-header">
+  <div class="nav-overlay" *ngIf="mostrarMenuNav" (click)="cerrarMenuMobile()"></div>
+  <header class="app-header" [class.nav-open]="mostrarMenuNav">
     <div class="header-left">
       <div class="logo-section">
         <img src="/assets/images/Isotipo.png" alt="Fyntra" class="logo-isotipo" />
       </div>
-      <nav class="main-nav">
+      <button class="hamburger-button" (click)="toggleMenuNav()" type="button" [attr.aria-label]="mostrarMenuNav ? 'Cerrar menú' : 'Abrir menú'">
+        <span class="app-icon">{{ mostrarMenuNav ? 'close' : 'menu' }}</span>
+      </button>
+      <nav class="main-nav" (click)="cerrarMenuMobile()">
         <a routerLink="/modulos" class="nav-link" routerLinkActive="active">MÓDULOS</a>
         <a routerLink="/usuarios" class="nav-link" routerLinkActive="active">USUARIOS</a>
       </nav>
@@ -16,10 +20,19 @@
           <span class="user-name">{{ usuario?.nombre || 'Usuario' }}</span>
           <span class="dropdown-arrow">{{ mostrarMenuUsuario ? '▲' : '▼' }}</span>
         </button>
-        <div class="user-menu-dropdown" *ngIf="mostrarMenuUsuario">
+        <div class="user-menu-dropdown" *ngIf="mostrarMenuUsuario || mostrarMenuNav" (click)="cerrarMenuMobile()">
           <button class="menu-item" (click)="irAModulos()">
             <span class="menu-icon app-icon">apps</span>
             <span>Módulos</span>
+          </button>
+          <div class="menu-divider"></div>
+          <button class="menu-item" (click)="exportarMisDatos()" [disabled]="exportandoDatos">
+            <span class="menu-icon app-icon">download</span>
+            <span>{{ exportandoDatos ? 'Exportando...' : 'Exportar mis datos (RGPD)' }}</span>
+          </button>
+          <button class="menu-item menu-item-danger" (click)="eliminarMiCuenta()" [disabled]="eliminandoCuenta">
+            <span class="menu-icon app-icon">delete_forever</span>
+            <span>{{ eliminandoCuenta ? 'Eliminando...' : 'Eliminar mi cuenta' }}</span>
           </button>
           <div class="menu-divider"></div>
           <button class="menu-item logout-item" (click)="logout()">
@@ -108,10 +121,7 @@
       <div class="list-container">
         <div class="list-header">
           <h2>Gestión de Usuarios</h2>
-          <button class="add-button" (click)="mostrarForm()">
-            <span class="app-icon">add</span>
-            Nuevo Usuario
-          </button>
+          <button class="add-button add-button-icon" (click)="mostrarForm()" title="Nuevo Usuario" aria-label="Nuevo Usuario">+</button>
         </div>
 
         <!-- Filtros -->
@@ -123,7 +133,7 @@
               type="text"
               [(ngModel)]="textoBusqueda"
               (input)="aplicarFiltros()"
-              placeholder="Buscar por nombre o email..."
+              placeholder="Buscar usuarios..."
               class="search-input"
             />
             <button 

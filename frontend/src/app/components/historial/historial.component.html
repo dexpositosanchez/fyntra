@@ -1,10 +1,14 @@
 <div class="historial-container">
-  <header class="app-header">
+  <div class="nav-overlay" *ngIf="mostrarMenuNav" (click)="cerrarMenuMobile()"></div>
+  <header class="app-header" [class.nav-open]="mostrarMenuNav">
     <div class="header-left">
       <div class="logo-section">
         <img src="/assets/images/Isotipo.png" alt="Fyntra" class="logo-isotipo" />
       </div>
-      <nav class="main-nav">
+      <button class="hamburger-button" (click)="toggleMenuNav()" type="button" [attr.aria-label]="mostrarMenuNav ? 'Cerrar menú' : 'Abrir menú'">
+        <span class="app-icon">{{ mostrarMenuNav ? 'close' : 'menu' }}</span>
+      </button>
+      <nav class="main-nav" (click)="cerrarMenuMobile()">
         <a routerLink="/conductores" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">CONDUCTORES</a>
         <a routerLink="/vehiculos" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">VEHÍCULOS</a>
         <a routerLink="/mantenimientos" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">MANTENIMIENTOS</a>
@@ -20,21 +24,32 @@
           <span class="user-name">{{ usuario?.nombre || 'Usuario' }}</span>
           <span class="dropdown-arrow">{{ mostrarMenuUsuario ? '▲' : '▼' }}</span>
         </button>
-        <div class="user-menu-dropdown" *ngIf="mostrarMenuUsuario">
-          <button class="menu-item" *ngIf="estaEnModuloTransportes()" (click)="cambiarAModuloFincas()">
-            <span class="menu-icon app-icon">apartment</span>
-            <span>Módulo Fincas</span>
-          </button>
-          <button class="menu-item" *ngIf="!estaEnModuloTransportes()" (click)="cambiarAModuloTransportes()">
-            <span class="menu-icon app-icon">local_shipping</span>
-            <span>Módulo Transportes</span>
-          </button>
-          <div class="menu-divider"></div>
+        <div class="user-menu-dropdown" *ngIf="mostrarMenuUsuario || mostrarMenuNav" (click)="cerrarMenuMobile()">
+          <ng-container *ngIf="puedeCambiarModulo()">
+            <button class="menu-item" *ngIf="estaEnModuloTransportes()" (click)="cambiarAModuloFincas()">
+              <span class="menu-icon app-icon">apartment</span>
+              <span>Módulo Fincas</span>
+            </button>
+            <button class="menu-item" *ngIf="!estaEnModuloTransportes()" (click)="cambiarAModuloTransportes()">
+              <span class="menu-icon app-icon">local_shipping</span>
+              <span>Módulo Transportes</span>
+            </button>
+            <div class="menu-divider"></div>
+          </ng-container>
           <button class="menu-item" *ngIf="usuario?.rol === 'super_admin'" (click)="irAUsuarios()">
             <span class="menu-icon app-icon">people</span>
             <span>Gestión de Usuarios</span>
           </button>
           <div class="menu-divider" *ngIf="usuario?.rol === 'super_admin'"></div>
+          <button class="menu-item" (click)="exportarMisDatos()" [disabled]="exportandoDatos">
+            <span class="menu-icon app-icon">download</span>
+            <span>{{ exportandoDatos ? 'Exportando...' : 'Exportar mis datos (RGPD)' }}</span>
+          </button>
+          <button class="menu-item menu-item-danger" (click)="eliminarMiCuenta()" [disabled]="eliminandoCuenta">
+            <span class="menu-icon app-icon">delete_forever</span>
+            <span>{{ eliminandoCuenta ? 'Eliminando...' : 'Eliminar mi cuenta' }}</span>
+          </button>
+          <div class="menu-divider"></div>
           <button class="menu-item logout-item" (click)="logout()">
             <span class="menu-icon app-icon">logout</span>
             <span>Salir</span>
@@ -89,34 +104,34 @@
     <div class="loading-message" *ngIf="loading">Cargando historial...</div>
 
     <div class="table-wrapper" *ngIf="!loading && listado.length > 0">
-      <table class="data-table">
+      <table class="data-table tabla-historial">
         <thead>
           <tr>
-            <th>Empresa</th>
-            <th>Origen / Destino</th>
-            <th>Tipo mercancía</th>
-            <th>Fecha entrega</th>
-            <th>Estado</th>
-            <th>Ruta</th>
-            <th>Fecha entregado</th>
+            <th class="col-empresa">Empresa</th>
+            <th class="col-hide-mobile">Origen / Destino</th>
+            <th class="col-hide-mobile">Tipo mercancía</th>
+            <th class="col-hide-mobile">Fecha entrega</th>
+            <th class="col-hide-mobile">Estado</th>
+            <th class="col-hide-mobile">Ruta</th>
+            <th class="col-hide-mobile">Fecha entregado</th>
           </tr>
         </thead>
         <tbody>
           <tr *ngFor="let item of listado">
-            <td>{{ item.empresa || '-' }}</td>
-            <td>
+            <td class="col-empresa">{{ item.empresa || '-' }}</td>
+            <td class="col-hide-mobile">
               <span class="origen-destino">{{ item.origen || '-' }}</span>
               <span class="separador"> → </span>
               <span class="origen-destino">{{ item.destino || '-' }}</span>
             </td>
-            <td>{{ item.tipo_mercancia || '-' }}</td>
-            <td>{{ formatearFecha(item.fecha_entrega) }}</td>
-            <td>
+            <td class="col-hide-mobile">{{ item.tipo_mercancia || '-' }}</td>
+            <td class="col-hide-mobile">{{ formatearFecha(item.fecha_entrega) }}</td>
+            <td class="col-hide-mobile">
               <span class="estado-badge" [class]="'estado-' + (item.estado || '')">
                 {{ getEstadoLabel(item.estado) }}
               </span>
             </td>
-            <td class="ruta-cell">
+            <td class="ruta-cell col-hide-mobile">
               <div class="ruta-tooltip-wrapper" *ngIf="item.ruta">
                 <span class="ruta-trigger tooltip-trigger">Ruta #{{ item.ruta.id }}</span>
                 <div class="tooltip-content">
@@ -135,7 +150,7 @@
               </div>
               <span *ngIf="!item.ruta">-</span>
             </td>
-            <td>{{ formatearFechaHora(item.fecha_entregado) }}</td>
+            <td class="col-hide-mobile">{{ formatearFechaHora(item.fecha_entregado) }}</td>
           </tr>
         </tbody>
       </table>

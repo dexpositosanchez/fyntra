@@ -1,10 +1,14 @@
 <div class="informes-container">
-  <header class="app-header">
+  <div class="nav-overlay" *ngIf="mostrarMenuNav" (click)="cerrarMenuMobile()"></div>
+  <header class="app-header" [class.nav-open]="mostrarMenuNav">
     <div class="header-left">
       <div class="logo-section">
         <img src="/assets/images/Isotipo.png" alt="Fyntra" class="logo-isotipo" />
       </div>
-      <nav class="main-nav">
+      <button class="hamburger-button" (click)="toggleMenuNav()" type="button" [attr.aria-label]="mostrarMenuNav ? 'Cerrar menú' : 'Abrir menú'">
+        <span class="app-icon">{{ mostrarMenuNav ? 'close' : 'menu' }}</span>
+      </button>
+      <nav class="main-nav" (click)="cerrarMenuMobile()">
         <a routerLink="/incidencias" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">INCIDENCIAS</a>
         <a routerLink="/comunidades" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">COMUNIDADES</a>
         <a routerLink="/inmuebles" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">INMUEBLES</a>
@@ -20,17 +24,32 @@
           <span class="user-name">{{ usuario?.nombre || 'Usuario' }}</span>
           <span class="dropdown-arrow">{{ mostrarMenuUsuario ? '▲' : '▼' }}</span>
         </button>
-        <div class="user-menu-dropdown" *ngIf="mostrarMenuUsuario">
-          <button class="menu-item" (click)="cambiarAModuloTransportes()">
-            <span class="menu-icon app-icon">local_shipping</span>
-            <span>Módulo Transportes</span>
-          </button>
-          <div class="menu-divider"></div>
+        <div class="user-menu-dropdown" *ngIf="mostrarMenuUsuario || mostrarMenuNav" (click)="cerrarMenuMobile()">
+          <ng-container *ngIf="puedeCambiarModulo()">
+            <button class="menu-item" *ngIf="estaEnModuloFincas()" (click)="cambiarAModuloTransportes()">
+              <span class="menu-icon app-icon">local_shipping</span>
+              <span>Módulo Transportes</span>
+            </button>
+            <button class="menu-item" *ngIf="!estaEnModuloFincas()" (click)="cambiarAModuloFincas()">
+              <span class="menu-icon app-icon">apartment</span>
+              <span>Módulo Fincas</span>
+            </button>
+            <div class="menu-divider"></div>
+          </ng-container>
           <button class="menu-item" *ngIf="usuario?.rol === 'super_admin'" (click)="irAUsuarios()">
             <span class="menu-icon app-icon">people</span>
             <span>Gestión de Usuarios</span>
           </button>
           <div class="menu-divider" *ngIf="usuario?.rol === 'super_admin'"></div>
+          <button class="menu-item" (click)="exportarMisDatos()" [disabled]="exportandoDatos">
+            <span class="menu-icon app-icon">download</span>
+            <span>{{ exportandoDatos ? 'Exportando...' : 'Exportar mis datos (RGPD)' }}</span>
+          </button>
+          <button class="menu-item menu-item-danger" (click)="eliminarMiCuenta()" [disabled]="eliminandoCuenta">
+            <span class="menu-icon app-icon">delete_forever</span>
+            <span>{{ eliminandoCuenta ? 'Eliminando...' : 'Eliminar mi cuenta' }}</span>
+          </button>
+          <div class="menu-divider"></div>
           <button class="menu-item logout-item" (click)="logout()">
             <span class="menu-icon app-icon">logout</span>
             <span>Salir</span>
@@ -107,24 +126,24 @@
       </div>
 
       <div class="table-container">
-        <table class="data-table">
+        <table class="data-table tabla-comunidades">
           <thead>
             <tr>
-              <th>Comunidad</th>
-              <th>CIF</th>
-              <th>Dirección</th>
-              <th>Nº Incidencias</th>
-              <th>Coste Total</th>
-              <th></th>
+              <th class="col-comunidad">Comunidad</th>
+              <th class="col-hide-mobile">CIF</th>
+              <th class="col-hide-mobile">Dirección</th>
+              <th class="col-hide-mobile">Nº Incidencias</th>
+              <th class="col-hide-mobile">Coste Total</th>
+              <th class="col-hide-mobile"></th>
             </tr>
           </thead>
           <tbody>
             <ng-container *ngFor="let comunidad of informesComunidades.comunidades">
               <tr class="comunidad-row">
-                <td><strong>{{ comunidad.nombre }}</strong></td>
-                <td>{{ comunidad.cif || '-' }}</td>
-                <td>{{ comunidad.direccion || '-' }}</td>
-                <td class="incidencias-cell">
+                <td class="col-comunidad"><strong>{{ comunidad.nombre }}</strong></td>
+                <td class="col-hide-mobile">{{ comunidad.cif || '-' }}</td>
+                <td class="col-hide-mobile">{{ comunidad.direccion || '-' }}</td>
+                <td class="incidencias-cell col-hide-mobile">
                   <div class="incidencias-tooltip-wrapper" 
                        *ngIf="tieneIncidenciasPorEstado(comunidad.incidencias_por_estado)">
                     <span class="incidencias-total tooltip-trigger">{{ comunidad.num_incidencias }}</span>
@@ -146,8 +165,8 @@
                     {{ comunidad.num_incidencias }}
                   </span>
                 </td>
-                <td>{{ formatearMoneda(comunidad.coste_total) }}</td>
-                <td>
+                <td class="col-hide-mobile">{{ formatearMoneda(comunidad.coste_total) }}</td>
+                <td class="col-hide-mobile">
                   <button 
                     class="btn-expand" 
                     (click)="toggleExpandirComunidad(comunidad.id)"
@@ -188,8 +207,8 @@
                       {{ inmueble.num_incidencias }}
                     </span>
                   </td>
-                  <td>{{ formatearMoneda(inmueble.coste_total) }}</td>
-                  <td></td>
+                  <td class="col-hide-mobile">{{ formatearMoneda(inmueble.coste_total) }}</td>
+                  <td class="col-hide-mobile"></td>
                 </tr>
               </ng-container>
             </ng-container>
@@ -222,7 +241,7 @@
               <td>{{ proveedor.email || '-' }}</td>
               <td>{{ proveedor.telefono || '-' }}</td>
               <td>{{ proveedor.especialidad || '-' }}</td>
-              <td class="incidencias-cell">
+              <td class="incidencias-cell col-hide-mobile">
                 <div class="incidencias-tooltip-wrapper" 
                      *ngIf="tieneIncidenciasPorEstado(proveedor.incidencias_por_estado)">
                   <span class="incidencias-total tooltip-trigger">{{ proveedor.num_incidencias }}</span>
@@ -244,7 +263,7 @@
                   {{ proveedor.num_incidencias }}
                 </span>
               </td>
-              <td>{{ formatearMoneda(proveedor.coste_total) }}</td>
+              <td class="col-hide-mobile">{{ formatearMoneda(proveedor.coste_total) }}</td>
             </tr>
           </tbody>
         </table>

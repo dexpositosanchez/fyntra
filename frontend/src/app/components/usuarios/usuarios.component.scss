@@ -27,6 +27,15 @@
   gap: 30px;
 }
 
+@media (max-width: 768px) {
+  .main-nav {
+    display: none !important;
+  }
+  .app-header.nav-open .main-nav {
+    display: flex !important;
+  }
+}
+
 .nav-link {
   color: #2f343d;
   text-decoration: none;

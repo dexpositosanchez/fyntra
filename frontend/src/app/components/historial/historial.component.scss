@@ -27,6 +27,15 @@
   gap: 30px;
 }
 
+@media (max-width: 768px) {
+  .main-nav {
+    display: none !important;
+  }
+  .app-header.nav-open .main-nav {
+    display: flex !important;
+  }
+}
+
 .nav-link {
   color: #2f343d;
   text-decoration: none;
@@ -102,6 +111,9 @@
   padding: 30px;
   max-width: 1600px;
   margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 .historial-header {
@@ -110,6 +122,9 @@
   padding: 24px;
   margin-bottom: 20px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  max-width: 100%;
+  overflow-x: hidden;
+  box-sizing: border-box;
 
   h1 {
     margin: 0 0 20px 0;
@@ -124,6 +139,43 @@
   align-items: center;
   gap: 24px;
   justify-content: space-between;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+}
+
+@media (max-width: 768px) {
+  .header-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .filtros-row {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+  }
+  .filtro-fechas {
+    flex-direction: column;
+    width: 100%;
+  }
+  .fecha-group {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+    max-width: 100%;
+
+    label {
+      white-space: normal;
+    }
+  }
+  .fecha-input {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+  .descarga-buttons {
+    flex-wrap: wrap;
+  }
 }
 
 .filtros-row {
@@ -131,23 +183,30 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 16px;
+  min-width: 0;
+  flex: 1 1 auto;
+  max-width: 100%;
 }
 
 .filtro-fechas {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
+  min-width: 0;
 }
 
 .fecha-group {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
+  flex: 0 1 auto;
 
   label {
     font-size: 14px;
     color: #2f343d;
     white-space: nowrap;
+    flex-shrink: 0;
   }
 }
 
@@ -156,6 +215,10 @@
   border: 1px solid #e0e0e0;
   border-radius: 8px;
   font-size: 14px;
+  min-width: 0;
+  width: 140px;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .filtro-checkbox {
@@ -229,7 +292,18 @@
   background: white;
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  overflow: visible;
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+@media (max-width: 768px) {
+  .data-table th.col-hide-mobile,
+  .data-table td.col-hide-mobile {
+    display: none;
+  }
+  .data-table .col-empresa {
+    max-width: 100%;
+  }
 }
 
 .data-table {

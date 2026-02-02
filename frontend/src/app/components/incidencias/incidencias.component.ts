@@ -22,6 +22,7 @@ export class IncidenciasComponent implements OnInit, OnDestroy {
   incidenciasFiltradas: any[] = [];
   currentRoute: string = '';
   mostrarMenuUsuario: boolean = false;
+  mostrarMenuNav: boolean = false;
   mostrarFormulario: boolean = false;
   editandoIncidencia: boolean = false;
   incidenciaIdEditando: number | null = null;
@@ -484,11 +485,30 @@ export class IncidenciasComponent implements OnInit, OnDestroy {
     this.mostrarMenuUsuario = !this.mostrarMenuUsuario;
   }
 
+  toggleMenuNav(): void {
+    if (this.mostrarMenuNav) {
+      this.cerrarMenuMobile();
+    } else {
+      this.mostrarMenuNav = true;
+    }
+  }
+
+  cerrarMenuMobile(): void {
+    this.mostrarMenuNav = false;
+    this.mostrarMenuUsuario = false;
+  }
+
   estaEnModuloTransportes(): boolean {
     return this.currentRoute.includes('/vehiculos') || 
            this.currentRoute.includes('/conductores') || 
            this.currentRoute.includes('/rutas') || 
            this.currentRoute.includes('/pedidos');
+  }
+
+  puedeCambiarModulo(): boolean {
+    if (this.esPropietario || this.esProveedor) return false;
+    const r = this.usuario?.rol;
+    return r === 'super_admin' || r === 'admin_fincas' || r === 'admin_transportes';
   }
 
   cambiarAModuloFincas(): void {

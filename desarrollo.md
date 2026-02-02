@@ -41,10 +41,10 @@
 | RNF4. Autenticación Segura | Las contraseñas deben almacenarse mediante hash seguro (bcrypt o similar) y nunca en texto plano. Debe implementarse protección contra ataques de fuerza bruta. | ✅ | ✅ |  |
 | RNF5. Autorización Granular | El sistema debe implementar control de acceso basado en roles (RBAC) que restrinja las funcionalidades según el perfil del usuario. | ✅ | ✅ |  |
 | RNF6. Protección de Datos | El sistema debe cumplir con el Reglamento General de Protección de Datos (RGPD), implementando medidas técnicas y organizativas adecuadas. | ✅ | ✅ |  |
-| RNF7. Comunicación Segura | Todas las comunicaciones entre cliente y servidor deben realizarse mediante HTTPS/TLS para garantizar la confidencialidad de los datos. | ⬜ | ⬜ / ✅ / ❌ |  |
-| RNF8. Validación de Entrada | El sistema debe validar y sanitizar todas las entradas del usuario para prevenir inyecciones SQL, XSS y otros ataques comunes. | ⬜ | ⬜ / ✅ / ❌ |  |
-| RNF9. Interfaz Intuitiva | La interfaz web debe ser intuitiva y fácil de usar, siguiendo principios de diseño UX/UI modernos y con tiempo de aprendizaje mínimo. | ⬜ | ⬜ / ✅ / ❌ |  |
-| RNF10. Diseño Responsive | La interfaz web debe adaptarse correctamente a diferentes tamaños de pantalla (ordenadores, tablets, smartphones). | ⬜ | ⬜ / ✅ / ❌ |  |
+| RNF7. Comunicación Segura | Todas las comunicaciones entre cliente y servidor deben realizarse mediante HTTPS/TLS para garantizar la confidencialidad de los datos. | ✅ | ✅ | El sistema los admite, hay que implementar SSL en producción |
+| RNF8. Validación de Entrada | El sistema debe validar y sanitizar todas las entradas del usuario para prevenir inyecciones SQL, XSS y otros ataques comunes. | ✅ | ✅ |  |
+| RNF9. Interfaz Intuitiva | La interfaz web debe ser intuitiva y fácil de usar, siguiendo principios de diseño UX/UI modernos y con tiempo de aprendizaje mínimo. | ✅ | ✅ |  |
+| RNF10. Diseño Responsive | La interfaz web debe adaptarse correctamente a diferentes tamaños de pantalla (ordenadores, tablets, smartphones). | ✅ | ✅ | |
 | RNF11. Accesibilidad | El sistema debe cumplir con las pautas de accesibilidad WCAG 2.1 nivel AA para garantizar el acceso a usuarios con discapacidades. | ⬜ | ⬜ / ✅ / ❌ |  |
 | RNF12. Código Limpio y Documentado | El código fuente debe estar bien documentado, seguir estándares de codificación y ser fácilmente mantenible por otros desarrolladores. | ⬜ | ⬜ / ✅ / ❌ |  |
 | RNF13. Arquitectura Modular | El sistema debe estar diseñado con arquitectura modular que permita modificar o añadir funcionalidades sin afectar otras partes del sistema. | ⬜ | ⬜ / ✅ / ❌ |  |

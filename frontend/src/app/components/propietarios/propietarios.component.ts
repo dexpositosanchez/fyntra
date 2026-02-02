@@ -30,7 +30,10 @@ export class PropietariosComponent implements OnInit, OnDestroy {
   error: string = '';
   currentRoute: string = '';
   mostrarMenuUsuario: boolean = false;
+  mostrarMenuNav: boolean = false;
   usuario: any = null;
+  exportandoDatos: boolean = false;
+  eliminandoCuenta: boolean = false;
   textoBusqueda: string = '';
   propietariosFiltrados: any[] = [];
   private routerSubscription?: Subscription;
@@ -240,11 +243,70 @@ export class PropietariosComponent implements OnInit, OnDestroy {
     this.mostrarMenuUsuario = !this.mostrarMenuUsuario;
   }
 
+  toggleMenuNav(): void {
+    if (this.mostrarMenuNav) {
+      this.cerrarMenuMobile();
+    } else {
+      this.mostrarMenuNav = true;
+    }
+  }
+
+  cerrarMenuMobile(): void {
+    this.mostrarMenuNav = false;
+    this.mostrarMenuUsuario = false;
+  }
+
   estaEnModuloFincas(): boolean {
     return this.currentRoute.includes('/incidencias') || 
            this.currentRoute.includes('/comunidades') ||
            this.currentRoute.includes('/inmuebles') ||
-           this.currentRoute.includes('/propietarios');
+           this.currentRoute.includes('/propietarios') ||
+           this.currentRoute.includes('/proveedores') ||
+           this.currentRoute.includes('/informes');
+  }
+
+  puedeCambiarModulo(): boolean {
+    const r = this.usuario?.rol;
+    return r === 'super_admin' || r === 'admin_fincas' || r === 'admin_transportes';
+  }
+
+  exportarMisDatos(): void {
+    this.exportandoDatos = true;
+    this.apiService.getMisDatos().subscribe({
+      next: (datos) => {
+        const blob = new Blob([JSON.stringify(datos, null, 2)], { type: 'application/json' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `mis-datos-${this.usuario?.email?.replace('@', '-at-') || 'usuario'}-${new Date().toISOString().slice(0, 10)}.json`;
+        a.click();
+        window.URL.revokeObjectURL(url);
+        this.exportandoDatos = false;
+      },
+      error: () => { this.exportandoDatos = false; }
+    });
+  }
+
+  eliminarMiCuenta(): void {
+    if (!confirm('¿Está seguro de que desea eliminar su cuenta? Se anonimizarán sus datos y no podrá volver a iniciar sesión.')) return;
+    const password = prompt('Opcional: introduzca su contraseña para confirmar (o deje en blanco):');
+    this.eliminandoCuenta = true;
+    this.apiService.eliminarMiCuenta(password || undefined).subscribe({
+      next: () => {
+        this.eliminandoCuenta = false;
+        this.authService.logout();
+        this.router.navigate(['/login']);
+      },
+      error: (err) => {
+        alert(err.error?.detail || 'Error al eliminar la cuenta.');
+        this.eliminandoCuenta = false;
+      }
+    });
+  }
+
+  cambiarAModuloFincas(): void {
+    this.mostrarMenuUsuario = false;
+    this.router.navigate(['/incidencias']);
   }
 
   cambiarAModuloTransportes(): void {

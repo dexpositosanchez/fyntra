@@ -27,6 +27,15 @@
   gap: 30px;
 }
 
+@media (max-width: 768px) {
+  .main-nav {
+    display: none !important;
+  }
+  .app-header.nav-open .main-nav {
+    display: flex !important;
+  }
+}
+
 .nav-link {
   color: #2f343d;
   text-decoration: none;
@@ -300,8 +309,19 @@
 }
 
 .table-container {
-  // Sin scroll horizontal; permite que el tooltip no se recorte
-  overflow: visible;
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+@media (max-width: 768px) {
+  .data-table th.col-hide-mobile,
+  .data-table td.col-hide-mobile {
+    display: none;
+  }
+  .data-table .col-comunidad,
+  .data-table .col-proveedor {
+    max-width: 100%;
+  }
 }
 
 .data-table {

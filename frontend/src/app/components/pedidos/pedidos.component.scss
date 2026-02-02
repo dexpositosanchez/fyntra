@@ -35,6 +35,15 @@
   gap: 30px;
 }
 
+@media (max-width: 768px) {
+  .main-nav {
+    display: none !important;
+  }
+  .app-header.nav-open .main-nav {
+    display: flex !important;
+  }
+}
+
 .nav-link {
   color: #2f343d;
   text-decoration: none;
@@ -532,6 +541,7 @@
   gap: 15px;
   align-items: flex-end;
   flex-wrap: wrap;
+  min-width: 0;
 }
 
 // Campo de búsqueda principal
@@ -544,8 +554,9 @@
   border-radius: 8px;
   padding: 12px 16px;
   transition: border-color 0.3s, box-shadow 0.3s;
-  flex: 1;
-  min-width: 300px;
+  flex: 1 1 100%;
+  min-width: 0;
+  max-width: 100%;
   
   &:focus-within {
     border-color: #1b9d8a;
@@ -561,6 +572,7 @@
   
   .search-input {
     flex: 1;
+    min-width: 0;
     border: none;
     outline: none;
     font-size: 16px;

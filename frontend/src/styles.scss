@@ -23,6 +23,7 @@ body {
   line-height: 1.5;
   color: #2f343d;
   background-color: #f2f4f7;
+  overflow-x: hidden;
 }
 
 /* Utilidades */
@@ -66,6 +67,400 @@ body {
 
 .prioridad-baja {
   color: #2f7d4c;
+}
+
+/* ===== RNF10: Diseño Responsive ===== */
+/* Formularios: 1 columna en móvil y tablet */
+@media (max-width: 768px) {
+  .form-row {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Contenedor principal: padding reducido en móvil */
+@media (max-width: 480px) {
+  .main-content {
+    padding: 16px !important;
+  }
+  .list-container {
+    padding: 16px !important;
+  }
+}
+
+/* Formularios y botones: nunca desbordar en responsive */
+.form-container {
+  overflow-x: hidden;
+  max-width: 100%;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.form-header {
+  flex-wrap: wrap;
+  min-width: 0;
+  gap: 8px;
+
+  h2 {
+    overflow-wrap: break-word;
+    word-break: break-word;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .close-button {
+    flex-shrink: 0;
+  }
+}
+
+.form-actions {
+  flex-wrap: wrap;
+  gap: 12px;
+  min-width: 0;
+
+  .cancel-button,
+  .submit-button,
+  .cancel-btn,
+  .save-btn {
+    min-width: 0;
+    max-width: 100%;
+    flex-shrink: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+.list-header,
+.header-actions {
+  flex-wrap: wrap;
+  min-width: 0;
+  gap: 12px;
+
+  .add-button,
+  .add-button-icon {
+    flex-shrink: 0;
+  }
+}
+
+.descarga-buttons,
+.filters-section .additional-filters,
+.header-controls,
+.filtro-fechas,
+.pedido-fechas-actions,
+.pedido-select-container {
+  flex-wrap: wrap;
+  min-width: 0;
+  gap: 8px;
+
+  button {
+    min-width: 0;
+    flex-shrink: 1;
+  }
+}
+
+@media (max-width: 768px) {
+  .form-container {
+    margin-left: 0;
+    margin-right: 0;
+    padding: 16px !important;
+  }
+
+  .form-actions {
+    flex-direction: column;
+    width: 100%;
+
+    .cancel-button,
+    .submit-button,
+    .cancel-btn,
+    .save-btn {
+      width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
+    }
+  }
+
+  .list-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .descarga-buttons {
+    flex-direction: column;
+
+    button {
+      width: 100%;
+    }
+  }
+
+  .filtro-fechas {
+    flex-direction: column;
+
+    .fecha-group,
+    button {
+      width: 100%;
+      max-width: 100%;
+    }
+  }
+
+  .pedido-fechas-actions {
+    flex-direction: column;
+
+    button {
+      width: 100%;
+    }
+  }
+
+  .additional-filters {
+    flex-direction: column;
+
+    .filter-group-small,
+    .filter-group,
+    button {
+      min-width: 0;
+      width: 100%;
+      max-width: 100%;
+    }
+  }
+
+  .pedido-select-container {
+    flex-direction: column;
+
+    select,
+    button {
+      width: 100%;
+      max-width: 100%;
+    }
+  }
+}
+
+/* ===== MENÚ: Desktop vs Móvil ===== */
+/* Desktop (>768px): menú de secciones visible a la izquierda, menú usuario a la derecha */
+/* Móvil (≤768px): todo oculto, solo botón hamburguesa; al pulsar, menú completo unificado */
+
+/* Botón hamburguesa: solo visible en móvil */
+.hamburger-button {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  border: none;
+  background: #f2f4f7;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #2f343d;
+  transition: all 0.2s;
+
+  &:hover {
+    background: #e8f5e9;
+    color: #1b9d8a;
+  }
+
+  .app-icon {
+    font-size: 24px;
+  }
+}
+
+/* Overlay: solo en móvil cuando el menú está abierto */
+.nav-overlay {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  /* Móvil: overlay oscuro al abrir menú, clic cierra */
+  .nav-overlay {
+    display: block;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 998;
+    cursor: pointer;
+  }
+
+  /* Móvil: menú de secciones y usuario unidos y ocultos; hamburguesa visible */
+  header.app-header .main-nav,
+  .app-header .main-nav {
+    display: none !important;
+  }
+
+  header.app-header.nav-open .main-nav,
+  .app-header.nav-open .main-nav {
+    display: flex !important;
+  }
+
+  .app-header {
+    position: relative;
+    z-index: 999;
+    flex-wrap: wrap;
+    padding: 12px 16px;
+    gap: 12px;
+
+    .header-left {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    /* Hamburguesa visible en móvil */
+    .hamburger-button {
+      display: flex !important;
+      margin-left: auto;
+      order: 2;
+    }
+
+    .logo-section {
+      order: 1;
+    }
+
+    /* Ocultar menú de usuario independiente: va todo en el hamburguesa */
+    .user-menu-button {
+      display: none !important;
+    }
+
+    /* Menú de secciones: oculto por defecto, se muestra al abrir hamburguesa */
+    .main-nav {
+      display: none !important;
+      order: 3;
+      width: 100%;
+      flex-direction: column;
+      background: white;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      padding: 12px 0;
+      gap: 0;
+      margin-top: 8px;
+      border-radius: 8px;
+      border: 1px solid #e0e0e0;
+
+      .nav-link {
+        padding: 12px 20px;
+        border-bottom: 1px solid #f0f0f0;
+        display: block;
+
+        &:last-child {
+          border-bottom: none;
+        }
+      }
+    }
+
+    /* nav-open aplicado via las reglas anteriores */
+
+    /* Menú usuario: integrado en el mismo panel que el hamburguesa */
+    .user-section {
+      order: 4;
+      margin-left: 0;
+      width: 100%;
+      justify-content: stretch;
+    }
+
+    .user-menu-container {
+      width: 100%;
+    }
+
+    &.nav-open .user-menu-dropdown {
+      position: static !important;
+      box-shadow: none;
+      border-radius: 0 0 8px 8px;
+      border: none;
+      border-top: 1px solid #e0e0e0;
+      margin-top: 0;
+      max-height: none;
+      width: 100%;
+    }
+  }
+}
+
+/* Inputs: evitar que placeholder y contenido se salgan */
+input.form-input,
+input.search-input,
+input.filter-input,
+input.filter-input-small,
+textarea.form-input,
+.search-container .search-input {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* Tarjetas: contenido dentro del contenedor */
+.incidencia-card,
+.vehiculo-card,
+.conductor-card,
+.ruta-card,
+.pedido-card,
+.mantenimiento-card,
+.comunidad-card,
+.inmueble-card,
+.propietario-card,
+.proveedor-card,
+.usuario-card {
+  overflow: hidden;
+  min-width: 0;
+
+  h3, h4, p, span, .card-header, .card-body,
+  [class*="titulo"], [class*="nombre"], [class*="descripcion"] {
+    overflow-wrap: break-word;
+    word-break: break-word;
+    min-width: 0;
+  }
+}
+
+/* Botón + compacto en list-header */
+.list-header .add-button-icon {
+  padding: 10px 16px !important;
+  font-size: 18px !important;
+  min-width: 44px;
+}
+
+/* Cards/grids: evitar desbordamiento en contenedores */
+.list-container {
+  overflow-x: hidden;
+  min-width: 0;
+}
+
+.main-content {
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
+/* Botones en tarjetas: no desbordar */
+.card-actions,
+.action-btn {
+  min-width: 0;
+  flex-shrink: 1;
+}
+
+@media (max-width: 768px) {
+  .incidencias-grid,
+  .vehiculos-grid,
+  .conductores-grid,
+  .rutas-grid,
+  .pedidos-grid,
+  .mantenimientos-grid,
+  .comunidades-grid,
+  .inmuebles-grid,
+  .propietarios-grid,
+  .proveedores-grid,
+  .usuarios-grid {
+    grid-template-columns: 1fr !important;
+    min-width: 0;
+  }
+
+  .incidencia-card,
+  .vehiculo-card,
+  .conductor-card,
+  .ruta-card,
+  .pedido-card,
+  .mantenimiento-card,
+  .comunidad-card,
+  .inmueble-card,
+  .propietario-card,
+  .proveedor-card,
+  .usuario-card {
+    min-width: 0;
+  }
 }
 
 

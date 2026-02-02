@@ -1,10 +1,14 @@
 <div class="incidencias-container">
-  <header class="app-header">
+  <div class="nav-overlay" *ngIf="mostrarMenuNav" (click)="cerrarMenuMobile()"></div>
+  <header class="app-header" [class.nav-open]="mostrarMenuNav">
     <div class="header-left">
       <div class="logo-section">
         <img src="/assets/images/Isotipo.png" alt="Fyntra" class="logo-isotipo" />
       </div>
-      <nav class="main-nav">
+      <button class="hamburger-button" (click)="toggleMenuNav()" type="button" [attr.aria-label]="mostrarMenuNav ? 'Cerrar menú' : 'Abrir menú'">
+        <span class="app-icon">{{ mostrarMenuNav ? 'close' : 'menu' }}</span>
+      </button>
+      <nav class="main-nav" (click)="cerrarMenuMobile()">
         <a routerLink="/incidencias" class="nav-link" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">
           {{ esProveedor ? 'MIS INCIDENCIAS' : 'INCIDENCIAS' }}
         </a>
@@ -28,8 +32,8 @@
           <span class="user-name">{{ usuario?.nombre || 'Usuario' }}</span>
           <span class="dropdown-arrow">{{ mostrarMenuUsuario ? '▲' : '▼' }}</span>
         </button>
-        <div class="user-menu-dropdown" *ngIf="mostrarMenuUsuario">
-          <ng-container *ngIf="!esPropietario && !esProveedor">
+        <div class="user-menu-dropdown" *ngIf="mostrarMenuUsuario || mostrarMenuNav" (click)="cerrarMenuMobile()">
+          <ng-container *ngIf="puedeCambiarModulo()">
             <button class="menu-item" *ngIf="estaEnModuloTransportes()" (click)="cambiarAModuloFincas()">
               <span class="menu-icon app-icon">apartment</span>
               <span>Módulo Fincas</span>
@@ -107,9 +111,7 @@
       <div class="actuaciones-section-form">
         <div class="section-header">
           <h4>Actuaciones realizadas</h4>
-          <button class="add-actuacion-btn" (click)="mostrarFormularioActuacion()" *ngIf="!mostrarFormActuacion">
-            + Nueva Actuación
-          </button>
+          <button class="add-actuacion-btn add-button-icon" (click)="mostrarFormularioActuacion()" *ngIf="!mostrarFormActuacion" title="Nueva Actuación" aria-label="Nueva Actuación">+</button>
         </div>
 
         <!-- Formulario nueva actuación -->
@@ -249,7 +251,7 @@
         <div class="list-header">
           <h2>{{ esProveedor ? 'Mis Incidencias Asignadas' : (esPropietario ? 'Mis Incidencias' : 'Incidencias') }}</h2>
           <div class="header-actions" *ngIf="!esProveedor">
-            <button class="add-button" (click)="mostrarForm()">+ Nueva Incidencia</button>
+            <button class="add-button add-button-icon" (click)="mostrarForm()" title="Nueva Incidencia" aria-label="Nueva Incidencia">+</button>
           </div>
         </div>
         
@@ -261,7 +263,7 @@
             type="text"
             [(ngModel)]="textoBusqueda"
             (input)="aplicarFiltros()"
-            placeholder="Buscar por título, referencia catastral o proveedor..."
+            placeholder="Buscar incidencias..."
             class="search-input"
           />
           <button 
