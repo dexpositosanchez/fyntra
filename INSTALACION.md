@@ -1,12 +1,68 @@
 # Guía de Instalación - Fyntra
 
-## Requisitos Previos
+Esta guía cubre el inicio rápido y la instalación completa con datos de prueba, usuarios, App Android y pruebas de carga.
+
+---
+
+## ⚡ Inicio rápido (5 minutos)
+
+Para poner en marcha el proyecto sin datos de prueba:
+
+### 1. Verificar requisitos
+
+- Docker (versión 20.10+)
+- Docker Compose (versión 2.0+)
+
+```bash
+docker --version
+docker-compose --version
+```
+
+### 2. Navegar al proyecto
+
+```bash
+cd fyntra
+```
+
+### 3. Iniciar la aplicación
+
+```bash
+docker-compose up -d --build
+```
+
+La primera vez puede tardar varios minutos (descarga de imágenes y construcción).
+
+### 4. Verificar que todo funciona
+
+```bash
+docker-compose ps
+docker-compose logs -f
+```
+
+### 5. Acceder a la aplicación
+
+- **Frontend**: http://localhost:4200
+- **Backend API**: http://localhost:8000
+- **API Docs (Swagger)**: http://localhost:8000/docs
+- **A través de Nginx**: http://localhost
+
+### Detener la aplicación
+
+```bash
+docker-compose down
+```
+
+**Para usar la aplicación con datos de prueba, usuarios predefinidos, pgAdmin, App Android y pruebas de carga**, continúa con la **Instalación completa** siguiente.
+
+---
+
+## Instalación completa
+
+### Requisitos previos
 
 - Docker (versión 20.10+)
 - Docker Compose (versión 2.0+)
 - Git (opcional)
-
-## Instalación
 
 ### 1. Clonar o navegar al proyecto
 
@@ -14,18 +70,24 @@
 cd fyntra
 ```
 
-### 2. Inicializar la base de datos
-
-El proyecto incluye un script para crear datos iniciales. Ejecuta:
+### 2. Construir e iniciar todos los servicios
 
 ```bash
 make build
 make up
 ```
 
-Espera a que todos los servicios estén corriendo (puede tardar unos minutos la primera vez).
+O en un solo paso desde cero:
+
+```bash
+make start
+```
+
+Espera a que todos los servicios estén en marcha (puede tardar unos minutos la primera vez). Comprueba con `make ps`.
 
 ### 3. Crear datos iniciales
+
+Ejecuta el script de datos de prueba (usuarios, comunidades, vehículos, rutas, etc.):
 
 ```bash
 make init-data
@@ -34,7 +96,7 @@ make init-data
 O manualmente:
 
 ```bash
-docker-compose exec backend python scripts/init_data.py
+docker-compose exec backend sh -c "PYTHONPATH=/app python /app/scripts/init_data.py"
 ```
 
 ### 4. Acceder a la aplicación
@@ -45,7 +107,11 @@ docker-compose exec backend python scripts/init_data.py
 - **pgAdmin (Gestor BD)**: http://localhost:5050
 - **A través de Nginx**: http://localhost
 
-## Servicios Disponibles
+**Recomendación**: Usa **http://localhost** en el navegador (Nginx); no hace falta usar el puerto 4200 directamente.
+
+---
+
+## Servicios disponibles
 
 ### Redis (Caché)
 
@@ -115,38 +181,6 @@ docker exec fyntra-redis redis-cli ping
 # Debe responder: PONG
 ```
 
-**Estado**: ✅ **Redis está activamente en uso** para caché de respuestas de la API.
-
-**Endpoints con caché implementada** (✅ **TODOS los endpoints**):
-- ✅ **Vehículos**: Listado y GET por ID
-- ✅ **Rutas**: Listado y GET por ID
-- ✅ **Incidencias**: Listado y GET por ID
-- ✅ **Pedidos**: Listado y GET por ID
-- ✅ **Mantenimientos**: Listado, alertas y GET por ID
-- ✅ **Inmuebles**: Listado, GET por ID y mis-inmuebles
-- ✅ **Comunidades**: Listado y GET por ID
-- ✅ **Conductores**: Listado, alertas y GET por ID
-- ✅ **Proveedores**: Listado y GET por ID
-- ✅ **Propietarios**: Listado y GET por ID
-- ✅ **Usuarios**: Listado y GET por ID
-- ✅ **Documentos**: Listado por incidencia
-- ✅ **Actuaciones**: Listado por incidencia y mis-incidencias
-- ✅ **Mensajes**: Listado por incidencia
-
-**Configuración de caché**:
-- Tiempo de expiración: 
-  - **5 minutos (300 segundos)** para la mayoría de endpoints
-  - **2 minutos (120 segundos)** para alertas y mensajes (datos que cambian más frecuentemente)
-- Invalidación automática: La caché se invalida automáticamente cuando se crean, actualizan o eliminan recursos
-- Claves de caché: Se generan automáticamente basadas en los parámetros de la petición (filtros, paginación, usuario, etc.)
-- Caché por usuario: Los endpoints que dependen de permisos incluyen el ID de usuario en la clave de caché
-
-**Beneficios**:
-- ✅ Respuestas más rápidas para peticiones repetidas
-- ✅ Menor carga en la base de datos
-- ✅ Mejor rendimiento general del sistema
-- ✅ Cumplimiento mejorado del RNF1 (tiempo de respuesta)
-
 ## Usuarios de Prueba
 
 Después de ejecutar `init_data.py`, puedes usar estos usuarios:
@@ -214,7 +248,7 @@ val loginRequest = LoginRequest(
 // Authorization: Bearer eyJ...
 ```
 
-## Estructura del Proyecto
+## Estructura del proyecto
 
 ```
 fyntra/
@@ -224,7 +258,7 @@ fyntra/
 │   │   ├── models/      # Modelos de SQLAlchemy
 │   │   ├── schemas/     # Schemas de Pydantic
 │   │   ├── core/        # Configuración y seguridad
-│   │   └── scripts/     # Scripts de inicialización
+│   │   └── scripts/     # Scripts de inicialización e init_data.py
 │   ├── main.py          # Punto de entrada
 │   └── requirements.txt # Dependencias Python
 ├── frontend/             # Frontend Angular
@@ -235,24 +269,53 @@ fyntra/
 │   │   │   └── guards/      # Guards de autenticación
 │   │   └── assets/          # Recursos estáticos
 │   └── package.json
-├── docker-compose.yml    # Orquestación de servicios
-└── Makefile              # Comandos útiles
+├── mobile/               # App Android (conductores y proveedores)
+│   └── app/              # Código Kotlin, Retrofit, Compose
+├── nginx/                 # Configuración de Nginx
+├── pgadmin/               # Configuración de pgAdmin (servers.json)
+├── docker-compose.yml     # Orquestación de servicios
+└── Makefile               # Comandos útiles
 ```
 
-## Comandos Útiles
+## Comandos útiles (Makefile)
 
-Ver `Makefile` para comandos disponibles:
+Listado completo con `make help`. Resumen:
+
+| Comando | Descripción |
+|---------|-------------|
+| `make help` | Mostrar todos los comandos |
+| `make build` | Construir imágenes Docker |
+| `make up` | Iniciar todos los servicios |
+| `make start` | build + up (arranque desde cero) |
+| `make down` | Detener servicios |
+| `make restart` | Reiniciar servicios |
+| `make ps` | Ver estado de los servicios |
+| `make logs` | Ver logs de todos los servicios |
+| `make logs-backend` / `make logs-frontend` / `make logs-db` | Logs por servicio |
+| `make init-data` | Crear datos iniciales de prueba |
+| `make migrate` | Aplicar migraciones Alembic |
+| `make shell-backend` / `make shell-frontend` | Shell en contenedor |
+| `make shell-db` | Acceso a psql (PostgreSQL) |
+| `make test-backend` / `make test-frontend` | Ejecutar tests |
+| `make clean` | Detener y eliminar volúmenes e imágenes (⚠️ borra datos) |
+
+## Solución de problemas
+
+### Puerto ya en uso
+
+Si los puertos 4200, 8000, 5432 o 80 están en uso, cambia el puerto externo en `docker-compose.yml` (por ejemplo `"4201:4200"`).
+
+### Error al construir
 
 ```bash
-make help          # Ver todos los comandos
-make build         # Construir imágenes
-make up            # Iniciar servicios
-make down          # Detener servicios
-make logs          # Ver logs
-make migrate       # Aplicar migraciones
+docker-compose down -v
+docker-compose build --no-cache
+docker-compose up -d
 ```
 
-## Solución de Problemas
+### La aplicación no carga
+
+Comprueba que todos los contenedores están en ejecución (`make ps` o `docker-compose ps`) y revisa los logs con `make logs` o `make logs-backend` / `make logs-frontend`.
 
 ### El backend no inicia
 
@@ -435,11 +498,8 @@ Instala Docker Compose o usa `docker compose` (sin guión):
 docker compose --profile testing up -d loadtest
 ```
 
-## Próximos Pasos
+---
 
-1. Configurar migraciones Alembic para cambios en la base de datos
-2. Implementar más endpoints según necesidades
-3. Agregar tests unitarios e integración
-4. Configurar CI/CD
-5. Implementar caché con Redis según necesidades
+Para más información sobre el proyecto (arquitectura, stack, desarrollo, API), consulta el **[README.md](README.md)**.
+
 

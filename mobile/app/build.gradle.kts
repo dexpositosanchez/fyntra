@@ -13,7 +13,7 @@ android {
 
     defaultConfig {
         applicationId = "com.tomoko.fyntra"
-        minSdk = 24
+        minSdk = 26  // RNF16: Android 8.0 (API 26) o superior
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"

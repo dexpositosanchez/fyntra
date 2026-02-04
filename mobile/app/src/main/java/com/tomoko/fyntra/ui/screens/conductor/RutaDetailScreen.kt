@@ -1,10 +1,13 @@
 package com.tomoko.fyntra.ui.screens.conductor
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.util.Size
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.core.content.ContextCompat
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
@@ -39,6 +42,7 @@ import androidx.navigation.NavController
 import com.tomoko.fyntra.data.models.Parada
 import com.tomoko.fyntra.data.models.Ruta
 import com.tomoko.fyntra.data.repository.AuthRepository
+import com.tomoko.fyntra.util.ImageCompression
 import kotlinx.coroutines.launch
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
@@ -47,6 +51,9 @@ import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
 import java.io.FileOutputStream
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -428,33 +435,58 @@ fun CompletarParadaDialog(
     authRepository: AuthRepository
 ) {
     val context = LocalContext.current
-    var fotoUri by remember { mutableStateOf<Uri?>(null) }
     var fotoBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    var archivoFotoActual by remember { mutableStateOf<File?>(null) }
     var firmaBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var showFirmaCanvas by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
-    val fotoFile = remember {
-        File(context.cacheDir, "foto_${parada.id}_${System.currentTimeMillis()}.jpg").apply {
-            parentFile?.mkdirs()
-        }
-    }
-
-    LaunchedEffect(Unit) {
-        fotoUri = FileProvider.getUriForFile(
-            context,
-            "${context.packageName}.fileprovider",
-            fotoFile
-        )
-    }
-
     val cameraLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicture()
     ) { success ->
-        if (success && fotoFile.exists()) {
-            // Cargar la foto como bitmap para mostrarla inmediatamente
-            fotoBitmap = BitmapFactory.decodeFile(fotoFile.absolutePath)
+        if (success && archivoFotoActual != null && archivoFotoActual!!.exists()) {
+            fotoBitmap = BitmapFactory.decodeFile(archivoFotoActual!!.absolutePath)
+        }
+    }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+            val nuevoArchivo = File.createTempFile(
+                "foto_parada_${parada.id}_${timeStamp}_",
+                ".jpg",
+                context.cacheDir
+            )
+            archivoFotoActual = nuevoArchivo
+            val photoUri = FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                nuevoArchivo
+            )
+            cameraLauncher.launch(photoUri)
+        }
+    }
+
+    fun tomarFoto() {
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+            val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+            val nuevoArchivo = File.createTempFile(
+                "foto_parada_${parada.id}_${timeStamp}_",
+                ".jpg",
+                context.cacheDir
+            )
+            archivoFotoActual = nuevoArchivo
+            val photoUri = FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                nuevoArchivo
+            )
+            cameraLauncher.launch(photoUri)
+        } else {
+            permissionLauncher.launch(Manifest.permission.CAMERA)
         }
     }
 
@@ -483,11 +515,9 @@ fun CompletarParadaDialog(
                     color = Color(0xFF6F7785)
                 )
 
-                // Botón para tomar foto
+                // Botón para tomar foto (solicita permiso CAMERA si hace falta)
                 OutlinedButton(
-                    onClick = {
-                        fotoUri?.let { cameraLauncher.launch(it) }
-                    },
+                    onClick = { tomarFoto() },
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Icon(Icons.Default.Add, contentDescription = null)
@@ -544,19 +574,26 @@ fun CompletarParadaDialog(
                             scope.launch {
                                 isLoading = true
                                 try {
-                                    val fotoPart = if (fotoFile.exists()) {
+                                    // RNF18: compresión de imágenes antes de subir
+                                    val fotoPart = archivoFotoActual?.takeIf { it.exists() }?.let { file ->
+                                        val compressed = ImageCompression.compressPhotoForUpload(context, file)
+                                        val fileToUpload = compressed ?: file
                                         MultipartBody.Part.createFormData(
                                             "foto",
-                                            fotoFile.name,
-                                            fotoFile.asRequestBody("image/jpeg".toMediaType())
+                                            fileToUpload.name,
+                                            fileToUpload.asRequestBody("image/jpeg".toMediaType())
                                         )
-                                    } else null
+                                    }
 
                                     val firmaPart = firmaBitmap?.let { bitmap ->
-                                        val firmaFile = File(context.cacheDir, "firma_${parada.id}_${System.currentTimeMillis()}.png")
-                                        FileOutputStream(firmaFile).use { out ->
-                                            bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
-                                        }
+                                        val firmaFile = ImageCompression.compressSignatureForUpload(context, bitmap)
+                                            ?: run {
+                                                val fallback = File(context.cacheDir, "firma_${parada.id}_${System.currentTimeMillis()}.png")
+                                                FileOutputStream(fallback).use { out ->
+                                                    bitmap.compress(Bitmap.CompressFormat.PNG, 90, out)
+                                                }
+                                                fallback
+                                            }
                                         MultipartBody.Part.createFormData(
                                             "firma",
                                             firmaFile.name,
@@ -782,35 +819,62 @@ fun CrearIncidenciaRutaDialog(
     var tipoIncidencia by remember { mutableStateOf("averia") }
     var descripcion by remember { mutableStateOf("") }
     var paradaSeleccionada by remember { mutableStateOf<Int?>(null) }
-    var fotoUri by remember { mutableStateOf<Uri?>(null) }
     var fotoBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    var archivoFotoActual by remember { mutableStateOf<File?>(null) }
     var cancelarRuta by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var mensajeExito by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
-    // Fichero temporal para la foto de la incidencia
-    val fotoFile = remember {
-        File(context.cacheDir, "incidencia_${rutaId}_${System.currentTimeMillis()}.jpg").apply {
-            parentFile?.mkdirs()
-        }
-    }
-
-    // Uri para la cámara (FileProvider)
-    LaunchedEffect(Unit) {
-        fotoUri = FileProvider.getUriForFile(
-            context,
-            "${context.packageName}.fileprovider",
-            fotoFile
-        )
-    }
 
     val cameraLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicture()
     ) { success ->
-        if (success && fotoFile.exists()) {
-            fotoBitmap = BitmapFactory.decodeFile(fotoFile.absolutePath)
+        if (success && archivoFotoActual != null && archivoFotoActual!!.exists()) {
+            fotoBitmap = BitmapFactory.decodeFile(archivoFotoActual!!.absolutePath)
+        }
+    }
+
+    val permissionLauncherIncidencia = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+            val nuevoArchivo = File.createTempFile(
+                "incidencia_ruta_${rutaId}_${timeStamp}_",
+                ".jpg",
+                context.cacheDir
+            )
+            archivoFotoActual = nuevoArchivo
+            val photoUri = FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                nuevoArchivo
+            )
+            cameraLauncher.launch(photoUri)
+        } else {
+            error = "Se necesita permiso de cámara para tomar fotos"
+        }
+    }
+
+    fun tomarFotoIncidencia() {
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+            val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+            val nuevoArchivo = File.createTempFile(
+                "incidencia_ruta_${rutaId}_${timeStamp}_",
+                ".jpg",
+                context.cacheDir
+            )
+            archivoFotoActual = nuevoArchivo
+            val photoUri = FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                nuevoArchivo
+            )
+            cameraLauncher.launch(photoUri)
+        } else {
+            permissionLauncherIncidencia.launch(Manifest.permission.CAMERA)
         }
     }
 
@@ -953,11 +1017,9 @@ fun CrearIncidenciaRutaDialog(
                     maxLines = 5
                 )
 
-                // Botón para tomar foto (como en completar parada)
+                // Botón para tomar foto (solicita permiso CAMERA si hace falta)
                 Button(
-                    onClick = {
-                        fotoUri?.let { cameraLauncher.launch(it) }
-                    },
+                    onClick = { tomarFotoIncidencia() },
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text("Tomar foto (opcional)")
@@ -1023,20 +1085,19 @@ fun CrearIncidenciaRutaDialog(
                                             it.toString().toRequestBody(mediaTypeText)
                                         }
 
-                                        // Preparar foto (como lista, para el backend)
-                                        // Similar a cómo se hace en completarParada, pero como lista
-                                        val fotoParts = if (fotoFile.exists()) {
-                                            val requestFile = fotoFile.asRequestBody("image/jpeg".toMediaType())
+                                        // RNF18: compresión de imágenes antes de subir
+                                        val fotoParts = archivoFotoActual?.takeIf { it.exists() }?.let { file ->
+                                            val compressed = ImageCompression.compressPhotoForUpload(context, file)
+                                            val fileToUpload = compressed ?: file
+                                            val requestFile = fileToUpload.asRequestBody("image/jpeg".toMediaType())
                                             listOf(
                                                 MultipartBody.Part.createFormData(
                                                     "fotos",
-                                                    fotoFile.name,
+                                                    fileToUpload.name,
                                                     requestFile
                                                 )
                                             )
-                                        } else {
-                                            emptyList() // Lista vacía cuando no hay fotos
-                                        }
+                                        } ?: emptyList()
 
                                         val response = apiService.reportarIncidenciaRuta(
                                             rutaId = rutaId,

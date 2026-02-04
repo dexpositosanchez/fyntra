@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.tomoko.fyntra.R
 import com.tomoko.fyntra.data.local.AuthDataStore
+import com.tomoko.fyntra.data.local.SettingsDataStore
 import com.tomoko.fyntra.data.repository.AuthRepository
 import com.tomoko.fyntra.ui.components.AppHeader
 
@@ -26,7 +27,8 @@ import com.tomoko.fyntra.ui.components.AppHeader
 fun ModuloSelectorScreen(
     navController: NavController,
     authDataStore: AuthDataStore,
-    authRepository: AuthRepository
+    authRepository: AuthRepository,
+    settingsDataStore: SettingsDataStore
 ) {
     val userName by authDataStore.userNombre.collectAsState(initial = null)
     
@@ -105,6 +107,15 @@ fun ModuloSelectorScreen(
                     }
                 }
             )
+        }
+
+        // RNF18: Acceso a Ajustes (opción "solo WiFi")
+        Spacer(modifier = Modifier.height(24.dp))
+        TextButton(
+            onClick = { navController.navigate("settings") },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Ajustes (sincronización)", color = Color(0xFF1B9D8A))
         }
     }
 }

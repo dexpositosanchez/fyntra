@@ -46,19 +46,12 @@
 | RNF9. Interfaz Intuitiva | La interfaz web debe ser intuitiva y fácil de usar, siguiendo principios de diseño UX/UI modernos y con tiempo de aprendizaje mínimo. | ✅ | ✅ |  |
 | RNF10. Diseño Responsive | La interfaz web debe adaptarse correctamente a diferentes tamaños de pantalla (ordenadores, tablets, smartphones). | ✅ | ✅ | |
 | RNF11. Accesibilidad | El sistema debe cumplir con las pautas de accesibilidad WCAG 2.1 nivel AA para garantizar el acceso a usuarios con discapacidades. | ✅ | ✅ |  |
-| RNF12. Código Limpio y Documentado | El código fuente debe estar bien documentado, seguir estándares de codificación y ser fácilmente mantenible por otros desarrolladores. | ⬜ | ⬜ / ✅ / ❌ |  |
-| RNF13. Arquitectura Modular | El sistema debe estar diseñado con arquitectura modular que permita modificar o añadir funcionalidades sin afectar otras partes del sistema. | ⬜ | ⬜ / ✅ / ❌ |  |
+| RNF12. Código Limpio y Documentado | El código fuente debe estar bien documentado, seguir estándares de codificación y ser fácilmente mantenible por otros desarrolladores. | ✅ | ✅ |  |
+| RNF13. Arquitectura Modular | El sistema debe estar diseñado con arquitectura modular que permita modificar o añadir funcionalidades sin afectar otras partes del sistema. | ✅ | ✅ |  |
 | RNF14. Versionado | El sistema debe utilizar control de versiones (Git) y mantener un historial completo de cambios. | ✅ | ✅ |  |
 | RNF15. Navegadores Soportados | La aplicación web debe funcionar correctamente en los navegadores más utilizados (Chrome, Firefox, Safari, Edge) en sus versiones actuales y anteriores. | ✅ | ✅ |  |
-| RNF16. Plataforma Móvil | La aplicación móvil Android debe funcionar en dispositivos Android con versión 8.0 (API 26) o superior, adaptándose a diferentes tamaños de pantalla y resoluciones y siguiendo Material Design. | ⬜ | ⬜ / ✅ / ❌ |  |
-| RNF17. Rendimiento Móvil | La aplicación móvil debe cargar las pantallas principales en menos de 2 segundos y responder a las interacciones del usuario en menos de 100 ms. | ⬜ | ⬜ / ✅ / ❌ |  |
-| RNF18. Optimización Móvil | La aplicación móvil debe optimizar el uso de batería y datos (GPS solo cuando sea necesario, compresión de imágenes, sincronización incremental, opción de solo WiFi). | ⬜ | ⬜ / ✅ / ❌ |  |
+| RNF16. Plataforma Móvil | La aplicación móvil Android debe funcionar en dispositivos Android con versión 8.0 (API 26) o superior, adaptándose a diferentes tamaños de pantalla y resoluciones y siguiendo Material Design. | ✅ | ✅ |  |
+| RNF17. Rendimiento Móvil | La aplicación móvil debe cargar las pantallas principales en menos de 2 segundos y responder a las interacciones del usuario en menos de 100 ms. | ✅ | ✅ |  |
+| RNF18. Optimización Móvil | La aplicación móvil debe optimizar el uso de batería y datos (compresión de imágenes, sincronización incremental, opción de solo WiFi). | ✅ | ✅ |  |
 
-### Arrancar con Docker (después de make clean)
-
-1. Construir e iniciar: `make build` y `make up` (o `make start`).
-2. Esperar a que los servicios estén listos: `make ps`.
-3. Crear datos iniciales (make clean borra volúmenes): `make init-data`.
-4. Abrir **http://localhost** (puerto 80). No uses http://localhost:4200: Nginx en el 80 hace de proxy y sirve frontend y reenvía `/api` al backend.
-5. Login con los usuarios del script init_data (p. ej. admin@fyntra.com).
 

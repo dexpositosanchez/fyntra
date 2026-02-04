@@ -8,6 +8,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.tomoko.fyntra.data.local.AuthDataStore
+import com.tomoko.fyntra.data.local.SettingsDataStore
 import com.tomoko.fyntra.data.repository.AuthRepository
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -24,6 +25,7 @@ import com.tomoko.fyntra.ui.screens.modulo.ModuloTransportesScreen
 import com.tomoko.fyntra.ui.screens.propietario.PropietarioHomeScreen
 import com.tomoko.fyntra.ui.screens.proveedor.ProveedorHomeScreen
 import com.tomoko.fyntra.ui.screens.incidencias.IncidenciasScreen
+import com.tomoko.fyntra.ui.screens.settings.SettingsScreen
 import com.tomoko.fyntra.data.repository.IncidenciaRepository
 
 sealed class Screen(val route: String) {
@@ -32,6 +34,7 @@ sealed class Screen(val route: String) {
     object ModuloFincas : Screen("modulo_fincas")
     object ModuloTransportes : Screen("modulo_transportes")
     object Incidencias : Screen("incidencias")
+    object Settings : Screen("settings")
     object ConductorHome : Screen("conductor_home")
     object PropietarioHome : Screen("propietario_home")
     object ProveedorHome : Screen("proveedor_home")
@@ -42,7 +45,8 @@ fun NavGraph(
     navController: NavHostController = rememberNavController(),
     authDataStore: AuthDataStore,
     authRepository: AuthRepository,
-    incidenciaRepository: IncidenciaRepository
+    incidenciaRepository: IncidenciaRepository,
+    settingsDataStore: SettingsDataStore
 ) {
     val userRol by authDataStore.userRol.collectAsState(initial = null)
     val isLoggedIn by authDataStore.token.collectAsState(initial = null)
@@ -85,7 +89,15 @@ fun NavGraph(
             ModuloSelectorScreen(
                 navController = navController,
                 authDataStore = authDataStore,
-                authRepository = authRepository
+                authRepository = authRepository,
+                settingsDataStore = settingsDataStore
+            )
+        }
+
+        composable(Screen.Settings.route) {
+            SettingsScreen(
+                navController = navController,
+                settingsDataStore = settingsDataStore
             )
         }
 

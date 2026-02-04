@@ -82,8 +82,8 @@ fun ModuloTransportesScreen(
         }
         
         when {
-            // Admin no ve nada
-            userRol == "admin_transportes" -> {
+            // Super admin y admin transportes: mensaje para usar la web
+            userRol == "super_admin" || userRol == "admin_transportes" -> {
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center

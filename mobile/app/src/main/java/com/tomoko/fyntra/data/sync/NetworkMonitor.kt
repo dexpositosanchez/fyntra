@@ -9,6 +9,9 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 
+/**
+ * RNF18: Detecta si la conexión es WiFi para la opción "sincronizar solo por WiFi".
+ */
 class NetworkMonitor(private val context: Context) {
     private val connectivityManager =
         context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
@@ -42,7 +45,6 @@ class NetworkMonitor(private val context: Context) {
 
         connectivityManager.registerNetworkCallback(request, callback)
 
-        // Emitir estado inicial
         trySend(isCurrentlyOnline())
 
         awaitClose {
@@ -50,10 +52,34 @@ class NetworkMonitor(private val context: Context) {
         }
     }
 
+    /** RNF18: Indica si la conexión actual es WiFi (para opción "solo WiFi"). */
+    val isWifi: Flow<Boolean> = callbackFlow {
+        val callback = object : ConnectivityManager.NetworkCallback() {
+            override fun onCapabilitiesChanged(
+                network: Network,
+                caps: NetworkCapabilities
+            ) {
+                trySend(caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI))
+            }
+        }
+        val request = NetworkRequest.Builder()
+            .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+            .build()
+        connectivityManager.registerNetworkCallback(request, callback)
+        trySend(isWifiConnected())
+        awaitClose { connectivityManager.unregisterNetworkCallback(callback) }
+    }
+
     fun isCurrentlyOnline(): Boolean {
         val network = connectivityManager.activeNetwork ?: return false
         val capabilities = connectivityManager.getNetworkCapabilities(network) ?: return false
         return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
                 capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+    }
+
+    fun isWifiConnected(): Boolean {
+        val network = connectivityManager.activeNetwork ?: return false
+        val caps = connectivityManager.getNetworkCapabilities(network) ?: return false
+        return caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
     }
 }

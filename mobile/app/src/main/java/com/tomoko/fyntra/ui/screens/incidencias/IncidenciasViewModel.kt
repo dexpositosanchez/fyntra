@@ -72,18 +72,8 @@ class IncidenciasViewModel(
                 val userRol = authDataStore.userRol.first()
                 // Refrescar desde el servidor
                 incidenciaRepository.refreshIncidenciasFromServer(userRol = userRol)
-                // Esperar un poco para que el Flow emita los valores actualizados
-                kotlinx.coroutines.delay(1000)
-                // Verificar si hay datos después de la carga
-                val currentIncidencias = _uiState.value.incidencias
-                if (currentIncidencias.isEmpty()) {
-                    // Si no hay datos, puede ser que realmente no haya incidencias
-                    // o que haya un problema. Quitar loading de todas formas.
-                    _uiState.value = _uiState.value.copy(loading = false)
-                } else {
-                    // Si hay datos, el loading ya se actualizó en el collect del Flow
-                    _uiState.value = _uiState.value.copy(loading = false)
-                }
+                // RNF17: El Flow de Room emite al actualizar la BD; no bloquear con delay
+                _uiState.value = _uiState.value.copy(loading = false)
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     loading = false,

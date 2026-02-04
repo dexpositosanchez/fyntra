@@ -11,6 +11,17 @@ Fyntra es un sistema integrado de gestión empresarial que unifica dos módulos 
 
 Ambos módulos pueden funcionar de forma independiente o conjunta, utilizando un backend unificado y experiencias web/móvil diferenciadas.
 
+## ⚡ Inicio Rápido (5 minutos)
+
+Para poner en marcha el proyecto con Docker:
+
+```bash
+cd fyntra
+docker-compose up -d --build
+```
+
+Comprueba el estado con `docker-compose ps` y accede a la aplicación en **http://localhost** (o http://localhost:4200 para el frontend directo). Para **instalación completa** con datos de prueba, usuarios predefinidos, configuración de la App Android y pruebas de carga, consulta **[INSTALACION.md](INSTALACION.md)**.
+
 ## 🛠️ Stack Tecnológico
 
 ### Backend
@@ -66,14 +77,20 @@ fyntra/
 │   ├── src/                # Código fuente
 │   ├── package.json        # Dependencias de Node.js
 │   └── Dockerfile          # Imagen Docker del frontend
-├── nginx/                  # Configuración de Nginx
+├── mobile/                 # App Android (conductores y proveedores)
+│   └── app/                # Código Kotlin, recursos y configuración
+├── nginx/                  # Configuración de Nginx (reverse proxy)
 │   ├── nginx.conf          # Configuración principal
 │   └── conf.d/             # Configuraciones de servidores
-├── docker-compose.yml       # Orquestación de servicios
+├── pgadmin/                # Configuración de pgAdmin (servidor PostgreSQL)
+├── docker-compose.yml      # Orquestación de servicios
+├── Makefile                # Comandos útiles (make help)
 └── README.md               # Este archivo
 ```
 
 ## 🚀 Despliegue con Docker
+
+Guía resumida. Para pasos detallados, datos iniciales y solución de problemas, ver **[INSTALACION.md](INSTALACION.md)**.
 
 ### Requisitos Previos
 
@@ -128,16 +145,18 @@ Una vez iniciados los servicios, la aplicación estará disponible en:
 - **Backend API**: http://localhost:8000
 - **API a través de Nginx**: http://localhost/api
 - **Health Check**: http://localhost/health
+- **pgAdmin**: http://localhost:5050 (gestor de base de datos)
 
 ### Servicios Disponibles
 
 | Servicio | Puerto | Descripción |
 |----------|--------|-------------|
 | Frontend (Angular) | 4200 | Aplicación web |
-| Backend (FastAPI) | 8000 | API REST |
+| Backend (FastAPI) | 8000, 8001 | API REST (Nginx balancea entre ambas) |
 | PostgreSQL | 5432 | Base de datos relacional |
 | Redis | 6379 | Base de datos NoSQL (caché) |
-| Nginx | 80 | Reverse proxy |
+| pgAdmin | 5050 | Gestor web de base de datos |
+| Nginx | 80 | Reverse proxy y balanceador de carga |
 
 ## 🔧 Comandos Útiles
 
@@ -518,7 +537,3 @@ Curso 2024-2025
 - [Documentación de Angular](https://angular.io/docs)
 - [Documentación de Docker](https://docs.docker.com/)
 - [Documentación de PostgreSQL](https://www.postgresql.org/docs/)
-
----
-
-**Nota**: Este proyecto está en desarrollo activo. Las funcionalidades se irán implementando progresivamente según la planificación del proyecto.

@@ -4,7 +4,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExitToApp
-import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -72,6 +72,18 @@ fun AppHeader(
                             else -> "📦"
                         },
                         fontSize = 24.sp
+                    )
+                }
+            }
+
+            // RNF18: Ajustes (opción "solo WiFi") accesible desde el header
+            if (navController != null) {
+                IconButton(onClick = { navController.navigate("settings") }) {
+                    Icon(
+                        imageVector = Icons.Filled.Settings,
+                        contentDescription = "Ajustes",
+                        tint = Color(0xFF1B9D8A),
+                        modifier = Modifier.size(24.dp)
                     )
                 }
             }

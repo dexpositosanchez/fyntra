@@ -11,6 +11,7 @@ import androidx.compose.ui.Modifier
 import com.google.gson.Gson
 import com.tomoko.fyntra.data.api.RetrofitModule
 import com.tomoko.fyntra.data.local.AuthDataStore
+import com.tomoko.fyntra.data.local.SettingsDataStore
 import com.tomoko.fyntra.data.local.database.AppDatabase
 import com.tomoko.fyntra.data.repository.AuthRepository
 import com.tomoko.fyntra.data.repository.IncidenciaRepository
@@ -23,6 +24,7 @@ import com.tomoko.fyntra.ui.theme.FyntraTheme
 class MainActivity : ComponentActivity() {
     private lateinit var database: AppDatabase
     private lateinit var authDataStore: AuthDataStore
+    private lateinit var settingsDataStore: SettingsDataStore
     private lateinit var authRepository: AuthRepository
     private lateinit var networkMonitor: NetworkMonitor
     private lateinit var syncService: SyncService
@@ -45,7 +47,8 @@ class MainActivity : ComponentActivity() {
                     NavGraph(
                         authDataStore = authDataStore,
                         authRepository = authRepository,
-                        incidenciaRepository = incidenciaRepository
+                        incidenciaRepository = incidenciaRepository,
+                        settingsDataStore = settingsDataStore
                     )
                 }
             }
@@ -58,6 +61,7 @@ class MainActivity : ComponentActivity() {
         
         // Auth
         authDataStore = AuthDataStore(this)
+        settingsDataStore = SettingsDataStore(this)
         authRepository = AuthRepository(authDataStore)
         
         // Network monitor
@@ -88,12 +92,13 @@ class MainActivity : ComponentActivity() {
             syncService = syncService
         )
         
-        // Sync Manager
+        // Sync Manager (RNF18: respeta opción "solo WiFi")
         syncManager = SyncManager(
             database = database,
             networkMonitor = networkMonitor,
             syncService = syncService,
-            incidenciaRepository = incidenciaRepository
+            incidenciaRepository = incidenciaRepository,
+            settingsDataStore = settingsDataStore
         )
         
         // Iniciar sincronización automática
