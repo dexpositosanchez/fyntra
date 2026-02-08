@@ -43,12 +43,15 @@ def get_redis_client() -> Optional[redis.Redis]:
     
     if _redis_client is None:
         redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+        
+        # Si es Upstash (tiene .upstash.io), cambiar redis:// por rediss:// para SSL
+        if '.upstash.io' in redis_url and redis_url.startswith('redis://'):
+            redis_url = redis_url.replace('redis://', 'rediss://', 1)
+        
         try:
             _redis_client = redis.from_url(
                 redis_url, 
-                decode_responses=True,
-                ssl=True,
-                ssl_cert_reqs=None
+                decode_responses=True
             )
             # Verificar conexión
             _redis_client.ping()
