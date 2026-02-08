@@ -116,6 +116,8 @@ El proyecto está configurado para funcionar con el backend en la nube y el fron
 - **Backend API**: Desplegado en [Render](https://render.com)
   - URL: `https://fyntra-backend-6yvt.onrender.com`
   - Documentación API: `https://fyntra-backend-6yvt.onrender.com/docs`
+  - **Configuración de Escalado**: 1 instancia con múltiples workers (Gunicorn)
+  - **Workers**: Configurable mediante variable de entorno `WORKERS` (por defecto: 1)
   
 - **Base de Datos PostgreSQL**: [Supabase](https://supabase.com)
   - Base de datos PostgreSQL gestionada en la nube
@@ -124,6 +126,42 @@ El proyecto está configurado para funcionar con el backend en la nube y el fron
 - **Base de Datos Redis**: [Upstash](https://upstash.com)
   - Redis gestionado en la nube
   - SSL/TLS habilitado
+
+### Escalado y Rendimiento
+
+#### Configuración Actual
+- **Producción (Render)**: 1 instancia del backend con Gunicorn
+- **Workers**: Configurable mediante variable de entorno `WORKERS`
+- **Desarrollo Local (Docker)**: 2 instancias del backend con Nginx balanceando carga
+
+#### Aumentar Workers en Render (Recomendado)
+
+Para mejorar el rendimiento sin aumentar instancias:
+
+1. Ve a tu servicio en Render → **Settings** → **Environment**
+2. Añade o modifica la variable de entorno:
+   ```
+   WORKERS=4
+   ```
+3. Guarda los cambios (Render reiniciará automáticamente)
+
+**Recomendaciones**:
+- **Plan Free**: `WORKERS=2` o `WORKERS=4` (según recursos disponibles)
+- **Planes de Pago**: `WORKERS=4` a `WORKERS=8` según el tamaño de instancia
+- **Fórmula**: `WORKERS = (2 × CPU cores) + 1`
+
+**Nota**: Aumentar workers es más eficiente que múltiples instancias para la mayoría de casos de uso.
+
+#### Limitaciones del Plan Free
+
+**Escalado Automático**: No disponible en el plan Free de Render. El escalado automático (que ajusta el número de instancias según la carga) solo está disponible en planes de pago.
+
+**Motivo**: Este proyecto es un Trabajo de Fin de Grado (TFG) y utiliza una cuenta gratuita de Render para mantener los costes en cero. Por esta razón:
+- ✅ Se puede aumentar manualmente los **workers** (recomendado y gratuito)
+- ❌ No se puede configurar **escalado automático** de instancias (requiere plan de pago)
+- ✅ El rendimiento se optimiza mediante múltiples workers en lugar de múltiples instancias
+
+**Alternativa**: Aumentar workers es una solución eficiente y gratuita que proporciona mejor rendimiento sin necesidad de escalado automático.
 
 ### Configuración de Clientes
 
@@ -207,10 +245,18 @@ Una vez iniciados los servicios, la aplicación estará disponible en:
 
 ### Servicios Disponibles
 
+#### Producción (Render)
+| Servicio | URL/Configuración | Descripción |
+|----------|-------------------|-------------|
+| Backend API | https://fyntra-backend-6yvt.onrender.com | API REST (1 instancia con workers) |
+| PostgreSQL | Supabase (nube) | Base de datos relacional |
+| Redis | Upstash (nube) | Base de datos NoSQL (caché) |
+
+#### Desarrollo Local (Docker)
 | Servicio | Puerto | Descripción |
 |----------|--------|-------------|
 | Frontend (Angular) | 4200 | Aplicación web |
-| Backend (FastAPI) | 8000, 8001 | API REST (Nginx balancea entre ambas) |
+| Backend (FastAPI) | 8000, 8001 | API REST (Nginx balancea entre ambas instancias) |
 | PostgreSQL | 5432 | Base de datos relacional |
 | Redis | 6379 | Base de datos NoSQL (caché) |
 | pgAdmin | 5050 | Gestor web de base de datos |

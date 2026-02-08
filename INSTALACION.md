@@ -13,6 +13,8 @@ El proyecto está configurado con el **backend desplegado en la nube** y el **fr
 - **Backend API**: [Render](https://render.com)
   - URL: `https://fyntra-backend-6yvt.onrender.com`
   - Documentación: `https://fyntra-backend-6yvt.onrender.com/docs`
+  - **Configuración**: 1 instancia con Gunicorn y múltiples workers
+  - **Workers**: Configurable mediante variable de entorno `WORKERS` (por defecto: 1)
   
 - **Base de Datos PostgreSQL**: [Supabase](https://supabase.com)
   - Base de datos PostgreSQL gestionada en la nube
@@ -20,6 +22,53 @@ El proyecto está configurado con el **backend desplegado en la nube** y el **fr
   
 - **Base de Datos Redis**: [Upstash](https://upstash.com)
   - Redis gestionado en la nube con SSL/TLS
+
+### Configuración de Escalado en Render
+
+#### Aumentar Workers (Recomendado para Mejor Rendimiento)
+
+Para mejorar el rendimiento sin aumentar el número de instancias:
+
+1. Ve a tu servicio en Render → **Settings** → **Environment**
+2. Busca o añade la variable de entorno:
+   ```
+   WORKERS=4
+   ```
+3. Guarda los cambios (Render reiniciará automáticamente)
+
+**Recomendaciones de Workers**:
+- **Plan Free**: `WORKERS=2` o `WORKERS=4` (según recursos disponibles)
+- **Planes de Pago**: `WORKERS=4` a `WORKERS=8` según el tamaño de instancia
+- **Fórmula general**: `WORKERS = (2 × CPU cores) + 1`
+
+**Ventajas de aumentar workers**:
+- ✅ Mejor rendimiento con múltiples peticiones concurrentes
+- ✅ Más eficiente que múltiples instancias (menor latencia)
+- ✅ No requiere cambios de plan en Render
+- ✅ Mejor uso de recursos de CPU
+
+**Nota**: El backend usa Gunicorn con Uvicorn workers, que permite manejar múltiples peticiones concurrentes de forma eficiente.
+
+#### Limitaciones del Plan Free y Escalado Automático
+
+**Escalado Automático No Disponible**: El escalado automático (que ajusta automáticamente el número de instancias según la carga) **no está disponible en el plan Free** de Render. Esta funcionalidad solo está disponible en planes de pago.
+
+**Contexto del Proyecto**: 
+Este proyecto es un **Trabajo de Fin de Grado (TFG)** y utiliza una cuenta gratuita de Render para mantener los costes en cero durante el desarrollo y demostración del proyecto.
+
+**Opciones Disponibles en Plan Free**:
+- ✅ **Aumentar workers manualmente**: Configurando la variable `WORKERS` (gratuito y eficiente)
+- ✅ **Optimización de código**: Mejoras en el código para mejor rendimiento
+- ❌ **Escalado automático de instancias**: Requiere plan de pago
+
+**Solución Implementada**:
+En lugar de escalado automático, se utiliza **múltiples workers dentro de una sola instancia**, que proporciona:
+- Mejor rendimiento con peticiones concurrentes
+- Sin costes adicionales
+- Configuración simple mediante variable de entorno
+- Eficiencia similar o superior a múltiples instancias para la mayoría de casos de uso
+
+**Para Producción Real**: Si este proyecto se desplegara en producción con tráfico real, se recomendaría considerar un plan de pago que incluya escalado automático para alta disponibilidad y mejor gestión de picos de carga.
 
 ### Configuración de Clientes
 
@@ -399,11 +448,27 @@ fyntra/
 │   └── package.json
 ├── mobile/               # App Android (conductores y proveedores)
 │   └── app/              # Código Kotlin, Retrofit, Compose
-├── nginx/                 # Configuración de Nginx
+├── nginx/                 # Configuración de Nginx (balanceo de carga local)
 ├── pgadmin/               # Configuración de pgAdmin (servers.json)
-├── docker-compose.yml     # Orquestación de servicios
+├── docker-compose.yml     # Orquestación de servicios (2 backends para desarrollo)
 └── Makefile               # Comandos útiles
 ```
+
+## Arquitectura de Escalado
+
+### Desarrollo Local (Docker Compose)
+
+- **2 instancias del backend**: `backend` (puerto 8000) y `backend2` (puerto 8001)
+- **Nginx como balanceador**: Distribuye carga entre ambas instancias usando `least_conn`
+- **Configuración**: `nginx/conf.d/default.conf` y `docker-compose.yml`
+
+### Producción (Render)
+
+- **1 instancia del backend**: Con Gunicorn y múltiples workers
+- **Workers configurables**: Variable de entorno `WORKERS` (por defecto: 1)
+- **Ventaja**: Más eficiente que múltiples instancias (menor latencia, mejor uso de recursos)
+
+**Diferencia clave**: En desarrollo local se usan 2 instancias separadas para simular alta disponibilidad. En producción, se usa 1 instancia con múltiples workers (más eficiente).
 
 ## Comandos útiles (Makefile)
 
