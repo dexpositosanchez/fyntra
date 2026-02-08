@@ -204,15 +204,24 @@ async def init_data_endpoint():
     import os
     
     try:
-        # Obtener el directorio del script
-        script_path = os.path.join(os.path.dirname(__file__), "scripts", "init_data.py")
+        # Obtener el directorio base (donde está main.py)
+        base_dir = os.path.dirname(__file__)
+        script_path = os.path.join(base_dir, "scripts", "init_data.py")
         
-        # Ejecutar el script
+        # Configurar PYTHONPATH para que encuentre el módulo 'app'
+        env = os.environ.copy()
+        if 'PYTHONPATH' in env:
+            env['PYTHONPATH'] = f"{base_dir}:{env['PYTHONPATH']}"
+        else:
+            env['PYTHONPATH'] = base_dir
+        
+        # Ejecutar el script con PYTHONPATH configurado
         result = subprocess.run(
             [sys.executable, script_path],
             capture_output=True,
             text=True,
-            cwd=os.path.dirname(__file__),
+            cwd=base_dir,
+            env=env,
             timeout=300  # Timeout de 5 minutos
         )
         
