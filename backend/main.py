@@ -148,6 +148,110 @@ async def health_check():
     status_code = 200 if health_status["status"] == "healthy" else (503 if health_status["status"] == "unhealthy" else 200)
     return JSONResponse(content=health_status, status_code=status_code)
 
+@app.post(
+    "/api/admin/init-data",
+    tags=["Admin"],
+    summary="Inicializar datos de prueba",
+    description="""
+    Ejecuta el script de inicialización de datos de prueba en la base de datos.
+    
+    Este endpoint ejecuta `scripts/init_data.py` que crea:
+    - Usuarios de prueba (admins, propietarios, proveedores, conductores)
+    - Comunidades e inmuebles
+    - Vehículos y rutas
+    - Incidencias y mantenimientos
+    - Datos de ejemplo para testing
+    
+    **Nota**: Este endpoint es idempotente. Si los datos ya existen, no se duplicarán.
+    """,
+    responses={
+        200: {
+            "description": "Datos inicializados correctamente",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "status": "success",
+                        "message": "Datos inicializados correctamente",
+                        "output": "Creando tablas...\nCreando datos iniciales...\n..."
+                    }
+                }
+            }
+        },
+        500: {
+            "description": "Error al ejecutar el script",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "status": "error",
+                        "message": "Error al ejecutar el script",
+                        "error": "...",
+                        "output": "..."
+                    }
+                }
+            }
+        }
+    }
+)
+async def init_data_endpoint():
+    """
+    Inicializa datos de prueba en la base de datos.
+    
+    Ejecuta el script scripts/init_data.py que crea usuarios, comunidades,
+    vehículos, rutas, incidencias y otros datos de ejemplo para desarrollo y testing.
+    """
+    import subprocess
+    import sys
+    import os
+    
+    try:
+        # Obtener el directorio del script
+        script_path = os.path.join(os.path.dirname(__file__), "scripts", "init_data.py")
+        
+        # Ejecutar el script
+        result = subprocess.run(
+            [sys.executable, script_path],
+            capture_output=True,
+            text=True,
+            cwd=os.path.dirname(__file__),
+            timeout=300  # Timeout de 5 minutos
+        )
+        
+        if result.returncode == 0:
+            return JSONResponse(
+                status_code=200,
+                content={
+                    "status": "success",
+                    "message": "Datos inicializados correctamente",
+                    "output": result.stdout
+                }
+            )
+        else:
+            return JSONResponse(
+                status_code=500,
+                content={
+                    "status": "error",
+                    "message": "Error al ejecutar el script",
+                    "error": result.stderr,
+                    "output": result.stdout
+                }
+            )
+    except subprocess.TimeoutExpired:
+        return JSONResponse(
+            status_code=500,
+            content={
+                "status": "error",
+                "message": "El script tardó demasiado (timeout de 5 minutos)"
+            }
+        )
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={
+                "status": "error",
+                "message": f"Error al ejecutar el script: {str(e)}"
+            }
+        )
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
