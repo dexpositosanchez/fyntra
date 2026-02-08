@@ -6,6 +6,7 @@
         <domain includeSubdomains="true">10.0.2.2</domain>
         <domain includeSubdomains="true">127.0.0.1</domain>
         <domain includeSubdomains="true">192.168.1.128</domain>
+        <domain includeSubdomains="true">10.84.89.211</domain>
     </domain-config>
     
     <!-- Para desarrollo: permitir cleartext en todas las conexiones -->

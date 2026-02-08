@@ -11,9 +11,26 @@ Fyntra es un sistema integrado de gestión empresarial que unifica dos módulos 
 
 Ambos módulos pueden funcionar de forma independiente o conjunta, utilizando un backend unificado y experiencias web/móvil diferenciadas.
 
-## ⚡ Inicio Rápido (5 minutos)
+## ⚡ Inicio Rápido
 
-Para poner en marcha el proyecto con Docker:
+### Opción 1: Frontend Local + Backend en la Nube (Recomendado)
+
+El backend está desplegado en **Render** y el frontend se puede ejecutar localmente:
+
+```bash
+cd fyntra
+make frontend-local
+```
+
+Esto:
+- Detiene todos los contenedores Docker
+- Levanta el frontend localmente en Docker
+- El frontend se conecta automáticamente al backend en: `https://fyntra-backend-6yvt.onrender.com/api`
+- Abre en el navegador: **http://localhost:4200**
+
+### Opción 2: Todo Local con Docker (Desarrollo)
+
+Para desarrollo completo con todos los servicios locales:
 
 ```bash
 cd fyntra
@@ -41,10 +58,12 @@ Comprueba el estado con `docker-compose ps` y accede a la aplicación en **http:
 - **RxJS**: Programación reactiva
 
 ### Infraestructura y Despliegue
-- **Docker**: Contenedores para todos los servicios
-- **Docker Compose**: Orquestación de servicios
-- **Nginx**: Reverse proxy y servidor web
-- **PostgreSQL**: Base de datos en contenedor
+- **Docker**: Contenedores para desarrollo local
+- **Docker Compose**: Orquestación de servicios locales
+- **Nginx**: Reverse proxy y servidor web (desarrollo local)
+- **Render**: Plataforma de despliegue del backend en producción
+- **Supabase**: Base de datos PostgreSQL en la nube (producción)
+- **Upstash**: Base de datos Redis en la nube (producción)
 
 ### Arquitectura
 ```
@@ -88,9 +107,41 @@ fyntra/
 └── README.md               # Este archivo
 ```
 
-## 🚀 Despliegue con Docker
+## 🌐 Arquitectura de Producción
 
-Guía resumida. Para pasos detallados, datos iniciales y solución de problemas, ver **[INSTALACION.md](INSTALACION.md)**.
+El proyecto está configurado para funcionar con el backend en la nube y el frontend/mobile conectándose a él:
+
+### Servicios en la Nube
+
+- **Backend API**: Desplegado en [Render](https://render.com)
+  - URL: `https://fyntra-backend-6yvt.onrender.com`
+  - Documentación API: `https://fyntra-backend-6yvt.onrender.com/docs`
+  
+- **Base de Datos PostgreSQL**: [Supabase](https://supabase.com)
+  - Base de datos PostgreSQL gestionada en la nube
+  - Connection pooling habilitado
+  
+- **Base de Datos Redis**: [Upstash](https://upstash.com)
+  - Redis gestionado en la nube
+  - SSL/TLS habilitado
+
+### Configuración de Clientes
+
+- **Frontend Angular**: Configurado para conectarse al backend en Render
+  - Desarrollo: `environment.ts` → `https://fyntra-backend-6yvt.onrender.com/api`
+  - Producción: `environment.prod.ts` → `https://fyntra-backend-6yvt.onrender.com/api`
+  
+- **App Android**: Configurado en `ApiConfig.kt`
+  - URL: `https://fyntra-backend-6yvt.onrender.com/api/`
+  - Protocolo: HTTPS
+
+### Desarrollo Local
+
+Para desarrollo local completo (todos los servicios en Docker), ver sección **[🚀 Despliegue con Docker](#-despliegue-con-docker)** más abajo.
+
+## 🚀 Despliegue con Docker (Desarrollo Local)
+
+Guía resumida para desarrollo local. Para pasos detallados, datos iniciales y solución de problemas, ver **[INSTALACION.md](INSTALACION.md)**.
 
 ### Requisitos Previos
 
@@ -139,6 +190,13 @@ Guía resumida. Para pasos detallados, datos iniciales y solución de problemas,
 
 ### Acceso a la Aplicación
 
+#### Producción (Backend en Render)
+- **Backend API**: https://fyntra-backend-6yvt.onrender.com
+- **API Docs (Swagger)**: https://fyntra-backend-6yvt.onrender.com/docs
+- **Health Check**: https://fyntra-backend-6yvt.onrender.com/health
+- **Frontend Local**: http://localhost:4200 (ejecutar con `make frontend-local`)
+
+#### Desarrollo Local (Todo en Docker)
 Una vez iniciados los servicios, la aplicación estará disponible en:
 
 - **Frontend**: http://localhost:4200 (desarrollo) o http://localhost (a través de Nginx)
@@ -160,7 +218,17 @@ Una vez iniciados los servicios, la aplicación estará disponible en:
 
 ## 🔧 Comandos Útiles
 
-### Gestión de Contenedores
+### Desarrollo con Backend en la Nube
+
+```bash
+# Levantar solo el frontend localmente (conectado a backend en Render)
+make frontend-local
+
+# Levantar frontend con npm local (requiere Node.js instalado)
+make frontend-local-npm
+```
+
+### Gestión de Contenedores (Desarrollo Local)
 
 ```bash
 # Iniciar servicios
@@ -177,6 +245,23 @@ docker-compose restart backend
 
 # Reconstruir un servicio específico
 docker-compose up -d --build backend
+```
+
+### Comandos del Makefile
+
+```bash
+# Ver todos los comandos disponibles
+make help
+
+# Gestión básica
+make build          # Construir imágenes Docker
+make up             # Iniciar todos los servicios
+make down           # Detener servicios
+make ps             # Ver estado de servicios
+make logs           # Ver logs de todos los servicios
+
+# Frontend local con backend en nube
+make frontend-local # Levantar frontend en Docker (backend en Render)
 ```
 
 ### Desarrollo
@@ -478,10 +563,11 @@ docker-compose exec frontend npm test
 
 ## 📚 Documentación de la API
 
-Una vez iniciado el backend, la documentación interactiva de la API está disponible en:
+La documentación interactiva de la API está disponible en:
 
-- **Swagger UI**: http://localhost:8000/docs
-- **ReDoc**: http://localhost:8000/redoc
+- **Producción**: https://fyntra-backend-6yvt.onrender.com/docs
+- **Desarrollo Local**: http://localhost:8000/docs (si ejecutas Docker localmente)
+- **ReDoc**: https://fyntra-backend-6yvt.onrender.com/redoc
 
 ## 🐛 Solución de Problemas
 
@@ -528,12 +614,5 @@ Ver archivo [LICENSE](LICENSE) para más detalles.
 ## 👥 Autor
 
 **David Expósito Sánchez**  
-Trabajo de Fin de Grado - Desarrollo de Aplicaciones Multiplataforma  
-Curso 2024-2025
+Trabajo de Fin de Grado - Desarrollo de Aplicaciones Multiplataforma
 
-## 🔗 Enlaces de Interés
-
-- [Documentación de FastAPI](https://fastapi.tiangolo.com/)
-- [Documentación de Angular](https://angular.io/docs)
-- [Documentación de Docker](https://docs.docker.com/)
-- [Documentación de PostgreSQL](https://www.postgresql.org/docs/)

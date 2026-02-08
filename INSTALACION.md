@@ -4,9 +4,87 @@ Esta guía cubre el inicio rápido y la instalación completa con datos de prueb
 
 ---
 
-## ⚡ Inicio rápido (5 minutos)
+## 🌐 Arquitectura Actual
 
-Para poner en marcha el proyecto sin datos de prueba:
+El proyecto está configurado con el **backend desplegado en la nube** y el **frontend/mobile** conectándose a él:
+
+### Servicios en la Nube
+
+- **Backend API**: [Render](https://render.com)
+  - URL: `https://fyntra-backend-6yvt.onrender.com`
+  - Documentación: `https://fyntra-backend-6yvt.onrender.com/docs`
+  
+- **Base de Datos PostgreSQL**: [Supabase](https://supabase.com)
+  - Base de datos PostgreSQL gestionada en la nube
+  - Connection pooling habilitado
+  
+- **Base de Datos Redis**: [Upstash](https://upstash.com)
+  - Redis gestionado en la nube con SSL/TLS
+
+### Configuración de Clientes
+
+- **Frontend Angular**: Configurado para conectarse al backend en Render
+- **App Android**: Configurada para conectarse al backend en Render
+
+---
+
+## ⚡ Inicio rápido (Frontend Local + Backend en Nube)
+
+### Opción Recomendada: Frontend Local con Backend en Render
+
+Para desarrollo del frontend con el backend ya desplegado en la nube:
+
+### 1. Verificar requisitos
+
+- Docker (versión 20.10+) - Para ejecutar el frontend en contenedor
+- O Node.js 18+ - Si prefieres ejecutar el frontend localmente
+
+```bash
+docker --version
+# O si prefieres npm local:
+node --version
+npm --version
+```
+
+### 2. Navegar al proyecto
+
+```bash
+cd fyntra
+```
+
+### 3. Levantar el frontend localmente
+
+```bash
+# Opción 1: Usando Docker (recomendado, no requiere Node.js)
+make frontend-local
+
+# Opción 2: Usando npm local (requiere Node.js instalado)
+make frontend-local-npm
+```
+
+### 4. Acceder a la aplicación
+
+- **Frontend Local**: http://localhost:4200
+- **Backend API (Nube)**: https://fyntra-backend-6yvt.onrender.com
+- **API Docs (Swagger)**: https://fyntra-backend-6yvt.onrender.com/docs
+
+El frontend se conectará automáticamente al backend en Render.
+
+### Detener el frontend
+
+```bash
+# Si usaste make frontend-local
+docker-compose down
+
+# Si usaste npm local
+Ctrl+C en la terminal
+```
+
+---
+
+## 🐳 Inicio rápido (Todo Local con Docker)
+
+Para desarrollo completo con todos los servicios locales (backend, frontend, base de datos):
 
 ### 1. Verificar requisitos
 
@@ -87,7 +165,16 @@ Espera a que todos los servicios estén en marcha (puede tardar unos minutos la 
 
 ### 3. Crear datos iniciales
 
-Ejecuta el script de datos de prueba (usuarios, comunidades, vehículos, rutas, etc.):
+#### Opción A: Usando el endpoint de la API (Backend en Render)
+
+El backend en Render tiene un endpoint para inicializar datos:
+
+1. Abre en el navegador: https://fyntra-backend-6yvt.onrender.com/docs
+2. Busca el endpoint `POST /api/admin/init-data` en la sección "Admin"
+3. Haz clic en "Try it out" y luego "Execute"
+4. Espera a que se ejecute (puede tardar 1-2 minutos)
+
+#### Opción B: Usando Docker Local (si ejecutas todo localmente)
 
 ```bash
 make init-data
@@ -101,13 +188,19 @@ docker-compose exec backend sh -c "PYTHONPATH=/app python /app/scripts/init_data
 
 ### 4. Acceder a la aplicación
 
+#### Con Backend en Render (Producción)
+- **Frontend Local**: http://localhost:4200 (ejecutar con `make frontend-local`)
+- **Backend API**: https://fyntra-backend-6yvt.onrender.com
+- **API Docs (Swagger)**: https://fyntra-backend-6yvt.onrender.com/docs
+
+#### Con Todo Local (Docker)
 - **Frontend Web**: http://localhost:4200
 - **Backend API**: http://localhost:8000
 - **API Docs (Swagger)**: http://localhost:8000/docs
 - **pgAdmin (Gestor BD)**: http://localhost:5050
 - **A través de Nginx**: http://localhost
 
-**Recomendación**: Usa **http://localhost** en el navegador (Nginx); no hace falta usar el puerto 4200 directamente.
+**Recomendación**: Para desarrollo del frontend, usa `make frontend-local` que se conecta al backend en Render.
 
 ---
 
@@ -181,9 +274,33 @@ docker exec fyntra-redis redis-cli ping
 # Debe responder: PONG
 ```
 
+## Inicialización de Datos en Producción
+
+El backend desplegado en Render tiene un endpoint especial para inicializar datos de prueba:
+
+### Método 1: Desde Swagger UI (Recomendado)
+
+1. Abre la documentación de la API: https://fyntra-backend-6yvt.onrender.com/docs
+2. Busca el endpoint `POST /api/admin/init-data` en la sección **"Admin"**
+3. Haz clic en "Try it out"
+4. Haz clic en "Execute"
+5. Espera la respuesta (puede tardar 1-2 minutos)
+
+### Método 2: Desde línea de comandos
+
+```bash
+curl -X POST https://fyntra-backend-6yvt.onrender.com/api/admin/init-data
+```
+
+### Método 3: Desde el navegador
+
+Simplemente abre: https://fyntra-backend-6yvt.onrender.com/api/admin/init-data
+
+**Nota**: Este endpoint es idempotente. Si los datos ya existen, no se duplicarán.
+
 ## Usuarios de Prueba
 
-Después de ejecutar `init_data.py`, puedes usar estos usuarios:
+Después de inicializar los datos (en Render o localmente), puedes usar estos usuarios:
 
 - **Super Admin**: 
   - Email: `admin@fyntra.com`
@@ -207,13 +324,19 @@ Después de ejecutar `init_data.py`, puedes usar estos usuarios:
 
 ## Configuración para App Android
 
-El backend está configurado para aceptar llamadas desde aplicaciones Android:
+La app Android está configurada para conectarse al backend en Render (producción):
 
-- **URL Base**: `http://TU_IP_LOCAL:8000/api`
-- **Puerto**: `8000` (expuesto en docker-compose.yml)
-- **CORS**: Configurado para permitir todas las origenes en desarrollo
+- **URL Base**: `https://fyntra-backend-6yvt.onrender.com/api/`
+- **Protocolo**: HTTPS
+- **Configuración**: `mobile/app/src/main/java/com/tomoko/fyntra/data/api/ApiConfig.kt`
 
-### Para desarrollo local con Android:
+### Configuración Actual
+
+La app está configurada para producción y se conecta automáticamente al backend en Render. No requiere configuración adicional.
+
+### Para desarrollo local con Android (Opcional)
+
+Si quieres usar un backend local en lugar del de Render:
 
 1. Encuentra tu IP local:
    ```bash
@@ -224,9 +347,14 @@ El backend está configurado para aceptar llamadas desde aplicaciones Android:
    ipconfig
    ```
 
-2. En tu app Android, usa: `http://TU_IP:8000/api`
+2. Modifica `ApiConfig.kt`:
+   ```kotlin
+   private const val BASE_URL_HOST = "TU_IP_LOCAL"  // Ej: "192.168.1.100"
+   private const val BASE_URL_PORT = "8000"
+   private const val BASE_URL_PROTOCOL = "http"  // Cambiar a http para local
+   ```
 
-3. Ejemplo: Si tu IP es `192.168.1.100`, la URL sería: `http://192.168.1.100:8000/api`
+3. Ejemplo: Si tu IP es `192.168.1.100`, la URL sería: `http://192.168.1.100:8000/api/`
 
 ### Autenticación desde Android:
 
@@ -284,6 +412,10 @@ Listado completo con `make help`. Resumen:
 | Comando | Descripción |
 |---------|-------------|
 | `make help` | Mostrar todos los comandos |
+| **Frontend con Backend en Nube** | |
+| `make frontend-local` | Levantar frontend en Docker (backend en Render) |
+| `make frontend-local-npm` | Levantar frontend con npm local (requiere Node.js) |
+| **Desarrollo Local Completo** | |
 | `make build` | Construir imágenes Docker |
 | `make up` | Iniciar todos los servicios |
 | `make start` | build + up (arranque desde cero) |
@@ -292,7 +424,7 @@ Listado completo con `make help`. Resumen:
 | `make ps` | Ver estado de los servicios |
 | `make logs` | Ver logs de todos los servicios |
 | `make logs-backend` / `make logs-frontend` / `make logs-db` | Logs por servicio |
-| `make init-data` | Crear datos iniciales de prueba |
+| `make init-data` | Crear datos iniciales de prueba (solo local) |
 | `make migrate` | Aplicar migraciones Alembic |
 | `make shell-backend` / `make shell-frontend` | Shell en contenedor |
 | `make shell-db` | Acceso a psql (PostgreSQL) |

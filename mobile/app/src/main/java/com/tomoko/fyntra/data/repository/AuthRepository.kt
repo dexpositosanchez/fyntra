@@ -49,16 +49,16 @@ class AuthRepository(
                 val errorMsg = bodyDetail ?: when {
                     response.code() == 401 -> "Credenciales incorrectas"
                     response.code() == 429 -> "Demasiados intentos. Acceso bloqueado temporalmente."
-                    response.code() == 404 -> "Servidor no encontrado. Verifica que el backend esté corriendo en http://192.168.1.128:8000"
+                    response.code() == 404 -> "Servidor no encontrado. Verifica que el backend esté corriendo en http://10.84.89.211:8000"
                     response.code() >= 500 -> "Error del servidor"
                     else -> response.message() ?: "Error de autenticación (código: ${response.code()})"
                 }
                 Result.failure(Exception(errorMsg))
             }
         } catch (e: java.net.UnknownHostException) {
-            Result.failure(Exception("No se puede conectar al servidor. Verifica:\n1. Que el backend esté corriendo\n2. Que la IP 192.168.1.128 sea correcta\n3. Que el dispositivo esté en la misma red WiFi"))
+            Result.failure(Exception("No se puede conectar al servidor. Verifica:\n1. Que el backend esté corriendo\n2. Que la IP 10.84.89.211 sea correcta\n3. Que el dispositivo esté en la misma red WiFi"))
         } catch (e: java.net.ConnectException) {
-            Result.failure(Exception("No se puede conectar al servidor en 192.168.1.128:8000. Verifica que el backend esté corriendo y accesible."))
+            Result.failure(Exception("No se puede conectar al servidor en 10.84.89.211:8000. Verifica que el backend esté corriendo y accesible."))
         } catch (e: Exception) {
             Result.failure(Exception("Error de conexión: ${e.message}"))
         }

@@ -63,3 +63,41 @@ test-backend: ## Ejecutar tests del backend
 test-frontend: ## Ejecutar tests del frontend
 	docker-compose exec frontend npm test
 
+frontend-local: ## Detener contenedores y levantar solo el frontend en Docker (conectado a backend en Render)
+	@echo "Deteniendo contenedores Docker..."
+	docker-compose down
+	@echo "Levantando frontend en Docker..."
+	@echo "El frontend se conectará a: https://fyntra-backend-6yvt.onrender.com/api"
+	@echo "Abre en el navegador: http://localhost:4200"
+	@echo "Nota: El frontend en Docker no necesita postgres ni redis (usa backend en Render)"
+	docker-compose up -d --no-deps frontend || docker-compose up -d frontend
+	docker-compose logs -f frontend
+
+frontend-local-npm: ## Levantar frontend localmente con npm (requiere Node.js instalado)
+	@echo "Deteniendo contenedores Docker..."
+	docker-compose down
+	@echo "Verificando Node.js/npm..."
+	@if ! command -v npm > /dev/null 2>&1; then \
+		echo "❌ Error: npm no encontrado."; \
+		echo ""; \
+		echo "Para instalar Node.js, ejecuta:"; \
+		echo "  brew install node"; \
+		echo ""; \
+		echo "O visita: https://nodejs.org/"; \
+		echo ""; \
+		echo "Alternativamente, usa: make frontend-local (usa Docker)"; \
+		exit 1; \
+	fi
+	@echo "✅ Node.js/npm encontrado"
+	@echo "Levantando frontend localmente..."
+	@echo "El frontend se conectará a: https://fyntra-backend-6yvt.onrender.com/api"
+	@echo "Abre en el navegador: http://localhost:4200"
+	cd frontend && npm start
+
+frontend-local-prod: ## Levantar frontend localmente usando configuración de producción (backend en Render)
+	@echo "Deteniendo contenedores Docker..."
+	docker-compose down
+	@echo "Levantando frontend localmente con configuración de producción..."
+	@echo "El frontend se conectará a: https://fyntra-backend-6yvt.onrender.com/api"
+	@echo "Abre en el navegador: http://localhost:4200"
+	cd frontend && npm start -- --configuration=production
