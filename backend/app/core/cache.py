@@ -44,7 +44,12 @@ def get_redis_client() -> Optional[redis.Redis]:
     if _redis_client is None:
         redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
         try:
-            _redis_client = redis.from_url(redis_url, decode_responses=True)
+            _redis_client = redis.from_url(
+                redis_url, 
+                decode_responses=True,
+                ssl=True,
+                ssl_cert_reqs=None
+            )
             # Verificar conexión
             _redis_client.ping()
         except (redis.ConnectionError, redis.TimeoutError) as e:
