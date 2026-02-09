@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session, joinedload
 from typing import List, Optional
 from app.database import get_db
 from app.models.comunidad import Comunidad
+from app.models.incidencia import Incidencia
 from app.models.usuario import Usuario
 from app.schemas.comunidad import ComunidadCreate, ComunidadUpdate, ComunidadResponse
 from app.api.dependencies import get_current_user
@@ -205,12 +206,23 @@ async def eliminar_comunidad(
             detail="No tiene permisos para eliminar comunidades"
         )
     
-    comunidad = db.query(Comunidad).filter(Comunidad.id == comunidad_id).first()
+    comunidad = db.query(Comunidad).options(joinedload(Comunidad.inmuebles)).filter(Comunidad.id == comunidad_id).first()
     if not comunidad:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Comunidad no encontrada"
         )
+    
+    # No permitir eliminar si algún inmueble de la comunidad tiene incidencias
+    inmueble_ids = [i.id for i in comunidad.inmuebles]
+    if inmueble_ids:
+        tiene_incidencias = db.query(Incidencia).filter(Incidencia.inmueble_id.in_(inmueble_ids)).count() > 0
+        if tiene_incidencias:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No se puede eliminar la comunidad: tiene inmuebles con incidencias asociadas. "
+                       "Resuelva o elimine las incidencias antes de eliminar la comunidad."
+            )
     
     # Al eliminar la comunidad, se eliminarán automáticamente todos sus inmuebles
     # debido a la relación cascade="all, delete-orphan" en el modelo.

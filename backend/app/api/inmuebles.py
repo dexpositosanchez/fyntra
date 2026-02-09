@@ -4,6 +4,7 @@ from typing import List, Optional
 from app.database import get_db
 from app.models.inmueble import Inmueble
 from app.models.comunidad import Comunidad
+from app.models.incidencia import Incidencia
 from app.models.propietario import Propietario
 from app.models.usuario import Usuario
 from app.schemas.inmueble import InmuebleCreate, InmuebleUpdate, InmuebleResponse, InmuebleSimple
@@ -355,6 +356,15 @@ async def eliminar_inmueble(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Inmueble no encontrado"
+        )
+    
+    # No permitir eliminar si el inmueble tiene incidencias asociadas
+    tiene_incidencias = db.query(Incidencia).filter(Incidencia.inmueble_id == inmueble_id).count() > 0
+    if tiene_incidencias:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No se puede eliminar el inmueble: tiene incidencias asociadas. "
+                   "Resuelva o elimine las incidencias antes de eliminar el inmueble."
         )
     
     # Al eliminar el inmueble, las relaciones con propietarios se eliminarán
