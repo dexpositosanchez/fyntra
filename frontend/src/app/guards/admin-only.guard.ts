@@ -24,7 +24,7 @@ export class AdminOnlyGuard implements CanActivate {
 
     const usuario = this.authService.getUsuario();
     if (!usuario || !ROLES_ADMIN.includes(usuario.rol)) {
-      this.router.navigate(['/modulos']);
+      this.router.navigate(['/incidencias']);
       return false;
     }
 

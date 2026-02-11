@@ -364,8 +364,7 @@ export class PedidosComponent implements OnInit, OnDestroy {
   }
 
   puedeCambiarModulo(): boolean {
-    const r = this.usuario?.rol;
-    return r === 'super_admin' || r === 'admin_fincas' || r === 'admin_transportes';
+    return this.usuario?.rol === 'super_admin';
   }
 
   exportarMisDatos(): void {

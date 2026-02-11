@@ -17,26 +17,29 @@ import { InformesComponent } from './components/informes/informes.component';
 import { HistorialComponent } from './components/historial/historial.component';
 import { AuthGuard } from './guards/auth.guard';
 import { AdminFincasGuard } from './guards/admin-fincas.guard';
+import { AdminTransportesGuard } from './guards/admin-transportes.guard';
+import { AccesoFincasGuard } from './guards/acceso-fincas.guard';
+import { ModuloSelectorGuard } from './guards/modulo-selector.guard';
 import { AdminOnlyGuard } from './guards/admin-only.guard';
 import { SuperAdminGuard } from './guards/super-admin.guard';
 
 const routes: Routes = [
   { path: '', redirectTo: '/login', pathMatch: 'full' },
   { path: 'login', component: LoginComponent },
-  { path: 'modulos', component: ModuloSelectorComponent, canActivate: [AdminFincasGuard] },
-  { path: 'incidencias', component: IncidenciasComponent, canActivate: [AuthGuard] },
+  { path: 'modulos', component: ModuloSelectorComponent, canActivate: [ModuloSelectorGuard] },
+  { path: 'incidencias', component: IncidenciasComponent, canActivate: [AccesoFincasGuard] },
   { path: 'comunidades', component: ComunidadesComponent, canActivate: [AdminFincasGuard] },
-  { path: 'inmuebles', component: InmueblesComponent, canActivate: [AuthGuard] },
+  { path: 'inmuebles', component: InmueblesComponent, canActivate: [AccesoFincasGuard] },
   { path: 'propietarios', component: PropietariosComponent, canActivate: [AdminFincasGuard] },
   { path: 'proveedores', component: ProveedoresComponent, canActivate: [AdminFincasGuard] },
   { path: 'informes', component: InformesComponent, canActivate: [AdminOnlyGuard] },
   { path: 'usuarios', component: UsuariosComponent, canActivate: [SuperAdminGuard] },
-  { path: 'vehiculos', component: VehiculosComponent, canActivate: [AuthGuard] },
-  { path: 'conductores', component: ConductoresComponent, canActivate: [AuthGuard] },
-  { path: 'mantenimientos', component: MantenimientosComponent, canActivate: [AuthGuard] },
-  { path: 'rutas', component: RutasComponent, canActivate: [AuthGuard] },
-  { path: 'pedidos', component: PedidosComponent, canActivate: [AuthGuard] },
-  { path: 'historial', component: HistorialComponent, canActivate: [AuthGuard] },
+  { path: 'vehiculos', component: VehiculosComponent, canActivate: [AdminTransportesGuard] },
+  { path: 'conductores', component: ConductoresComponent, canActivate: [AdminTransportesGuard] },
+  { path: 'mantenimientos', component: MantenimientosComponent, canActivate: [AdminTransportesGuard] },
+  { path: 'rutas', component: RutasComponent, canActivate: [AdminTransportesGuard] },
+  { path: 'pedidos', component: PedidosComponent, canActivate: [AdminTransportesGuard] },
+  { path: 'historial', component: HistorialComponent, canActivate: [AdminTransportesGuard] },
   { path: '**', redirectTo: '/login' }
 ];
 

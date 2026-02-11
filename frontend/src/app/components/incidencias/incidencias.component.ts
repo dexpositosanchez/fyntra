@@ -507,8 +507,7 @@ export class IncidenciasComponent implements OnInit, OnDestroy {
 
   puedeCambiarModulo(): boolean {
     if (this.esPropietario || this.esProveedor) return false;
-    const r = this.usuario?.rol;
-    return r === 'super_admin' || r === 'admin_fincas' || r === 'admin_transportes';
+    return this.usuario?.rol === 'super_admin';
   }
 
   cambiarAModuloFincas(): void {

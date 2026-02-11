@@ -34,10 +34,10 @@ Leyenda columnas:
 
 | ✓ | Descripción | Observaciones |
 |---|-------------|---------------|
-| | Health check: GET `/health` devuelve status "healthy" y DB/Redis OK | |
-| | API Docs: Swagger carga correctamente en `/docs` | |
-| | Init data: POST `/api/admin/init-data` crea usuarios y datos de prueba | |
-| | Frontend accesible en http://localhost:4200 | |
+| ✓ | Health check: GET `/health` devuelve status "healthy" y DB/Redis OK | |
+| ✓ | API Docs: Swagger carga correctamente en `/docs` | |
+| ✓ | Init data: POST `/api/admin/init-data` crea usuarios y datos de prueba | |
+| ✓ | Frontend accesible en http://localhost:4200 | |
 
 ---
 
@@ -45,11 +45,11 @@ Leyenda columnas:
 
 | ✓ | Descripción | Observaciones |
 |---|-------------|---------------|
-| | Login correcto con usuario activo | |
-| | Login incorrecto (email/contraseña): mensaje genérico, no revelar si existe el usuario | |
-| | Login con usuario inactivo: 403 "Usuario inactivo" | |
-| | Token expirado/inválido: 401 | |
-| | Protección fuerza bruta: varios intentos fallidos → 429 y mensaje de bloqueo temporal | |
+| ✓ | Login correcto con usuario activo | |
+| ✓ | Login incorrecto (email/contraseña): mensaje genérico, no revelar si existe el usuario | |
+| ✓ | Login con usuario inactivo: 403 "Usuario inactivo" | |
+| ✓ | Token expirado/inválido: 401 | |
+| ✓ | Protección fuerza bruta: varios intentos fallidos → 429 y mensaje de bloqueo temporal | |
 
 ---
 
@@ -57,15 +57,15 @@ Leyenda columnas:
 
 | ✓ | Descripción | Observaciones |
 |---|-------------|---------------|
-| | Super Admin: ve selector de módulos (Fincas, Transportes, Usuarios) | |
-| | Super Admin: acceso a todos los módulos y gestión de usuarios | |
-| | Admin Fincas: acceso a incidencias, comunidades, inmuebles, propietarios, proveedores | |
-| | Admin Transportes: acceso a vehículos, conductores, pedidos, rutas, mantenimientos, historial | |
-| | Propietario: solo incidencias y mis inmuebles; no ve comunidades, propietarios, proveedores | |
-| | Proveedor: solo incidencias asignadas | |
-| | Admin Transportes/Admin Fincas: pueden cambiar entre módulos | |
-| | Propietario intenta acceder a /comunidades: redirige o bloquea | |
-| | Admin Fincas intenta acceder a /usuarios: redirige a /modulos | |
+| ✓ | Super Admin: ve selector de módulos (Fincas, Transportes, Usuarios) | |
+| ✓ | Super Admin: acceso a todos los módulos y gestión de usuarios | |
+| ✓ | Admin Fincas: acceso a incidencias, comunidades, inmuebles, propietarios, proveedores | |
+| ✓ | Admin Transportes: acceso a vehículos, conductores, pedidos, rutas, mantenimientos, historial |  |
+| ✓ | Propietario: solo incidencias y mis inmuebles; no ve comunidades, propietarios, proveedores | |
+| ✓ | Proveedor: solo incidencias asignadas | |
+| ✓ | Solo Super Admin puede cambiar entre módulos (Admin Fincas y Admin Transportes no ven el selector) | |
+| ✓ | Propietario intenta acceder a /comunidades: redirige o bloquea | |
+| ✓ | Admin Fincas intenta acceder a /usuarios: redirige a /incidencias | |
 
 ---
 
@@ -122,6 +122,10 @@ Leyenda columnas:
 | | Cambiar estado de incidencia | |
 | | Ver historial de cambios | |
 | | Subir documento a incidencia | |
+| | Subir fotos/imágenes a incidencia (web y móvil) | |
+| | **Chat**: Admin, propietario y proveedor pueden enviar y ver mensajes en la incidencia | |
+| | **Chat**: Mensajes visibles para todos los participantes (admin, propietario, proveedor) | |
+| | **Chat**: Eliminar mensajes del chat | |
 | | Enviar mensaje en incidencia | |
 | | Proveedor: añadir actuación | |
 | | Eliminar incidencia (admin o propietario creador) | |
@@ -169,6 +173,9 @@ Leyenda columnas:
 | | Ver paradas de cada ruta | |
 | | Validar capacidad y disponibilidad al asignar | |
 | | Eliminar ruta | |
+| | **Conductor (app móvil)**: Marcar parada como entregada sin firma ni fotos (opcional) | |
+| | **Conductor (app móvil)**: Firmar al confirmar entrega de parada | |
+| | **Conductor (app móvil)**: Subir foto de la entrega al confirmar parada | |
 
 #### Mantenimientos
 
@@ -230,7 +237,9 @@ Leyenda columnas:
 | | Crear ruta asignando conductor, vehículo y pedidos | |
 | | Verificar ruta aparece como "planificada" | |
 | | En app móvil como conductor: iniciar ruta | |
-| | Marcar paradas como entregadas (firma, foto) | |
+| | Marcar parada como entregada sin firma ni fotos (opcional) | |
+| | Marcar paradas como entregadas (capturar firma del cliente) | |
+| | Marcar paradas como entregadas (capturar foto de la entrega) | |
 | | Finalizar ruta | |
 | | Verificar pedidos pasan a "entregado" y ruta a "completada" | |
 
@@ -243,7 +252,8 @@ Leyenda columnas:
 | | Crear incidencia (propietario o admin) | |
 | | Asignar proveedor a la incidencia | |
 | | Proveedor añade actuación | |
-| | Subir documento a la incidencia | |
+| | Subir documento/foto a la incidencia | |
+| | **Chat**: Verificar que admin, propietario y proveedor participan en el chat de la incidencia | |
 | | Cambiar estado (abierta → en_proceso → cerrada) | |
 | | Verificar historial de cambios correcto | |
 | | Verificar incidencia queda cerrada con fecha de cierre | |
@@ -260,7 +270,9 @@ Leyenda columnas:
 | | Ver listado de rutas asignadas | |
 | | Ver detalle de ruta | |
 | | Iniciar ruta | |
-| | Marcar paradas como entregadas | |
+| | Marcar parada como entregada sin firma ni fotos | |
+| | Marcar paradas como entregadas (con firma del cliente) | |
+| | Marcar paradas como entregadas (con foto de la entrega) | |
 | | Finalizar ruta | |
 | | Reportar incidencia en ruta | |
 
@@ -272,8 +284,10 @@ Leyenda columnas:
 | | Ver incidencias de sus inmuebles | |
 | | Crear incidencia | |
 | | Ver detalle: historial, documentos, chat, actuaciones | |
-| | Subir documento | |
-| | Enviar mensaje | |
+| | Subir documento/foto a incidencia | |
+| | Participar en el chat de la incidencia | |
+| | Enviar mensaje en el chat | |
+| | Eliminar mensajes del chat | |
 
 #### Proveedor
 
@@ -283,9 +297,21 @@ Leyenda columnas:
 | | Ver incidencias asignadas | |
 | | Ver detalle de incidencia | |
 | | Añadir actuación | |
-| | Subir documento | |
-| | Enviar mensaje | |
+| | Subir documento/foto a incidencia | |
+| | Participar en el chat de la incidencia | |
+| | Enviar mensaje en el chat | |
+| | Eliminar mensajes del chat | |
 | | Actualizar estado de incidencia | |
+
+#### Sincronización y opción "Solo WiFi"
+
+| ✓ | Descripción | Observaciones |
+|---|-------------|---------------|
+| | Con opción **\"Sincronizar solo por WiFi\" activada** y solo datos móviles: crear/editar incidencia → NO se refleja en el backend hasta que haya WiFi | |
+| | Con opción **\"Sincronizar solo por WiFi\" activada** y solo datos móviles: marcar paradas/actualizar rutas → NO se refleja en el backend hasta que haya WiFi | |
+| | Con opción **\"Sincronizar solo por WiFi\" activada**: al conectarse a una red WiFi se sincronizan todas las operaciones pendientes (incidencias, etc.) y se reflejan en el backend | |
+| | Con opción **desactivada**: crear/editar incidencia usando solo datos móviles → se envía directamente al backend (si hay conexión) | |
+| | Modo offline total (sin conexión): crear/editar incidencia o marcar paradas → la app no falla, guarda la operación como pendiente y al recuperar conexión se sincroniza según la opción de solo WiFi | |
 
 ---
 

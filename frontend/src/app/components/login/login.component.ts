@@ -30,9 +30,15 @@ export class LoginComponent {
     this.authService.login(this.email, this.password).subscribe({
       next: () => {
         const usuario = this.authService.getUsuario();
-        // Propietarios y proveedores van directo a incidencias
-        if (usuario?.rol === 'propietario' || usuario?.rol === 'proveedor') {
+        const rol = usuario?.rol;
+        if (rol === 'propietario' || rol === 'proveedor') {
           this.router.navigate(['/incidencias']);
+        } else if (rol === 'admin_fincas') {
+          this.router.navigate(['/incidencias']);
+        } else if (rol === 'admin_transportes') {
+          this.router.navigate(['/vehiculos']);
+        } else if (rol === 'super_admin') {
+          this.router.navigate(['/modulos']);
         } else {
           this.router.navigate(['/modulos']);
         }

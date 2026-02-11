@@ -1,20 +1,21 @@
 import { Injectable } from '@angular/core';
-import { Router, CanActivate, ActivatedRouteSnapshot, RouterStateSnapshot } from '@angular/router';
+import { Router, CanActivate } from '@angular/router';
 import { AuthService } from '../services/auth.service';
 
+/**
+ * Solo el super_admin puede acceder al selector de módulos.
+ * admin_fincas y admin_transportes van directamente a su módulo (ver login).
+ */
 @Injectable({
   providedIn: 'root'
 })
-export class AdminFincasGuard implements CanActivate {
+export class ModuloSelectorGuard implements CanActivate {
   constructor(
     private authService: AuthService,
     private router: Router
   ) {}
 
-  canActivate(
-    route: ActivatedRouteSnapshot,
-    state: RouterStateSnapshot
-  ): boolean {
+  canActivate(): boolean {
     if (!this.authService.isAuthenticated()) {
       this.router.navigate(['/login']);
       return false;
@@ -23,18 +24,23 @@ export class AdminFincasGuard implements CanActivate {
     const usuario = this.authService.getUsuario();
     const rol = usuario?.rol;
 
-    // admin_transportes no puede acceder a rutas de Fincas (comunidades, propietarios, proveedores)
+    if (rol === 'super_admin') {
+      return true;
+    }
+    if (rol === 'admin_fincas') {
+      this.router.navigate(['/incidencias']);
+      return false;
+    }
     if (rol === 'admin_transportes') {
       this.router.navigate(['/vehiculos']);
       return false;
     }
-    // Propietarios y proveedores solo pueden acceder a incidencias, no a comunidades/propietarios/proveedores
     if (rol === 'propietario' || rol === 'proveedor') {
       this.router.navigate(['/incidencias']);
       return false;
     }
 
-    return true;
+    this.router.navigate(['/login']);
+    return false;
   }
 }
-
