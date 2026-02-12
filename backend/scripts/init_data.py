@@ -32,6 +32,35 @@ def init_db():
         else:
             raise
 
+def truncate_all_tables():
+    """Vaciar todas las tablas y reiniciar secuencias (orden respetando FKs)"""
+    tables = [
+        "historial_incidencias",
+        "actuaciones",
+        "documentos",
+        "mensajes",
+        "incidencia_ruta_fotos",
+        "incidencias_ruta",
+        "ruta_paradas",
+        "rutas",
+        "pedidos",
+        "mantenimientos",
+        "conductores",
+        "vehiculos",
+        "incidencias",
+        "inmueble_propietario",
+        "inmuebles",
+        "propietarios",
+        "proveedores",
+        "comunidades",
+        "usuarios",
+    ]
+    tables_str = ", ".join(tables)
+    with engine.connect() as conn:
+        conn.execute(text(f"TRUNCATE TABLE {tables_str} RESTART IDENTITY CASCADE"))
+        conn.commit()
+    print("🗑️  Tablas vaciadas correctamente")
+
 def create_initial_data():
     """Crear datos iniciales de prueba"""
     db = SessionLocal()
@@ -1047,6 +1076,8 @@ def create_initial_data():
 if __name__ == "__main__":
     print("Creando tablas...")
     init_db()
+    print("Vaciando tablas existentes...")
+    truncate_all_tables()
     print("Creando datos iniciales...")
     create_initial_data()
 

@@ -32,6 +32,8 @@ export class ComunidadesComponent implements OnInit, OnDestroy {
   eliminandoCuenta: boolean = false;
   textoBusqueda: string = '';
   comunidadesFiltradas: any[] = [];
+  mostrarErrorModal: boolean = false;
+  mensajeErrorModal: string = '';
   private routerSubscription?: Subscription;
 
   constructor(
@@ -183,10 +185,16 @@ export class ComunidadesComponent implements OnInit, OnDestroy {
           this.cargarComunidades();
         },
         error: (err) => {
-          this.error = err.error?.detail || 'Error al eliminar comunidad';
+          this.mensajeErrorModal = err.error?.detail || 'Error al eliminar comunidad';
+          this.mostrarErrorModal = true;
         }
       });
     }
+  }
+
+  cerrarErrorModal(): void {
+    this.mostrarErrorModal = false;
+    this.mensajeErrorModal = '';
   }
 
   toggleMenuUsuario(): void {

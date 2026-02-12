@@ -38,6 +38,8 @@ export class InmueblesComponent implements OnInit, OnDestroy {
   textoBusqueda: string = '';
   inmueblesFiltrados: any[] = [];
   esPropietario: boolean = false;
+  mostrarErrorModal: boolean = false;
+  mensajeErrorModal: string = '';
   private routerSubscription?: Subscription;
 
   tiposInmueble = [
@@ -255,10 +257,16 @@ export class InmueblesComponent implements OnInit, OnDestroy {
           this.cargarInmuebles();
         },
         error: (err) => {
-          this.error = err.error?.detail || 'Error al eliminar inmueble';
+          this.mensajeErrorModal = err.error?.detail || 'Error al eliminar inmueble';
+          this.mostrarErrorModal = true;
         }
       });
     }
+  }
+
+  cerrarErrorModal(): void {
+    this.mostrarErrorModal = false;
+    this.mensajeErrorModal = '';
   }
 
   getTipoLabel(tipo: string): string {

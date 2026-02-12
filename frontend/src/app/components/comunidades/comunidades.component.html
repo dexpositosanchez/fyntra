@@ -1,4 +1,23 @@
 <div class="comunidades-container">
+  <!-- Modal de error (ej: no se puede eliminar comunidad con incidencias) -->
+  <div class="modal-overlay" *ngIf="mostrarErrorModal" (click)="cerrarErrorModal()">
+    <div class="modal-content modal-error" (click)="$event.stopPropagation()">
+      <div class="modal-header modal-error-header">
+        <h3>
+          <span class="app-icon">warning</span>
+          No se puede eliminar
+        </h3>
+        <button class="close-button" (click)="cerrarErrorModal()" aria-label="Cerrar">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-error-message">{{ mensajeErrorModal }}</p>
+      </div>
+      <div class="modal-actions">
+        <button class="submit-button" (click)="cerrarErrorModal()">Entendido</button>
+      </div>
+    </div>
+  </div>
+
   <div class="nav-overlay" *ngIf="mostrarMenuNav" (click)="cerrarMenuMobile()"></div>
   <header class="app-header" [class.nav-open]="mostrarMenuNav">
     <div class="header-left">

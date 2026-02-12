@@ -75,22 +75,22 @@ Leyenda columnas:
 
 | ✓ | Descripción | Observaciones |
 |---|-------------|---------------|
-| | Listar comunidades | |
-| | Crear comunidad | |
-| | Editar comunidad | |
-| | Eliminar comunidad (sin inmuebles con incidencias) | |
-| | **Bloqueo**: No permitir eliminar comunidad si algún inmueble tiene incidencias | |
+| ✓ | Listar comunidades | |
+| ✓ | Crear comunidad | |
+| ✓ | Editar comunidad | |
+| ✓ | Eliminar comunidad (sin inmuebles con incidencias) | |
+| ✓ | **Bloqueo**: No permitir eliminar comunidad si algún inmueble tiene incidencias | |
 
 #### Inmuebles
 
 | ✓ | Descripción | Observaciones |
 |---|-------------|---------------|
-| | Admin: listar todos los inmuebles | |
-| | Propietario: listar solo sus inmuebles | |
-| | Admin: crear inmueble | |
-| | Admin: editar inmueble | |
-| | Admin: eliminar inmueble (sin incidencias) | |
-| | **Bloqueo**: No permitir eliminar inmueble si tiene incidencias asociadas | |
+| ✓ | Admin: listar todos los inmuebles | |
+| ✓ | Propietario: listar solo sus inmuebles | |
+| ✓ | Admin: crear inmueble | |
+| ✓ | Admin: editar inmueble | |
+| ✓ | Admin: eliminar inmueble (sin incidencias) | |
+| ✓ | **Bloqueo**: No permitir eliminar inmueble si tiene incidencias asociadas | |
 
 #### Propietarios
 
