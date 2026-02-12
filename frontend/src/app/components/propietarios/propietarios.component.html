@@ -129,8 +129,8 @@
           </div>
         </div>
         
-        <!-- Acceso al sistema -->
-        <div class="acceso-section" *ngIf="!editandoPropietario">
+        <!-- Acceso al sistema: crear (nuevo o editar sin acceso) -->
+        <div class="acceso-section" *ngIf="!editandoPropietario || !propietarioForm.tiene_acceso">
           <div class="acceso-header">
             <label class="checkbox-label">
               <input
@@ -158,9 +158,23 @@
           </div>
         </div>
         
-        <div class="acceso-badge" *ngIf="editandoPropietario && propietarioForm.tiene_acceso">
-          <span class="app-icon">verified_user</span>
-          <span>Este propietario tiene acceso al sistema</span>
+        <!-- Acceso al sistema: quitar (editar con acceso) -->
+        <div class="acceso-section" *ngIf="editandoPropietario && propietarioForm.tiene_acceso">
+          <div class="acceso-header">
+            <span class="acceso-badge-inline">
+              <span class="app-icon">verified_user</span>
+              Este propietario tiene acceso al sistema
+            </span>
+            <label class="checkbox-label checkbox-quitar">
+              <input
+                type="checkbox"
+                [(ngModel)]="propietarioForm.quitar_acceso"
+                name="quitar_acceso"
+              />
+              <span>Quitar acceso al sistema</span>
+            </label>
+            <span class="acceso-help">Se eliminará el usuario asociado y no podrá volver a iniciar sesión</span>
+          </div>
         </div>
         
         <!-- Selector de inmuebles -->

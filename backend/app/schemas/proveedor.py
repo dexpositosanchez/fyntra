@@ -20,10 +20,14 @@ class ProveedorUpdate(BaseModel):
     especialidad: Optional[str] = None
     activo: Optional[bool] = None
     usuario_id: Optional[int] = None
+    crear_usuario: Optional[bool] = Field(None, description="Crear usuario de acceso (solo si no tiene)")
+    quitar_acceso: Optional[bool] = Field(None, description="Quitar acceso al sistema (elimina usuario asociado)")
+    password: Optional[str] = Field(None, min_length=6, description="Contraseña (requerida si crear_usuario=true)")
 
 class ProveedorResponse(ProveedorBase):
     id: int
     usuario_id: Optional[int] = None
+    tiene_acceso: bool = False
     creado_en: datetime
     actualizado_en: Optional[datetime] = None
 

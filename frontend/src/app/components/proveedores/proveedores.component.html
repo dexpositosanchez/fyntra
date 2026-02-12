@@ -74,9 +74,9 @@
         
         <div class="form-row">
           <div class="form-group">
-            <label for="email">Email {{ proveedorForm.crearUsuario && !editandoProveedor ? '*' : '' }}</label>
+            <label for="email">Email {{ proveedorForm.crearUsuario ? '*' : '' }}</label>
             <input type="email" id="email" [(ngModel)]="proveedorForm.email" name="email" class="form-input"
-                   [required]="proveedorForm.crearUsuario && !editandoProveedor"
+                   [required]="proveedorForm.crearUsuario"
                    placeholder="Obligatorio si creas acceso al sistema">
           </div>
           <div class="form-group">
@@ -110,8 +110,8 @@
                  placeholder="Escribe la especialidad">
         </div>
 
-        <!-- Sección para crear usuario (solo al crear nuevo proveedor) -->
-        <div class="usuario-section" *ngIf="!editandoProveedor">
+        <!-- Sección acceso: crear usuario (nuevo o editar sin acceso) -->
+        <div class="usuario-section" *ngIf="!editandoProveedor || !proveedorForm.tieneAcceso">
           <div class="form-group checkbox-group">
             <label class="checkbox-label">
               <input type="checkbox" [(ngModel)]="proveedorForm.crearUsuario" name="crearUsuario">
@@ -126,6 +126,21 @@
                    class="form-input" placeholder="Contraseña para acceso al sistema"
                    [required]="proveedorForm.crearUsuario">
             <small class="help-text">El proveedor usará su email y esta contraseña para acceder</small>
+          </div>
+        </div>
+
+        <!-- Sección acceso: quitar (editar con acceso) -->
+        <div class="usuario-section" *ngIf="editandoProveedor && proveedorForm.tieneAcceso">
+          <div class="form-group checkbox-group">
+            <span class="acceso-badge-inline">
+              <span class="app-icon">verified_user</span>
+              Este proveedor tiene acceso al sistema
+            </span>
+            <label class="checkbox-label checkbox-quitar">
+              <input type="checkbox" [(ngModel)]="proveedorForm.quitarAcceso" name="quitarAcceso">
+              <span>Quitar acceso al sistema</span>
+            </label>
+            <small class="help-text">Se eliminará el usuario asociado y no podrá volver a iniciar sesión</small>
           </div>
         </div>
         

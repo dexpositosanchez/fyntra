@@ -96,10 +96,10 @@ Leyenda columnas:
 
 | ✓ | Descripción | Observaciones |
 |---|-------------|---------------|
-| | Listar propietarios | |
-| | Crear propietario (con usuario) | |
-| | Editar propietario | |
-| | Eliminar propietario | |
+| ✓ | Listar propietarios | |
+| ✓ | Crear propietario (con usuario) | |
+| ✓ | Editar propietario | |
+| ✓ | Eliminar propietario | |
 
 #### Proveedores
 

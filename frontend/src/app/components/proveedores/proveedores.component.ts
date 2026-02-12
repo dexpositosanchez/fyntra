@@ -35,7 +35,9 @@ export class ProveedoresComponent implements OnInit {
     especialidadOtros: '',
     activo: true,
     password: '',
-    crearUsuario: false
+    crearUsuario: false,
+    quitarAcceso: false,
+    tieneAcceso: false
   };
 
   especialidades = [
@@ -206,7 +208,9 @@ export class ProveedoresComponent implements OnInit {
       especialidadOtros: '',
       activo: true,
       password: '',
-      crearUsuario: false
+      crearUsuario: false,
+      quitarAcceso: false,
+      tieneAcceso: false
     };
   }
 
@@ -217,13 +221,18 @@ export class ProveedoresComponent implements OnInit {
     // Si la especialidad no está en la lista fija, es "Otros" → mostrar en campo libre
     const esp = (proveedor.especialidad || '').trim();
     const esOtros = esp.length > 0 && !this.especialidades.includes(esp);
+    const tieneAcceso = proveedor.tiene_acceso ?? (proveedor.usuario_id != null);
     this.proveedorForm = {
       nombre: proveedor.nombre,
       email: proveedor.email || '',
       telefono: proveedor.telefono || '',
       especialidad: esOtros ? 'Otros' : esp,
       especialidadOtros: esOtros ? esp : '',
-      activo: proveedor.activo
+      activo: proveedor.activo,
+      password: '',
+      crearUsuario: false,
+      quitarAcceso: false,
+      tieneAcceso
     };
   }
 
@@ -253,7 +262,7 @@ export class ProveedoresComponent implements OnInit {
     };
 
     // Crear usuario: obligatorio email + contraseña cuando crearUsuario está marcado
-    if (this.proveedorForm.crearUsuario && !this.editandoProveedor) {
+    if (this.proveedorForm.crearUsuario) {
       if (!data.email) {
         this.error = 'El email es obligatorio para crear acceso al sistema.';
         this.loading = false;
@@ -265,6 +274,16 @@ export class ProveedoresComponent implements OnInit {
         return;
       }
       data.password = this.proveedorForm.password;
+    }
+
+    // Edición: enviar crear_usuario, quitar_acceso al API (snake_case)
+    if (this.editandoProveedor && this.proveedorIdEditando) {
+      if (this.proveedorForm.crearUsuario) {
+        data.crear_usuario = true;
+      }
+      if (this.proveedorForm.quitarAcceso) {
+        data.quitar_acceso = true;
+      }
     }
 
     if (this.editandoProveedor && this.proveedorIdEditando) {

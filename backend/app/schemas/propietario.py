@@ -21,6 +21,9 @@ class PropietarioUpdate(BaseModel):
     telefono: Optional[str] = Field(None, max_length=20)
     dni: Optional[str] = Field(None, max_length=20)
     inmueble_ids: Optional[List[int]] = None
+    crear_usuario: Optional[bool] = Field(None, description="Crear usuario de acceso (solo si no tiene)")
+    quitar_acceso: Optional[bool] = Field(None, description="Quitar acceso al sistema (elimina usuario asociado)")
+    password: Optional[str] = Field(None, min_length=6, description="Contraseña (requerida si crear_usuario=true)")
 
 class InmuebleSimple(BaseModel):
     id: int

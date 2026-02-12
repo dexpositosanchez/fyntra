@@ -14,6 +14,12 @@ from app.core.cache import (
 
 router = APIRouter(prefix="/proveedores", tags=["proveedores"])
 
+def proveedor_to_response(proveedor: Proveedor) -> dict:
+    """Convierte un proveedor a dict para la respuesta"""
+    d = {c.key: getattr(proveedor, c.key) for c in proveedor.__table__.columns}
+    d["tiene_acceso"] = proveedor.usuario_id is not None
+    return d
+
 def verificar_admin_fincas(current_user: Usuario):
     if current_user.rol not in ["super_admin", "admin_fincas"]:
         raise HTTPException(
@@ -52,7 +58,7 @@ async def listar_proveedores(
         query = query.filter(Proveedor.especialidad.ilike(f"%{especialidad}%"))
     
     proveedores = query.order_by(Proveedor.nombre).offset(skip).limit(limit).all()
-    result = [ProveedorResponse.model_validate(p).model_dump() for p in proveedores]
+    result = [proveedor_to_response(p) for p in proveedores]
     
     # Almacenar en caché (5 minutos)
     await set_to_cache_async(cache_key, result, expire=300)
@@ -77,10 +83,10 @@ async def obtener_proveedor(
     if not proveedor:
         raise HTTPException(status_code=404, detail="Proveedor no encontrado")
     
-    result = ProveedorResponse.model_validate(proveedor)
+    result = proveedor_to_response(proveedor)
     
     # Almacenar en caché (5 minutos)
-    await set_to_cache_async(cache_key, result.model_dump(), expire=300)
+    await set_to_cache_async(cache_key, result, expire=300)
     
     return result
 
@@ -130,7 +136,7 @@ async def crear_proveedor(
     # Invalidar caché de proveedores
     invalidate_proveedores_cache()
     
-    return ProveedorResponse.model_validate(nuevo_proveedor)
+    return proveedor_to_response(nuevo_proveedor)
 
 @router.put("/{proveedor_id}", response_model=ProveedorResponse)
 async def actualizar_proveedor(
@@ -151,7 +157,50 @@ async def actualizar_proveedor(
         if existente:
             raise HTTPException(status_code=400, detail="Ya existe un proveedor con ese email")
     
-    update_data = proveedor_data.model_dump(exclude_unset=True)
+    # Quitar acceso: eliminar usuario asociado
+    if proveedor_data.quitar_acceso and proveedor.usuario_id:
+        usuario = db.query(Usuario).filter(Usuario.id == proveedor.usuario_id).first()
+        if usuario:
+            db.delete(usuario)
+            db.flush()
+        proveedor.usuario_id = None
+        invalidate_usuarios_cache()
+    
+    # Crear usuario: si no tiene y se solicita
+    if proveedor_data.crear_usuario and not proveedor.usuario_id:
+        if not proveedor_data.email and not proveedor.email:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Se requiere email para crear acceso al sistema"
+            )
+        email = proveedor_data.email or proveedor.email
+        if not proveedor_data.password:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Se requiere contraseña para crear acceso al sistema"
+            )
+        usuario_existente = db.query(Usuario).filter(Usuario.email == email).first()
+        if usuario_existente:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Ya existe un usuario con ese email"
+            )
+        nuevo_usuario = Usuario(
+            nombre=proveedor_data.nombre or proveedor.nombre,
+            email=email,
+            hash_password=get_password_hash(proveedor_data.password),
+            rol="proveedor",
+            activo=proveedor_data.activo if proveedor_data.activo is not None else proveedor.activo
+        )
+        db.add(nuevo_usuario)
+        db.flush()
+        proveedor.usuario_id = nuevo_usuario.id
+        invalidate_usuarios_cache()
+    
+    update_data = proveedor_data.model_dump(
+        exclude_unset=True,
+        exclude={'crear_usuario', 'quitar_acceso', 'password'}
+    )
     for field, value in update_data.items():
         setattr(proveedor, field, value)
     
@@ -161,7 +210,7 @@ async def actualizar_proveedor(
     # Invalidar caché de proveedores
     invalidate_proveedores_cache()
     
-    return ProveedorResponse.model_validate(proveedor)
+    return proveedor_to_response(proveedor)
 
 @router.delete("/{proveedor_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def eliminar_proveedor(

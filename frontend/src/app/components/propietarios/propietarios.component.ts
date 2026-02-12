@@ -24,6 +24,7 @@ export class PropietariosComponent implements OnInit, OnDestroy {
     dni: '',
     inmueble_ids: [],
     crear_usuario: false,
+    quitar_acceso: false,
     password: ''
   };
   loading: boolean = false;
@@ -107,6 +108,7 @@ export class PropietariosComponent implements OnInit, OnDestroy {
       dni: '',
       inmueble_ids: [],
       crear_usuario: false,
+      quitar_acceso: false,
       password: ''
     };
   }
@@ -184,17 +186,17 @@ export class PropietariosComponent implements OnInit, OnDestroy {
 
     this.loading = true;
     
-    // Preparar datos (no enviar password si no se crea usuario)
-    const data = { ...this.propietarioForm };
+    // Preparar datos
+    const data: any = { ...this.propietarioForm };
+    delete data.tiene_acceso;
     if (!data.crear_usuario) {
       delete data.password;
     }
-    delete data.tiene_acceso;
+    if (!data.quitar_acceso) {
+      delete data.quitar_acceso;
+    }
     
     if (this.editandoPropietario && this.propietarioIdEditando) {
-      // En edición no se puede crear usuario (por ahora)
-      delete data.crear_usuario;
-      delete data.password;
       this.apiService.updatePropietario(this.propietarioIdEditando, data).subscribe({
         next: () => {
           this.cargarPropietarios();

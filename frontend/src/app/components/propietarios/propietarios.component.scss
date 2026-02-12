@@ -261,6 +261,25 @@
   }
 }
 
+.acceso-badge-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  color: #2e7d32;
+  font-size: 14px;
+  font-weight: 500;
+
+  .app-icon {
+    font-size: 18px;
+  }
+}
+
+.checkbox-quitar {
+  margin-top: 8px;
+  color: #c62828;
+}
+
 // Selector de inmuebles con chips
 .selector-container {
   border: 1px solid #e0e0e0;

@@ -198,7 +198,50 @@ async def actualizar_propietario(
                 detail="Ya existe un propietario con ese email"
             )
     
-    update_data = propietario_data.model_dump(exclude_unset=True, exclude={'inmueble_ids'})
+    # Quitar acceso: eliminar usuario asociado
+    if propietario_data.quitar_acceso and propietario.usuario_id:
+        usuario = db.query(Usuario).filter(Usuario.id == propietario.usuario_id).first()
+        if usuario:
+            db.delete(usuario)
+            db.flush()
+        propietario.usuario_id = None
+        invalidate_usuarios_cache()
+    
+    # Crear usuario: si no tiene y se solicita
+    if propietario_data.crear_usuario and not propietario.usuario_id:
+        if not propietario_data.email:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Se requiere email para crear acceso al sistema"
+            )
+        if not propietario_data.password:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Se requiere contraseña para crear acceso al sistema"
+            )
+        usuario_existente = db.query(Usuario).filter(Usuario.email == propietario_data.email).first()
+        if usuario_existente:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Ya existe un usuario con ese email"
+            )
+        nombre_completo = f"{propietario_data.nombre or propietario.nombre} {propietario_data.apellidos or propietario.apellidos or ''}".strip()
+        nuevo_usuario = Usuario(
+            nombre=nombre_completo,
+            email=propietario_data.email,
+            hash_password=get_password_hash(propietario_data.password),
+            rol="propietario",
+            activo=True
+        )
+        db.add(nuevo_usuario)
+        db.flush()
+        propietario.usuario_id = nuevo_usuario.id
+        invalidate_usuarios_cache()
+    
+    update_data = propietario_data.model_dump(
+        exclude_unset=True,
+        exclude={'inmueble_ids', 'crear_usuario', 'quitar_acceso', 'password'}
+    )
     for field, value in update_data.items():
         setattr(propietario, field, value)
     
