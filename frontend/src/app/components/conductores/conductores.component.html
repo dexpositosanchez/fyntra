@@ -183,9 +183,9 @@
             </div>
           </div>
 
-          <!-- Sección para crear acceso móvil (solo al crear nuevo conductor o al editar) -->
-          <div class="usuario-section" *ngIf="!editandoConductor || conductorForm.email">
-            <div class="form-group checkbox-group" *ngIf="!editandoConductor">
+          <!-- Sección crear acceso móvil (nuevo o editar sin acceso) -->
+          <div class="usuario-section" *ngIf="!editandoConductor || !conductorForm.tieneAcceso">
+            <div class="form-group checkbox-group">
               <label class="checkbox-label">
                 <input type="checkbox" [(ngModel)]="conductorForm.crearAccesoMovil" name="crearAccesoMovil">
                 <span>Crear acceso móvil para este conductor</span>
@@ -193,14 +193,35 @@
               <small class="help-text">Permite al conductor iniciar sesión en la aplicación móvil</small>
             </div>
             
-            <div class="form-group" *ngIf="(conductorForm.crearAccesoMovil && !editandoConductor) || (editandoConductor && conductorForm.email)">
-              <label for="password">Contraseña {{ editandoConductor ? '(opcional)' : '*' }}</label>
+            <div class="form-group" *ngIf="conductorForm.crearAccesoMovil">
+              <label for="password">Contraseña *</label>
               <input type="password" id="password" [(ngModel)]="conductorForm.password" name="password" 
                      class="form-input" 
-                     [required]="!editandoConductor && conductorForm.crearAccesoMovil"
-                     placeholder="Contraseña para acceso móvil"
+                     [required]="conductorForm.crearAccesoMovil"
+                     placeholder="Contraseña para acceso móvil (mín. 6 caracteres)"
                      minlength="6">
-              <small class="help-text">Mínimo 6 caracteres. {{ editandoConductor ? 'Dejar vacío para no cambiar.' : 'El conductor usará su email y esta contraseña para acceder.' }}</small>
+              <small class="help-text">El conductor usará su email y esta contraseña para acceder a la app móvil.</small>
+            </div>
+          </div>
+
+          <!-- Sección quitar acceso (editar con acceso) -->
+          <div class="usuario-section" *ngIf="editandoConductor && conductorForm.tieneAcceso">
+            <div class="form-group checkbox-group">
+              <span class="acceso-badge-inline">
+                <span class="app-icon">verified_user</span>
+                Este conductor tiene acceso a la app móvil
+              </span>
+              <label class="checkbox-label checkbox-quitar">
+                <input type="checkbox" [(ngModel)]="conductorForm.quitarAcceso" name="quitarAcceso">
+                <span>Quitar acceso a la app móvil</span>
+              </label>
+              <small class="help-text">Se eliminará el usuario asociado y no podrá iniciar sesión en la app</small>
+            </div>
+            <div class="form-group" *ngIf="conductorForm.tieneAcceso && !conductorForm.quitarAcceso">
+              <label for="password-edit">Cambiar contraseña (opcional)</label>
+              <input type="password" id="password-edit" [(ngModel)]="conductorForm.password" name="password" 
+                     class="form-input" placeholder="Dejar vacío para no cambiar"
+                     minlength="6">
             </div>
           </div>
           

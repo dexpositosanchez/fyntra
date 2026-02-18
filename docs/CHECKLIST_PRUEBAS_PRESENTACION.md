@@ -105,10 +105,10 @@ Leyenda columnas:
 
 | ✓ | Descripción | Observaciones |
 |---|-------------|---------------|
-| | Listar proveedores | |
-| | Crear proveedor (con usuario) | |
-| | Editar proveedor | |
-| | Activar/Desactivar proveedor | |
+| ✓ | Listar proveedores | |
+| ✓ | Crear proveedor (con usuario) | |
+| ✓ | Editar proveedor | |
+| ✓ | Activar/Desactivar proveedor | |
 
 #### Incidencias
 
@@ -139,19 +139,19 @@ Leyenda columnas:
 
 | ✓ | Descripción | Observaciones |
 |---|-------------|---------------|
-| | Listar vehículos | |
-| | Crear vehículo | |
-| | Editar vehículo | |
-| | Cambiar estado (activo/mantenimiento/baja) | |
+| ✓ | Listar vehículos | |
+| ✓ | Crear vehículo | |
+| ✓ | Editar vehículo | |
+| ✓ | Cambiar estado (activo/mantenimiento/baja) | |
 
 #### Conductores
 
 | ✓ | Descripción | Observaciones |
 |---|-------------|---------------|
-| | Listar conductores | |
+| ✓ | Listar conductores | |
 | | Crear conductor (con usuario) | |
 | | Editar conductor | |
-| | Ver alertas de licencias próximas a caducar | |
+| ✓ | Ver alertas de licencias próximas a caducar | |
 
 #### Pedidos
 

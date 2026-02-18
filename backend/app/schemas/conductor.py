@@ -24,11 +24,14 @@ class ConductorUpdate(BaseModel):
     licencia: Optional[str] = None
     fecha_caducidad_licencia: Optional[date] = None
     activo: Optional[bool] = None
-    password: Optional[str] = Field(None, min_length=6, description="Nueva contraseña para el usuario asociado al conductor")
+    password: Optional[str] = Field(None, min_length=6, description="Contraseña para crear o actualizar usuario")
+    crear_usuario: Optional[bool] = Field(None, description="Crear acceso móvil (solo si no tiene)")
+    quitar_acceso: Optional[bool] = Field(None, description="Quitar acceso móvil (elimina usuario asociado)")
 
 class ConductorResponse(ConductorBase):
     id: int
     usuario_id: Optional[int] = None
+    tiene_acceso: bool = False
     creado_en: datetime
     dias_restantes_licencia: Optional[int] = None
     licencia_proxima_caducar: Optional[bool] = None

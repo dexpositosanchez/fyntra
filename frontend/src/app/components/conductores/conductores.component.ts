@@ -30,6 +30,8 @@ export class ConductoresComponent implements OnInit, OnDestroy {
     fecha_caducidad_licencia: '',
     activo: true,
     crearAccesoMovil: false,
+    quitarAcceso: false,
+    tieneAcceso: false,
     password: ''
   };
   loading: boolean = false;
@@ -202,6 +204,8 @@ export class ConductoresComponent implements OnInit, OnDestroy {
       fecha_caducidad_licencia: '',
       activo: true,
       crearAccesoMovil: false,
+      quitarAcceso: false,
+      tieneAcceso: false,
       password: ''
     };
   }
@@ -226,6 +230,7 @@ export class ConductoresComponent implements OnInit, OnDestroy {
       activoValue = conductor.activo === true || conductor.activo === 'true' || conductor.activo === 1;
     }
     
+    const tieneAcceso = conductor.tiene_acceso ?? (conductor.usuario_id != null);
     this.conductorForm = {
       nombre: conductor.nombre || '',
       apellidos: conductor.apellidos || '',
@@ -234,7 +239,11 @@ export class ConductoresComponent implements OnInit, OnDestroy {
       email: conductor.email || '',
       licencia: conductor.licencia || '',
       fecha_caducidad_licencia: fechaFormateada,
-      activo: activoValue
+      activo: activoValue,
+      crearAccesoMovil: false,
+      quitarAcceso: false,
+      tieneAcceso,
+      password: ''
     };
     this.apiService.getHistorialConductor(conductor.id).subscribe({
       next: (data) => {
@@ -263,6 +272,8 @@ export class ConductoresComponent implements OnInit, OnDestroy {
       fecha_caducidad_licencia: '',
       activo: true,
       crearAccesoMovil: false,
+      quitarAcceso: false,
+      tieneAcceso: false,
       password: ''
     };
     this.error = '';
@@ -274,18 +285,19 @@ export class ConductoresComponent implements OnInit, OnDestroy {
       return;
     }
 
-    if (!this.editandoConductor && this.conductorForm.crearAccesoMovil && !this.conductorForm.password) {
-      this.error = 'La contraseña es obligatoria para crear acceso móvil';
-      return;
+    if (this.conductorForm.crearAccesoMovil) {
+      if (!this.conductorForm.email) {
+        this.error = 'El email es obligatorio para crear acceso móvil';
+        return;
+      }
+      if (!this.conductorForm.password || this.conductorForm.password.length < 6) {
+        this.error = 'La contraseña es obligatoria y debe tener al menos 6 caracteres para crear acceso móvil';
+        return;
+      }
     }
 
     if (this.conductorForm.password && this.conductorForm.password.length < 6) {
       this.error = 'La contraseña debe tener al menos 6 caracteres';
-      return;
-    }
-
-    if (this.conductorForm.crearAccesoMovil && !this.conductorForm.email) {
-      this.error = 'El email es obligatorio para crear acceso móvil';
       return;
     }
 
@@ -307,8 +319,14 @@ export class ConductoresComponent implements OnInit, OnDestroy {
     }
 
     if (this.editandoConductor && this.conductorIdEditando) {
-      // Si se está editando y se proporciona password, añadirlo
-      if (this.conductorForm.password) {
+      if (this.conductorForm.crearAccesoMovil) {
+        data.crear_usuario = true;
+        data.password = this.conductorForm.password;
+      }
+      if (this.conductorForm.quitarAcceso) {
+        data.quitar_acceso = true;
+      }
+      if (this.conductorForm.password && !this.conductorForm.crearAccesoMovil && this.conductorForm.tieneAcceso) {
         data.password = this.conductorForm.password;
       }
       // Actualizar conductor existente

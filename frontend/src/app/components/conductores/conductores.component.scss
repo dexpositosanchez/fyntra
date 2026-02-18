@@ -847,3 +847,57 @@
   }
 }
 
+// Sección de acceso móvil
+.usuario-section {
+  margin-top: 20px;
+  padding: 16px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px dashed #dee2e6;
+}
+
+.checkbox-group {
+  margin-bottom: 12px;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-weight: 500;
+
+  input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: #1b9d8a;
+  }
+}
+
+.help-text {
+  display: block;
+  margin-top: 6px;
+  margin-left: 28px;
+  font-size: 12px;
+  color: #666;
+}
+
+.acceso-badge-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  color: #2e7d32;
+  font-size: 14px;
+  font-weight: 500;
+
+  .app-icon {
+    font-size: 18px;
+  }
+}
+
+.checkbox-quitar {
+  margin-top: 8px;
+  color: #c62828;
+}
+
