@@ -144,6 +144,7 @@ async def crear_propietario(
         db.add(nuevo_usuario)
         db.flush()  # Para obtener el ID del usuario
         nuevo_propietario.usuario_id = nuevo_usuario.id
+        invalidate_usuarios_cache()
     
     # Asociar inmuebles si se proporcionan
     if propietario_data.inmueble_ids:
