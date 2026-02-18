@@ -1,3 +1,4 @@
+import re
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -27,15 +28,65 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Handler para errores de validación de Pydantic
+def _traducir_mensaje_validacion(error: dict) -> str:
+    """Traduce mensajes de validación de Pydantic al español"""
+    msg = str(error.get("msg", ""))
+    error_type = str(error.get("type", ""))
+
+    # Email
+    if "email" in error_type.lower() or "email" in msg.lower():
+        return "El email no es válido. Debe contener exactamente un símbolo @ y un formato correcto"
+
+    # Campo obligatorio
+    if "required" in error_type.lower() or "field required" in msg.lower():
+        return "Campo obligatorio"
+
+    # Longitud mínima
+    if "at least" in msg.lower() or "minimum" in msg.lower():
+        m = re.search(r"(\d+)", msg)
+        n = m.group(1) if m else "?"
+        return f"Debe tener al menos {n} caracteres"
+
+    # Longitud máxima
+    if "at most" in msg.lower() or "maximum" in msg.lower():
+        m = re.search(r"(\d+)", msg)
+        n = m.group(1) if m else "?"
+        return f"Debe tener como máximo {n} caracteres"
+
+    # Tipo entero
+    if "integer" in error_type.lower() or "int" in msg.lower():
+        return "Debe ser un número entero"
+
+    # Tipo número
+    if "number" in error_type.lower() or "float" in msg.lower():
+        return "Debe ser un número válido"
+
+    # Valor no válido en general
+    if "value_error" in error_type.lower() or "value is not" in msg.lower():
+        return "El valor no es válido"
+
+    # Tipo incorrecto
+    if "type_error" in error_type.lower():
+        return "Tipo de dato incorrecto"
+
+    # Si no coincide, devolver mensaje genérico más amigable
+    if msg:
+        return msg
+    return "Error de validación"
+
+
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    """Maneja errores de validación de Pydantic y devuelve un mensaje más claro"""
+    """Maneja errores de validación de Pydantic y devuelve mensajes en español"""
     errors = []
     for error in exc.errors():
-        field = ".".join(str(loc) for loc in error["loc"])
-        errors.append(f"{field}: {error['msg']}")
-    
+        loc = error.get("loc", ())
+        # Omitir "body" en la ruta para mensajes más claros (body.email -> email)
+        field_parts = [str(l) for l in loc if str(l) not in ("body", "query", "path")]
+        field = ".".join(field_parts) if field_parts else "dato"
+        msg_es = _traducir_mensaje_validacion(error)
+        errors.append(f"{field}: {msg_es}" if field else msg_es)
+
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         content={

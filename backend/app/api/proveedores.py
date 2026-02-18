@@ -236,6 +236,7 @@ async def eliminar_proveedor(
         usuario = db.query(Usuario).filter(Usuario.id == usuario_id).first()
         if usuario:
             db.delete(usuario)
+            invalidate_usuarios_cache()
     
     db.commit()
     
