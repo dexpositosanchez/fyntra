@@ -114,22 +114,22 @@ Leyenda columnas:
 
 | ✓ | Descripción | Observaciones |
 |---|-------------|---------------|
-| | Admin: ver todas las incidencias | |
-| | Propietario: ver solo incidencias de sus inmuebles | |
-| | Proveedor: ver solo incidencias asignadas | |
-| | Crear incidencia (propietario o admin) | |
-| | Asignar proveedor a incidencia | |
-| | Cambiar estado de incidencia | |
-| | Ver historial de cambios | |
-| | Subir documento a incidencia | |
-| | Subir fotos/imágenes a incidencia (web y móvil) | |
-| | **Chat**: Admin, propietario y proveedor pueden enviar y ver mensajes en la incidencia | |
-| | **Chat**: Mensajes visibles para todos los participantes (admin, propietario, proveedor) | |
-| | **Chat**: Eliminar mensajes del chat | |
-| | Enviar mensaje en incidencia | |
-| | Proveedor: añadir actuación | |
-| | Eliminar incidencia (admin o propietario creador) | |
-| | Filtros: estado, prioridad, búsqueda | |
+| ✓ | Admin: ver todas las incidencias | |
+| ✓ | Propietario: ver solo incidencias de sus inmuebles | |
+| ✓ | Proveedor: ver solo incidencias asignadas | |
+| ✓ | Crear incidencia (propietario o admin) | |
+| ✓ | Asignar proveedor a incidencia | |
+| ✓ | Cambiar estado de incidencia | |
+| ✓ | Ver historial de cambios | |
+| ✓ | Subir documento a incidencia | |
+| ✓ | Subir fotos/imágenes a incidencia (web y móvil) | |
+| ✓ | **Chat**: Admin, propietario y proveedor pueden enviar y ver mensajes en la incidencia | |
+| ✓ | **Chat**: Mensajes visibles para todos los participantes (admin, propietario, proveedor) | |
+| ✓ | **Chat**: Eliminar mensajes del chat | |
+| ✓ | Enviar mensaje en incidencia | |
+| ✓ | Proveedor: añadir actuación | |
+| ✓ | Eliminar incidencia (admin o propietario creador) | |
+| ✓ | Filtros: estado, prioridad, búsqueda | |
 
 ---
 
@@ -149,19 +149,19 @@ Leyenda columnas:
 | ✓ | Descripción | Observaciones |
 |---|-------------|---------------|
 | ✓ | Listar conductores | |
-| | Crear conductor (con usuario) | |
-| | Editar conductor | |
+| ✓ | Crear conductor (con usuario) | |
+| ✓ | Editar conductor | |
 | ✓ | Ver alertas de licencias próximas a caducar | |
 
 #### Pedidos
 
 | ✓ | Descripción | Observaciones |
 |---|-------------|---------------|
-| | Listar pedidos | |
-| | Crear pedido | |
-| | Editar pedido | |
-| | Cambiar estado del pedido | |
-| | Eliminar pedido | |
+| ✓ | Listar pedidos | |
+| ✓ | Crear pedido | |
+| ✓ | Editar pedido | |
+| ✓ | Cambiar estado del pedido | |
+| ✓ | Eliminar pedido | |
 
 #### Rutas
 
@@ -181,10 +181,10 @@ Leyenda columnas:
 
 | ✓ | Descripción | Observaciones |
 |---|-------------|---------------|
-| | Listar mantenimientos | |
-| | Crear mantenimiento (preventivo/correctivo) | |
-| | Completar mantenimiento | |
-| | Ver alertas de mantenimientos próximos/vencidos | |
+| ✓ | Listar mantenimientos | |
+| ✓ | Crear mantenimiento (preventivo/correctivo) | |
+| ✓ | Completar mantenimiento | |
+| ✓ | Ver alertas de mantenimientos próximos/vencidos | |
 
 #### Historial de Rutas
 
@@ -210,12 +210,12 @@ Leyenda columnas:
 
 | ✓ | Descripción | Observaciones |
 |---|-------------|---------------|
-| | Listar usuarios | |
-| | Crear usuario con rol válido | |
-| | Editar usuario (rol, activo) | |
-| | Cambiar contraseña de usuario | |
-| | Eliminar usuario | |
-| | No eliminar último super_admin activo | |
+| ✓ | Listar usuarios | |
+| ✓ | Crear usuario con rol válido | |
+| ✓ | Editar usuario (rol, activo) | |
+| ✓ | Cambiar contraseña de usuario | |
+| ✓ | Eliminar usuario | |
+| ✓ | No eliminar último super_admin activo | |
 
 ---
 
@@ -223,9 +223,9 @@ Leyenda columnas:
 
 | ✓ | Descripción | Observaciones |
 |---|-------------|---------------|
-| | Exportar mis datos: descarga JSON con datos personales y actividad | |
-| | Eliminar mi cuenta: anonimización y desactivación | |
-| | No eliminar último super_admin activo | |
+| ✓ | Exportar mis datos: descarga JSON con datos personales y actividad | |
+| ✓ | Eliminar mi cuenta: anonimización y desactivación | |
+| ✓ | No eliminar último super_admin activo | |
 
 ---
 
@@ -280,28 +280,28 @@ Leyenda columnas:
 
 | ✓ | Descripción | Observaciones |
 |---|-------------|---------------|
-| | Login como propietario | |
-| | Ver incidencias de sus inmuebles | |
-| | Crear incidencia | |
-| | Ver detalle: historial, documentos, chat, actuaciones | |
-| | Subir documento/foto a incidencia | |
-| | Participar en el chat de la incidencia | |
-| | Enviar mensaje en el chat | |
-| | Eliminar mensajes del chat | |
+| ✓ | Login como propietario | |
+| ✓ | Ver incidencias de sus inmuebles | |
+| ✓ | Crear incidencia | |
+| ✓ | Ver detalle: historial, documentos, chat, actuaciones | |
+| ✓ | Subir documento/foto a incidencia | |
+| ✓ | Participar en el chat de la incidencia | |
+| ✓ | Enviar mensaje en el chat | |
+| ✓ | Eliminar mensajes del chat | |
 
 #### Proveedor
 
 | ✓ | Descripción | Observaciones |
 |---|-------------|---------------|
-| | Login como proveedor | |
-| | Ver incidencias asignadas | |
-| | Ver detalle de incidencia | |
-| | Añadir actuación | |
-| | Subir documento/foto a incidencia | |
-| | Participar en el chat de la incidencia | |
-| | Enviar mensaje en el chat | |
-| | Eliminar mensajes del chat | |
-| | Actualizar estado de incidencia | |
+| ✓ | Login como proveedor | |
+| ✓ | Ver incidencias asignadas | |
+| ✓ | Ver detalle de incidencia | |
+| ✓ | Añadir actuación | |
+| ✓ | Subir documento/foto a incidencia | |
+| ✓ | Participar en el chat de la incidencia | |
+| ✓ | Enviar mensaje en el chat | |
+| ✓ | Eliminar mensajes del chat | |
+| ✓ | Actualizar estado de incidencia | |
 
 #### Sincronización y opción "Solo WiFi"
 

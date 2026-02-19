@@ -436,6 +436,8 @@ export class IncidenciasComponent implements OnInit, OnDestroy {
   cerrarHistorial(): void {
     this.mostrarHistorial = false;
     this.incidenciaSeleccionada = null;
+    this.mostrarActuaciones = false;
+    this.mostrarActuacionesModal = false;
   }
 
   getEstadoLabel(estado: string): string {
@@ -584,12 +586,14 @@ export class IncidenciasComponent implements OnInit, OnDestroy {
   cargarActuaciones(incidenciaId: number): void {
     this.apiService.getActuacionesIncidencia(incidenciaId).subscribe({
       next: (data) => {
-        // Ordenar actuaciones por fecha descendente (más reciente primero)
         this.actuaciones = data.sort((a: any, b: any) => {
           const fechaA = new Date(a.fecha).getTime();
           const fechaB = new Date(b.fecha).getTime();
-          return fechaB - fechaA; // Orden descendente
+          return fechaB - fechaA;
         });
+        if (this.incidenciaSeleccionada) {
+          this.incidenciaSeleccionada.actuaciones_count = this.actuaciones.length;
+        }
       },
       error: () => this.actuaciones = []
     });
@@ -630,7 +634,7 @@ export class IncidenciasComponent implements OnInit, OnDestroy {
       next: () => {
         this.cargarActuaciones(this.incidenciaSeleccionada.id);
         this.cancelarFormActuacion();
-        this.cargarIncidencias(); // Actualizar lista
+        this.cargarIncidencias(); // Actualizar lista y contadores (cache invalidado en backend)
       },
       error: (err) => this.error = err.error?.detail || 'Error al crear actuación'
     });
@@ -660,7 +664,10 @@ export class IncidenciasComponent implements OnInit, OnDestroy {
     event.stopPropagation();
     if (confirm('¿Eliminar esta actuación?')) {
       this.apiService.deleteActuacion(actuacion.id).subscribe({
-        next: () => this.cargarActuaciones(this.incidenciaSeleccionada.id),
+        next: () => {
+          this.cargarActuaciones(this.incidenciaSeleccionada.id);
+          this.cargarIncidencias();
+        },
         error: (err) => this.error = err.error?.detail || 'Error al eliminar'
       });
     }
@@ -676,7 +683,12 @@ export class IncidenciasComponent implements OnInit, OnDestroy {
 
   cargarDocumentos(incidenciaId: number): void {
     this.apiService.getDocumentosIncidencia(incidenciaId).subscribe({
-      next: (data) => this.documentos = data,
+      next: (data) => {
+        this.documentos = data;
+        if (this.incidenciaSeleccionada) {
+          this.incidenciaSeleccionada.documentos_count = this.documentos.length;
+        }
+      },
       error: () => this.documentos = []
     });
   }

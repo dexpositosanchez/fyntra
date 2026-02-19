@@ -10,6 +10,7 @@ from app.models.usuario import Usuario
 from app.models.historial_incidencia import HistorialIncidencia
 from app.schemas.actuacion import ActuacionCreate, ActuacionUpdate, ActuacionResponse
 from app.api.dependencies import get_current_user
+from app.api.incidencias import get_inmuebles_propietario
 from app.core.cache import (
     get_from_cache_async, set_to_cache_async, generate_cache_key,
     invalidate_actuaciones_cache, invalidate_incidencias_cache, delete_from_cache
@@ -140,10 +141,20 @@ async def listar_actuaciones_incidencia(
     if cached_result is not None:
         return cached_result
     
-    # Admins pueden ver todas, proveedores solo las suyas
+    # Admins pueden ver todas; proveedores solo las de sus incidencias; propietarios las de sus inmuebles
     if current_user.rol == "proveedor":
         proveedor = get_proveedor_from_user(db, current_user)
         verificar_acceso_incidencia(db, incidencia_id, proveedor.id)
+    elif current_user.rol == "propietario":
+        incidencia = db.query(Incidencia).filter(Incidencia.id == incidencia_id).first()
+        if not incidencia:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Incidencia no encontrada")
+        inmueble_ids = get_inmuebles_propietario(db, current_user.id)
+        if incidencia.inmueble_id not in inmueble_ids:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="No tiene acceso a esta incidencia"
+            )
     elif current_user.rol not in ["super_admin", "admin_fincas"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -194,6 +205,9 @@ async def crear_actuacion(
     
     db.commit()
     db.refresh(nueva_actuacion)
+    
+    invalidate_incidencias_cache()
+    delete_from_cache(generate_cache_key("actuaciones:incidencia", incidencia_id=actuacion_data.incidencia_id))
     
     return nueva_actuacion
 
@@ -321,8 +335,8 @@ async def eliminar_actuacion(
     db.delete(actuacion)
     db.commit()
     
-    # Invalidar caché de actuaciones
     invalidate_actuaciones_cache()
+    invalidate_incidencias_cache()
     delete_from_cache(generate_cache_key("actuaciones:incidencia", incidencia_id=incidencia_id))
     
     return None

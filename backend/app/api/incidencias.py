@@ -302,16 +302,26 @@ async def actualizar_incidencia(
             detail="La incidencia ha sido modificada por otro usuario"
         )
     
-    # Detectar cambio de estado para historial
     estado_anterior = incidencia.estado.value if incidencia.estado else None
-    nuevo_estado = incidencia_data.estado.value if incidencia_data.estado else None
+    proveedor_anterior = incidencia.proveedor_id
     
     update_data = incidencia_data.model_dump(exclude_unset=True, exclude={'comentario_cambio'})
     for field, value in update_data.items():
         setattr(incidencia, field, value)
     
-    # Si cambió el estado, registrar en historial
-    if nuevo_estado and nuevo_estado != estado_anterior:
+    # Si se asigna proveedor y no se envió estado, pasar a ASIGNADA
+    asigna_proveedor = (incidencia.proveedor_id is not None) and (proveedor_anterior != incidencia.proveedor_id)
+    if asigna_proveedor and "estado" not in update_data:
+        incidencia.estado = EstadoIncidencia.ASIGNADA
+        registrar_cambio_estado(
+            db, incidencia.id, current_user.id,
+            estado_anterior, EstadoIncidencia.ASIGNADA.value,
+            incidencia_data.comentario_cambio or "Proveedor asignado"
+        )
+    
+    nuevo_estado = incidencia.estado.value if incidencia.estado else None
+    # Si cambió el estado (y no fue por asignación ya registrada), registrar en historial
+    if nuevo_estado and nuevo_estado != estado_anterior and not (asigna_proveedor and "estado" not in update_data):
         registrar_cambio_estado(
             db, incidencia.id, current_user.id,
             estado_anterior, nuevo_estado,
@@ -319,7 +329,7 @@ async def actualizar_incidencia(
         )
         
         # Si se cierra, registrar fecha de cierre
-        if incidencia_data.estado == EstadoIncidencia.CERRADA:
+        if incidencia.estado == EstadoIncidencia.CERRADA:
             incidencia.fecha_cierre = datetime.now(timezone.utc)
     
     incidencia.version += 1

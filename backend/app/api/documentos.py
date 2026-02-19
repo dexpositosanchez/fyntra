@@ -16,7 +16,7 @@ from app.api.dependencies import get_current_user
 from app.core.security import decode_access_token
 from app.core.cache import (
     get_from_cache_async, set_to_cache_async, generate_cache_key,
-    invalidate_documentos_cache, delete_from_cache
+    invalidate_documentos_cache, invalidate_incidencias_cache, delete_from_cache
 )
 
 router = APIRouter(prefix="/documentos", tags=["documentos"])
@@ -155,8 +155,9 @@ async def subir_documento(
     db.commit()
     db.refresh(nuevo_documento)
     
-    # Invalidar caché de documentos de esta incidencia
+    # Invalidar caché de documentos y de incidencias (para actualizar documentos_count)
     invalidate_documentos_cache()
+    invalidate_incidencias_cache()
     delete_from_cache(generate_cache_key("documentos:incidencia", incidencia_id=incidencia_id))
     
     return documento_to_response(nuevo_documento, db)
@@ -240,8 +241,9 @@ async def eliminar_documento(
     db.delete(documento)
     db.commit()
     
-    # Invalidar caché de documentos de esta incidencia
+    # Invalidar caché de documentos y de incidencias
     invalidate_documentos_cache()
+    invalidate_incidencias_cache()
     delete_from_cache(generate_cache_key("documentos:incidencia", incidencia_id=incidencia_id))
     
     return None
