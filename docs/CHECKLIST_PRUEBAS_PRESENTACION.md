@@ -167,15 +167,15 @@ Leyenda columnas:
 
 | ✓ | Descripción | Observaciones |
 |---|-------------|---------------|
-| | Listar rutas | |
-| | Crear ruta (conductor, vehículo, paradas, pedidos) | |
+| ✓ | Listar rutas | |
+| ✓ | Crear ruta (conductor, vehículo, paradas, pedidos) | |
 | | Editar ruta | |
-| | Ver paradas de cada ruta | |
-| | Validar capacidad y disponibilidad al asignar | |
-| | Eliminar ruta | |
-| | **Conductor (app móvil)**: Marcar parada como entregada sin firma ni fotos (opcional) | |
-| | **Conductor (app móvil)**: Firmar al confirmar entrega de parada | |
-| | **Conductor (app móvil)**: Subir foto de la entrega al confirmar parada | |
+| ✓ | Ver paradas de cada ruta | |
+| ✓ | Validar capacidad y disponibilidad al asignar | |
+| ✓ | Eliminar ruta | |
+| ✓ | **Conductor (app móvil)**: Marcar parada como entregada sin firma ni fotos (opcional) | |
+| ✓ | **Conductor (app móvil)**: Firmar al confirmar entrega de parada | |
+| ✓ | **Conductor (app móvil)**: Subir foto de la entrega al confirmar parada | |
 
 #### Mantenimientos
 
@@ -266,15 +266,15 @@ Leyenda columnas:
 
 | ✓ | Descripción | Observaciones |
 |---|-------------|---------------|
-| | Login como conductor | |
-| | Ver listado de rutas asignadas | |
-| | Ver detalle de ruta | |
-| | Iniciar ruta | |
-| | Marcar parada como entregada sin firma ni fotos | |
-| | Marcar paradas como entregadas (con firma del cliente) | |
-| | Marcar paradas como entregadas (con foto de la entrega) | |
-| | Finalizar ruta | |
-| | Reportar incidencia en ruta | |
+| ✓ | Login como conductor | |
+| ✓ | Ver listado de rutas asignadas | |
+| ✓ | Ver detalle de ruta | |
+| ✓ | Iniciar ruta | |
+| ✓ | Marcar parada como entregada sin firma ni fotos | |
+| ✓ | Marcar paradas como entregadas (con firma del cliente) | |
+| ✓ | Marcar paradas como entregadas (con foto de la entrega) | |
+| ✓ | Finalizar ruta | |
+| ✓ | Reportar incidencia en ruta | |
 
 #### Propietario
 

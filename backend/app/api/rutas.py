@@ -1095,13 +1095,12 @@ async def crear_ruta(
     invalidate_rutas_cache()
     invalidate_cache_pattern("pedidos:*")  # Invalidación síncrona para asegurar consistencia
     
-    # Cargar paradas agrupadas por dirección y tipo
-    # Agrupar paradas que tienen la misma dirección y tipo de operación
+    # Cargar paradas agrupadas por dirección y tipo (evitar None en direccion)
     paradas_agrupadas_respuesta = {}
     for p in nueva_ruta.paradas:
         pedido = db.query(Pedido).filter(Pedido.id == p.pedido_id).first()
-        # Agrupar por dirección y tipo, no por orden
-        direccion_key = f"{p.direccion.strip().lower()}_{p.tipo_operacion.value}"
+        dir_str = (p.direccion or "").strip().lower()
+        direccion_key = f"{dir_str}_{p.tipo_operacion.value}"
         
         if direccion_key not in paradas_agrupadas_respuesta:
             paradas_agrupadas_respuesta[direccion_key] = {
@@ -1471,11 +1470,12 @@ async def actualizar_ruta(
     # Invalidar caché de rutas
     invalidate_rutas_cache()
     
-    # Construir respuesta con paradas agrupadas
+    # Construir respuesta con paradas agrupadas (evitar None en direccion)
     paradas_agrupadas_respuesta = {}
     for p in ruta.paradas:
         pedido = db.query(Pedido).filter(Pedido.id == p.pedido_id).first()
-        direccion_key = f"{p.direccion.strip().lower()}_{p.tipo_operacion.value}"
+        dir_str = (p.direccion or "").strip().lower()
+        direccion_key = f"{dir_str}_{p.tipo_operacion.value}"
         
         if direccion_key not in paradas_agrupadas_respuesta:
             paradas_agrupadas_respuesta[direccion_key] = {

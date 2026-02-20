@@ -1201,20 +1201,23 @@ export class RutasComponent implements OnInit, OnDestroy {
           this.error = '';
         },
         error: (err: HttpErrorResponse) => {
+          this.loading = false;
+          if (err.status === 401) {
+            this.authService.logout();
+            return;
+          }
           if (err.error?.detail) {
             if (typeof err.error.detail === 'object' && err.error.detail.error) {
-              // Error de capacidad con detalles
               const detalle = err.error.detail;
               this.error = `${detalle.error}: Peso total ${detalle.peso_total} kg excede capacidad de ${detalle.capacidad_vehiculo} kg (exceso: ${detalle.exceso} kg). Pedidos problemáticos: ${detalle.pedidos_problema?.join(', ') || 'N/A'}`;
             } else {
-              this.error = err.error.detail;
+              this.error = typeof err.error.detail === 'string' ? err.error.detail : JSON.stringify(err.error.detail);
             }
           } else {
             this.error = err.error?.message || err.message || 'Error al actualizar ruta';
           }
-          this.loading = false;
-          if (err.status === 401) {
-            this.authService.logout();
+          if (err.status === 0) {
+            this.error = (this.error || '') + ' Error de conexión (compruebe la red o intente de nuevo).';
           }
         }
       });
@@ -1228,20 +1231,26 @@ export class RutasComponent implements OnInit, OnDestroy {
           this.error = '';
         },
         error: (err: HttpErrorResponse) => {
+          this.loading = false;
+          if (err.status === 401) {
+            this.authService.logout();
+            return;
+          }
           if (err.error?.detail) {
             if (typeof err.error.detail === 'object' && err.error.detail.error) {
-              // Error de capacidad con detalles
               const detalle = err.error.detail;
               this.error = `${detalle.error}: Peso total ${detalle.peso_total} kg excede capacidad de ${detalle.capacidad_vehiculo} kg (exceso: ${detalle.exceso} kg). Pedidos problemáticos: ${detalle.pedidos_problema?.join(', ') || 'N/A'}`;
             } else {
               this.error = typeof err.error.detail === 'string' ? err.error.detail : JSON.stringify(err.error.detail);
             }
           } else {
-            this.error = err.error?.message || 'Error al crear ruta. Verifique los datos e intente nuevamente.';
+            this.error = err.error?.message || err.message || 'Error al crear ruta. Verifique los datos e intente nuevamente.';
           }
-          this.loading = false;
-          if (err.status === 401) {
-            this.authService.logout();
+          // Si el error es de red/timeout (status 0), la ruta pudo haberse creado; actualizar listado
+          if (err.status === 0 || err.status === 504) {
+            this.cargarRutas();
+            this.cargarPedidos();
+            this.error = (this.error || '') + ' Si la ruta se creó correctamente, compruébelo en el listado.';
           }
         }
       });

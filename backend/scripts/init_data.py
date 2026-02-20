@@ -594,12 +594,15 @@ def create_initial_data():
         pedido_almacenes = db.query(Pedido).filter(Pedido.cliente == "Almacenes Unidos SA").first()
         
         if conductores_disponibles and vehiculos_disponibles and pedido_distribuidora and pedido_almacenes:
-            # Ruta 1: Con los pedidos de Distribuidora Central SL y Almacenes Unidos SA
-            # Fechas fijas: fin 31/01/2026; parada 1 completada 30/01, paradas 2 y 3 completadas 31/01
-            fecha_ruta1 = date(2026, 1, 31)
-            fecha_fin_ruta1 = datetime(2026, 1, 31, 18, 0)
-            fecha_hora_parada1_completada = datetime(2026, 1, 30, 10, 0)   # 30/01/2026
-            fecha_hora_paradas_2_3_completada = datetime(2026, 1, 31, 14, 0)  # 31/01/2026
+            # Fechas relativas: hoy y ayer para que los datos sean siempre lógicos
+            hoy = date.today()
+            ayer = hoy - timedelta(days=1)
+            # Ruta 1: En curso (hoy) - una ruta de hoy con algunas paradas ya completadas
+            fecha_ruta1 = hoy
+            fecha_inicio_ruta1 = datetime(hoy.year, hoy.month, hoy.day, 8, 0)
+            fecha_fin_ruta1 = datetime(hoy.year, hoy.month, hoy.day, 18, 0)
+            fecha_hora_parada1_completada = datetime(hoy.year, hoy.month, hoy.day, 10, 0)
+            fecha_hora_paradas_2_3_completada = datetime(hoy.year, hoy.month, hoy.day, 14, 0)
             # Verificar si ya existe una ruta con estas características
             ruta1_existente = db.query(Ruta).filter(
                 Ruta.fecha == fecha_ruta1,
@@ -610,7 +613,7 @@ def create_initial_data():
             if not ruta1_existente:
                 ruta1 = Ruta(
                     fecha=fecha_ruta1,
-                    fecha_inicio=datetime(2026, 1, 30, 8, 0),
+                    fecha_inicio=fecha_inicio_ruta1,
                     fecha_fin=fecha_fin_ruta1,
                     estado=EstadoRuta.EN_CURSO,
                     conductor_id=conductores_disponibles[0].id,
@@ -634,7 +637,7 @@ def create_initial_data():
                     db.add(pedido_almacenes)
                     
                     # Crear paradas para la ruta 1 (4 paradas: carga/descarga de ambos pedidos)
-                    fecha_hora_base = datetime(2026, 1, 30, 8, 0)
+                    fecha_hora_base = fecha_inicio_ruta1
                     
                     # Parada 1: Carga pedido Distribuidora Central SL - completada 30/01/2026
                     parada1 = RutaParada(
@@ -698,9 +701,10 @@ def create_initial_data():
                 db.add(pedido_distribuidora)
                 db.add(pedido_almacenes)
             
-            # Ruta 2: Ruta completada y finalizada (todas las paradas completadas)
-            fecha_ruta2 = date(2026, 2, 1)
-            fecha_fin_ruta2 = datetime(2026, 2, 1, 17, 30)
+            # Ruta 2: Ruta completada (ayer) - todas las paradas completadas
+            fecha_ruta2 = ayer
+            fecha_inicio_ruta2 = datetime(ayer.year, ayer.month, ayer.day, 7, 30)
+            fecha_fin_ruta2 = datetime(ayer.year, ayer.month, ayer.day, 17, 30)
             # Verificar si ya existe una ruta con estas características
             ruta2_existente = db.query(Ruta).filter(
                 Ruta.fecha == fecha_ruta2,
@@ -710,7 +714,7 @@ def create_initial_data():
             if not ruta2_existente:
                 ruta2 = Ruta(
                     fecha=fecha_ruta2,
-                    fecha_inicio=datetime(2026, 2, 1, 7, 30),
+                    fecha_inicio=fecha_inicio_ruta2,
                     fecha_fin=fecha_fin_ruta2,
                     estado=EstadoRuta.COMPLETADA,
                     conductor_id=conductores_disponibles[1].id if len(conductores_disponibles) > 1 else conductores_disponibles[0].id,
@@ -744,7 +748,7 @@ def create_initial_data():
                             tipo_operacion=TipoOperacion.CARGA,
                             ventana_horaria="07:30-08:30",
                             fecha_hora_llegada=fecha_hora_base2 + timedelta(hours=0),
-                            fecha_hora_completada=datetime(2026, 2, 1, 8, 30),
+                            fecha_hora_completada=datetime(ayer.year, ayer.month, ayer.day, 8, 30),
                             estado=EstadoParada.ENTREGADO
                         )
                         db.add(parada_carga)
@@ -758,7 +762,7 @@ def create_initial_data():
                             tipo_operacion=TipoOperacion.DESCARGA,
                             ventana_horaria="12:00-13:00",
                             fecha_hora_llegada=fecha_hora_base2 + timedelta(hours=4, minutes=30),
-                            fecha_hora_completada=datetime(2026, 2, 1, 13, 0),
+                            fecha_hora_completada=datetime(ayer.year, ayer.month, ayer.day, 13, 0),
                             estado=EstadoParada.ENTREGADO
                         )
                         db.add(parada_descarga)

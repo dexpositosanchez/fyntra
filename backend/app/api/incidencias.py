@@ -309,9 +309,9 @@ async def actualizar_incidencia(
     for field, value in update_data.items():
         setattr(incidencia, field, value)
     
-    # Si se asigna proveedor y no se envió estado, pasar a ASIGNADA
+    # Si se asigna proveedor, pasar estado a ASIGNADA (el frontend suele enviar estado siempre)
     asigna_proveedor = (incidencia.proveedor_id is not None) and (proveedor_anterior != incidencia.proveedor_id)
-    if asigna_proveedor and "estado" not in update_data:
+    if asigna_proveedor:
         incidencia.estado = EstadoIncidencia.ASIGNADA
         registrar_cambio_estado(
             db, incidencia.id, current_user.id,
@@ -320,8 +320,8 @@ async def actualizar_incidencia(
         )
     
     nuevo_estado = incidencia.estado.value if incidencia.estado else None
-    # Si cambió el estado (y no fue por asignación ya registrada), registrar en historial
-    if nuevo_estado and nuevo_estado != estado_anterior and not (asigna_proveedor and "estado" not in update_data):
+    # Si cambió el estado y no fue por la asignación de proveedor anterior, registrar en historial
+    if nuevo_estado and nuevo_estado != estado_anterior and not asigna_proveedor:
         registrar_cambio_estado(
             db, incidencia.id, current_user.id,
             estado_anterior, nuevo_estado,
