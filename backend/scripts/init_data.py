@@ -330,6 +330,26 @@ def create_initial_data():
             ).first()
             if not existing_extra:
                 db.add(mant_extra)
+            # Un mantenimiento EN_CURSO con fecha actual (hoy)
+            if len(vehiculos_para_mant) > 1:
+                v1 = vehiculos_para_mant[1]
+                mant_en_curso = Mantenimiento(
+                    vehiculo_id=v1.id,
+                    tipo=TipoMantenimiento.CAMBIO_ACEITE,
+                    descripcion="Cambio de aceite en curso",
+                    fecha_programada=fecha_base,
+                    fecha_inicio=fecha_base,
+                    fecha_proximo_mantenimiento=fecha_base + timedelta(days=365),
+                    estado=EstadoMantenimiento.EN_CURSO,
+                    kilometraje=92000,
+                    proveedor="Servicio Oficial"
+                )
+                existing_en_curso = db.query(Mantenimiento).filter(
+                    Mantenimiento.vehiculo_id == v1.id,
+                    Mantenimiento.estado == EstadoMantenimiento.EN_CURSO,
+                ).first()
+                if not existing_en_curso:
+                    db.add(mant_en_curso)
             db.flush()
             print("  Mantenimientos creados para vehículos.")
         
@@ -468,7 +488,7 @@ def create_initial_data():
                 volumen=8.2,
                 peso=450.0,
                 tipo_mercancia="Material de oficina",
-                fecha_entrega_deseada=date.today() + timedelta(days=5),
+                fecha_entrega_deseada=date.today(),  # EN_RUTA = fecha actual
                 estado=EstadoPedido.EN_RUTA
             ),
             Pedido(
@@ -488,7 +508,7 @@ def create_initial_data():
                 volumen=5.5,
                 peso=320.0,
                 tipo_mercancia="Textiles",
-                fecha_entrega_deseada=date.today() + timedelta(days=1),
+                fecha_entrega_deseada=date.today(),  # INCIDENCIA = fecha actual
                 estado=EstadoPedido.INCIDENCIA
             ),
             Pedido(
@@ -498,7 +518,7 @@ def create_initial_data():
                 volumen=18.0,
                 peso=950.0,
                 tipo_mercancia="Alimentación",
-                fecha_entrega_deseada=date.today() + timedelta(days=7),
+                fecha_entrega_deseada=date.today() - timedelta(days=1),  # CANCELADO = fecha pasada
                 estado=EstadoPedido.CANCELADO
             ),
         ]
@@ -945,28 +965,22 @@ def create_initial_data():
             return datetime(d.year, d.month, d.day, h, m, 0)
 
         def fecha_para_estado(estado: EstadoIncidencia, extra_idx: int = 0) -> datetime:
-            # Distribución simple y determinista dentro del rango
-            total_days = max(1, (fin_informes - inicio_informes).days)
+            # Fechas coherentes con el estado: abierta/asignada/en progreso = hoy o reciente; resuelta/cerrada = pasado
+            hoy_d = date.today()
             if estado in (EstadoIncidencia.CERRADA, EstadoIncidencia.RESUELTA):
-                # Primer tercio del rango
-                offset = min(total_days - 1, 2 + extra_idx * 3)
-                return dt_dia(inicio_informes + timedelta(days=offset), 9, 15)
-            if estado == EstadoIncidencia.EN_PROGRESO:
-                # Mitad del rango
-                offset = total_days // 2
-                return dt_dia(inicio_informes + timedelta(days=offset), 11, 0)
-            if estado == EstadoIncidencia.ASIGNADA:
-                # Último tercio pero no tan al final
-                offset = max(0, total_days - 21 + extra_idx)
-                return dt_dia(inicio_informes + timedelta(days=min(total_days - 1, offset)), 12, 30)
-            # ABIERTA: muy reciente (últimos días)
-            offset = max(0, total_days - 3 - extra_idx)
-            return dt_dia(inicio_informes + timedelta(days=min(total_days - 1, offset)), 16, 45)
+                # Pasado: hace 10+ días
+                d = hoy_d - timedelta(days=10 + extra_idx * 2)
+                return dt_dia(d, 9, 15)
+            if estado in (EstadoIncidencia.EN_PROGRESO, EstadoIncidencia.ASIGNADA):
+                # Fecha actual (hoy)
+                return dt_dia(hoy_d, 11, 0) if estado == EstadoIncidencia.EN_PROGRESO else dt_dia(hoy_d, 10, 30)
+            # ABIERTA: hoy o ayer (reciente)
+            d = hoy_d if extra_idx % 2 == 0 else hoy_d - timedelta(days=1)
+            return dt_dia(d, 16, 45)
 
         def fecha_cierre_para_alta(fecha_alta: datetime, dias: int) -> datetime:
-            cierre = fecha_alta + timedelta(days=dias)
-            max_cierre = dt_dia(fin_informes, 19, 0)
-            return cierre if cierre <= max_cierre else max_cierre
+            # Cierre en el pasado (días después del alta; fecha_alta ya es pasada para RESUELTA/CERRADA)
+            return fecha_alta + timedelta(days=dias)
 
         # Proveedores para asignar incidencias (para que el informe de proveedores tenga datos)
         proveedores = db.query(Proveedor).filter(Proveedor.activo == True).all()  # noqa: E712

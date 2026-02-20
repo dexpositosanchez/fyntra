@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File, Form
 from typing import Annotated
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_, func, case
 from typing import List, Optional
@@ -966,6 +966,22 @@ async def crear_ruta(
     
     validar_pedidos(ruta_data.pedidos_ids, db)
     
+    # Validar que todos los pedidos tengan origen y destino definidos (la dirección viene del pedido)
+    pedidos = db.query(Pedido).filter(Pedido.id.in_(ruta_data.pedidos_ids)).all()
+    pedidos_sin_direccion = []
+    for p in pedidos:
+        origen_ok = p.origen is not None and str(p.origen).strip() != ""
+        destino_ok = p.destino is not None and str(p.destino).strip() != ""
+        if not origen_ok or not destino_ok:
+            pedidos_sin_direccion.append(f"Pedido #{p.id} (cliente '{p.cliente or 'Sin nombre'}')")
+    if pedidos_sin_direccion:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No se puede crear la ruta: los siguientes pedidos no tienen origen o destino definido. "
+                   "Complete los datos del pedido (origen y destino) antes de asignarlo a una ruta: " +
+                   ", ".join(pedidos_sin_direccion)
+        )
+    
     # Validar capacidad ANTES de crear paradas
     # Pasar directamente paradas_con_fechas - la función validar_capacidad_vehiculo se encarga de procesarlo
     try:
@@ -1170,7 +1186,7 @@ async def crear_ruta(
     
     return RutaResponse(**ruta_dict)
 
-@router.put("/{ruta_id}", response_model=RutaResponse)
+@router.put("/{ruta_id}")
 async def actualizar_ruta(
     ruta_id: int,
     ruta_data: RutaUpdate,
@@ -1233,6 +1249,22 @@ async def actualizar_ruta(
         
         # Validar nuevos pedidos (excluir la ruta actual si se está editando)
         validar_pedidos(ruta_data.pedidos_ids, db, ruta_id_excluir=ruta_id)
+        
+        # Validar que todos los pedidos tengan origen y destino definidos
+        pedidos = db.query(Pedido).filter(Pedido.id.in_(ruta_data.pedidos_ids)).all()
+        pedidos_sin_direccion = []
+        for p in pedidos:
+            origen_ok = p.origen is not None and str(p.origen).strip() != ""
+            destino_ok = p.destino is not None and str(p.destino).strip() != ""
+            if not origen_ok or not destino_ok:
+                pedidos_sin_direccion.append(f"Pedido #{p.id} (cliente '{p.cliente or 'Sin nombre'}')")
+        if pedidos_sin_direccion:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No se puede actualizar la ruta: los siguientes pedidos no tienen origen o destino definido. "
+                       "Complete los datos del pedido (origen y destino) antes de asignarlos a la ruta: " +
+                       ", ".join(pedidos_sin_direccion)
+            )
         
         # Validar capacidad si se está actualizando el vehículo o los pedidos
         vehiculo_validar = None
@@ -1470,78 +1502,8 @@ async def actualizar_ruta(
     # Invalidar caché de rutas
     invalidate_rutas_cache()
     
-    # Construir respuesta con paradas agrupadas (evitar None en direccion)
-    paradas_agrupadas_respuesta = {}
-    for p in ruta.paradas:
-        pedido = db.query(Pedido).filter(Pedido.id == p.pedido_id).first()
-        dir_str = (p.direccion or "").strip().lower()
-        direccion_key = f"{dir_str}_{p.tipo_operacion.value}"
-        
-        if direccion_key not in paradas_agrupadas_respuesta:
-            paradas_agrupadas_respuesta[direccion_key] = {
-                "id": p.id,
-                "ruta_id": p.ruta_id,
-                "orden": p.orden,
-                "direccion": p.direccion,
-                "tipo_operacion": p.tipo_operacion.value,
-                "ventana_horaria": p.ventana_horaria,
-                "fecha_hora_llegada": p.fecha_hora_llegada.isoformat() if p.fecha_hora_llegada else None,
-                "estado": p.estado.value,
-                "creado_en": p.creado_en,
-                "pedidos": []
-            }
-        
-        if pedido:
-            paradas_agrupadas_respuesta[direccion_key]["pedidos"].append({
-                "id": pedido.id,
-                "cliente": pedido.cliente,
-                "origen": pedido.origen,
-                "destino": pedido.destino
-            })
-    
-    paradas_lista = []
-    for key, parada_grupo in sorted(paradas_agrupadas_respuesta.items(), key=lambda x: x[1]["orden"]):
-            paradas_lista.append({
-                "id": parada_grupo["id"],
-                "ruta_id": parada_grupo["ruta_id"],
-                "pedido_id": parada_grupo["pedidos"][0]["id"] if parada_grupo["pedidos"] else None,
-                "orden": parada_grupo["orden"],
-                "direccion": parada_grupo["direccion"],
-                "tipo_operacion": parada_grupo["tipo_operacion"],
-                "ventana_horaria": parada_grupo["ventana_horaria"],
-                "fecha_hora_llegada": parada_grupo["fecha_hora_llegada"],
-                "fecha_hora_completada": parada_grupo.get("fecha_hora_completada"),
-                "estado": parada_grupo["estado"],
-                "ruta_foto": parada_grupo.get("ruta_foto"),
-                "ruta_firma": parada_grupo.get("ruta_firma"),
-                "creado_en": parada_grupo["creado_en"],
-                "pedido": parada_grupo["pedidos"][0] if parada_grupo["pedidos"] else None
-            })
-    
-    ruta_dict = {
-        "id": ruta.id,
-        "fecha": ruta.fecha,
-        "fecha_inicio": ruta.fecha_inicio.isoformat() if ruta.fecha_inicio else None,
-        "fecha_fin": ruta.fecha_fin.isoformat() if ruta.fecha_fin else None,
-        "conductor_id": ruta.conductor_id,
-        "vehiculo_id": ruta.vehiculo_id,
-        "observaciones": ruta.observaciones,
-        "estado": ruta.estado.value,
-        "creado_en": ruta.creado_en,
-        "paradas": paradas_lista,
-        "conductor": {
-            "id": ruta.conductor.id,
-            "nombre": ruta.conductor.nombre,
-            "apellidos": ruta.conductor.apellidos
-        } if ruta.conductor else None,
-        "vehiculo": {
-            "id": ruta.vehiculo.id,
-            "nombre": ruta.vehiculo.nombre,
-            "matricula": ruta.vehiculo.matricula
-        } if ruta.vehiculo else None
-    }
-    
-    return RutaResponse(**ruta_dict)
+    # Respuesta mínima para evitar timeout en conexiones lentas; el frontend recarga el listado
+    return JSONResponse(status_code=200, content={"id": ruta.id, "actualizado": True})
 
 @router.put("/{ruta_id}/paradas/{parada_id}", response_model=RutaParadaResponse)
 async def actualizar_parada(
