@@ -131,6 +131,15 @@ Leyenda columnas:
 | ✓ | Eliminar incidencia (admin o propietario creador) | |
 | ✓ | Filtros: estado, prioridad, búsqueda | |
 
+#### Informes
+
+| ✓ | Descripción | Observaciones |
+|---|-------------|---------------|
+| ✓ | Informes de comunidades | |
+| ✓ | Informes de proveedores | |
+| ✓ | Filtros | |
+| ✓ | Exportar a PDF/Excel/CSV | |
+
 ---
 
 ### 5. Módulo Transportes
@@ -168,8 +177,8 @@ Leyenda columnas:
 | ✓ | Descripción | Observaciones |
 |---|-------------|---------------|
 | ✓ | Listar rutas | |
-| ✓ | Crear ruta (conductor, vehículo, paradas, pedidos) | |
-| | Editar ruta | |
+| | Crear ruta (conductor, vehículo, paradas, pedidos) | |
+| ✓ | Editar ruta | |
 | ✓ | Ver paradas de cada ruta | |
 | ✓ | Validar capacidad y disponibilidad al asignar | |
 | ✓ | Eliminar ruta | |
@@ -190,23 +199,15 @@ Leyenda columnas:
 
 | ✓ | Descripción | Observaciones |
 |---|-------------|---------------|
-| | Listar historial de rutas completadas | |
-| | Filtros por fecha, conductor, vehículo | |
+| ✓ | Listar historial de rutas | |
+| ✓ | Filtros por fecha y completadas | |
+| ✓ | Descargas | |
+| ✓ | Rutas en vehículos | |
+| ✓ | Rutas en conductores | |
 
 ---
 
-### 6. Informes
-
-| ✓ | Descripción | Observaciones |
-|---|-------------|---------------|
-| | Acceso a Informes (solo admins) | |
-| | Informes Fincas: costes por comunidad, período, proveedor | |
-| | Informes Transportes: entregas, tiempos, eficiencia | |
-| | Exportar a PDF/Excel/CSV | |
-
----
-
-### 7. Gestión de Usuarios (solo Super Admin)
+### 6. Gestión de Usuarios (solo Super Admin)
 
 | ✓ | Descripción | Observaciones |
 |---|-------------|---------------|
@@ -219,7 +220,7 @@ Leyenda columnas:
 
 ---
 
-### 8. RGPD
+### 7. RGPD
 
 | ✓ | Descripción | Observaciones |
 |---|-------------|---------------|
@@ -229,7 +230,7 @@ Leyenda columnas:
 
 ---
 
-### 9. Flujo Completo: Pedido → Ruta → Finalizar
+### 8. Flujo Completo: Pedido → Ruta → Finalizar
 
 | ✓ | Descripción | Observaciones |
 |---|-------------|---------------|
@@ -245,7 +246,7 @@ Leyenda columnas:
 
 ---
 
-### 10. Flujo Completo: Incidencia → Asignación → Actuaciones → Cierre
+### 9. Flujo Completo: Incidencia → Asignación → Actuaciones → Cierre
 
 | ✓ | Descripción | Observaciones |
 |---|-------------|---------------|
@@ -260,7 +261,7 @@ Leyenda columnas:
 
 ---
 
-### 11. App Móvil Android
+### 10. App Móvil Android
 
 #### Conductor
 
@@ -315,11 +316,13 @@ Leyenda columnas:
 
 ---
 
-### 12. UX/UI
+### 11. UX/UI
 
 | ✓ | Descripción | Observaciones |
 |---|-------------|---------------|
-| | Diseño responsive (ordenador, tablet, móvil) | |
-| | Menú hamburguesa en móvil | |
-| | Mensajes de error claros | |
-| | Loading en operaciones asíncronas | |
+| ✓ | Diseño responsive (ordenador, tablet, móvil) | |
+| ✓ | Menú hamburguesa en móvil | |
+| ✓ | Mensajes de error claros | |
+| ✓ | Loading en operaciones asíncronas | |
+
+---

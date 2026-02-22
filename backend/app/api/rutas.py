@@ -919,7 +919,7 @@ def crear_paradas_automaticas(pedidos_ids: List[int], db: Session) -> List[dict]
     
     return paradas_finales
 
-@router.post("/", response_model=RutaResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/", status_code=status.HTTP_201_CREATED)
 async def crear_ruta(
     ruta_data: RutaCreate,
     db: Session = Depends(get_db),
@@ -1111,80 +1111,8 @@ async def crear_ruta(
     invalidate_rutas_cache()
     invalidate_cache_pattern("pedidos:*")  # Invalidación síncrona para asegurar consistencia
     
-    # Cargar paradas agrupadas por dirección y tipo (evitar None en direccion)
-    paradas_agrupadas_respuesta = {}
-    for p in nueva_ruta.paradas:
-        pedido = db.query(Pedido).filter(Pedido.id == p.pedido_id).first()
-        dir_str = (p.direccion or "").strip().lower()
-        direccion_key = f"{dir_str}_{p.tipo_operacion.value}"
-        
-        if direccion_key not in paradas_agrupadas_respuesta:
-            paradas_agrupadas_respuesta[direccion_key] = {
-                "id": p.id,  # ID de la primera parada del grupo
-                "ruta_id": p.ruta_id,
-                "orden": p.orden,  # Orden de la primera parada del grupo
-                "direccion": p.direccion,
-                "tipo_operacion": p.tipo_operacion.value,
-                "ventana_horaria": p.ventana_horaria,
-                "fecha_hora_llegada": p.fecha_hora_llegada.isoformat() if p.fecha_hora_llegada else None,
-                "estado": p.estado.value,
-                "creado_en": p.creado_en,
-                "pedidos": []  # Lista de pedidos en esta parada
-            }
-        
-        if pedido:
-            paradas_agrupadas_respuesta[direccion_key]["pedidos"].append({
-                "id": pedido.id,
-                "cliente": pedido.cliente,
-                "origen": pedido.origen,
-                "destino": pedido.destino
-            })
-    
-    # Convertir a lista ordenada por orden
-    paradas_con_info = []
-    for key, parada_grupo in sorted(paradas_agrupadas_respuesta.items(), key=lambda x: x[1]["orden"]):
-        # Añadir la parada con todos sus pedidos
-        parada_info = {
-            "id": parada_grupo["id"],
-            "ruta_id": parada_grupo["ruta_id"],
-            "pedido_id": parada_grupo["pedidos"][0]["id"] if parada_grupo["pedidos"] else None,  # Primer pedido como referencia
-            "orden": parada_grupo["orden"],
-            "direccion": parada_grupo["direccion"],
-            "tipo_operacion": parada_grupo["tipo_operacion"],
-            "ventana_horaria": parada_grupo["ventana_horaria"],
-            "fecha_hora_llegada": parada_grupo["fecha_hora_llegada"],
-            "estado": parada_grupo["estado"],
-            "creado_en": parada_grupo["creado_en"],
-            "pedido": parada_grupo["pedidos"][0] if parada_grupo["pedidos"] else None,  # Primer pedido para compatibilidad
-            "pedidos": parada_grupo["pedidos"]  # Todos los pedidos en esta parada
-        }
-        paradas_con_info.append(parada_info)
-    
-    # Construir respuesta
-    ruta_dict = {
-        "id": nueva_ruta.id,
-        "fecha": nueva_ruta.fecha,
-        "fecha_inicio": nueva_ruta.fecha_inicio.isoformat() if nueva_ruta.fecha_inicio else None,
-        "fecha_fin": nueva_ruta.fecha_fin.isoformat() if nueva_ruta.fecha_fin else None,
-        "conductor_id": nueva_ruta.conductor_id,
-        "vehiculo_id": nueva_ruta.vehiculo_id,
-        "observaciones": nueva_ruta.observaciones,
-        "estado": nueva_ruta.estado.value,
-        "creado_en": nueva_ruta.creado_en,
-        "paradas": paradas_con_info,
-        "conductor": {
-            "id": conductor.id,
-            "nombre": conductor.nombre,
-            "apellidos": conductor.apellidos
-        },
-        "vehiculo": {
-            "id": vehiculo.id,
-            "nombre": vehiculo.nombre,
-            "matricula": vehiculo.matricula
-        }
-    }
-    
-    return RutaResponse(**ruta_dict)
+    # Respuesta mínima para evitar timeout en conexiones lentas (p. ej. Render); el frontend recarga el listado
+    return JSONResponse(status_code=201, content={"id": nueva_ruta.id, "creado": True})
 
 @router.put("/{ruta_id}")
 async def actualizar_ruta(

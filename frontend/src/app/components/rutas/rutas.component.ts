@@ -1206,6 +1206,16 @@ export class RutasComponent implements OnInit, OnDestroy {
             this.authService.logout();
             return;
           }
+          // Timeout o pérdida de conexión (status 0/504): el backend pudo haber guardado; refrescar y avisar
+          if (err.status === 0 || err.status === 504) {
+            this.cargarRutas();
+            this.cargarPedidos();
+            this.mostrarFormulario = false;
+            this.editandoRuta = false;
+            this.rutaIdEditando = null;
+            this.error = 'Error de conexión al guardar. Si la ruta se actualizó correctamente, compruébelo en el listado.';
+            return;
+          }
           if (err.error?.detail) {
             if (typeof err.error.detail === 'object' && err.error.detail.error) {
               const detalle = err.error.detail;
@@ -1236,6 +1246,14 @@ export class RutasComponent implements OnInit, OnDestroy {
             this.authService.logout();
             return;
           }
+          // Timeout o pérdida de conexión (status 0/504): el backend pudo haber creado la ruta; refrescar y cerrar formulario
+          if (err.status === 0 || err.status === 504) {
+            this.cargarRutas();
+            this.cargarPedidos();
+            this.mostrarFormulario = false;
+            this.error = 'Error de conexión al crear la ruta. Si la ruta se creó correctamente, compruébelo en el listado.';
+            return;
+          }
           if (err.error?.detail) {
             if (typeof err.error.detail === 'object' && err.error.detail.error) {
               const detalle = err.error.detail;
@@ -1245,12 +1263,6 @@ export class RutasComponent implements OnInit, OnDestroy {
             }
           } else {
             this.error = err.error?.message || err.message || 'Error al crear ruta. Verifique los datos e intente nuevamente.';
-          }
-          // Si el error es de red/timeout (status 0), la ruta pudo haberse creado; actualizar listado
-          if (err.status === 0 || err.status === 504) {
-            this.cargarRutas();
-            this.cargarPedidos();
-            this.error = (this.error || '') + ' Si la ruta se creó correctamente, compruébelo en el listado.';
           }
         }
       });
