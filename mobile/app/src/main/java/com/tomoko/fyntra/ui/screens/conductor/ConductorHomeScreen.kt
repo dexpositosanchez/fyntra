@@ -186,6 +186,13 @@ fun RutaCard(
             Text("Fecha: ${ruta.fecha ?: "N/A"}")
             Text("Estado: ${ruta.estado}")
             Text("Paradas: ${ruta.paradas?.size ?: 0}")
+            val pedidosUnicos = ruta.paradas?.mapNotNull { it.pedido }?.distinctBy { it.id } ?: emptyList()
+            if (pedidosUnicos.isNotEmpty()) {
+                Text(
+                    text = "Pedidos: " + pedidosUnicos.joinToString { "Pedido #${it.id} (${it.cliente})" },
+                    fontSize = 14.sp
+                )
+            }
         }
     }
 }

@@ -291,6 +291,27 @@ fun RutaDetailScreen(
                 }
 
                 item {
+                    val pedidosUnicos = ruta!!.paradas?.mapNotNull { it.pedido }?.distinctBy { it.id } ?: emptyList()
+                    if (pedidosUnicos.isNotEmpty()) {
+                        Column(modifier = Modifier.padding(vertical = 8.dp)) {
+                            Text(
+                                "Pedidos de la ruta",
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            pedidosUnicos.forEach { p ->
+                                Text(
+                                    "Pedido #${p.id} — ${p.cliente}",
+                                    fontSize = 14.sp,
+                                    color = Color(0xFF2F343D)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                item {
                     Text(
                         "Paradas (${ruta!!.paradas?.size ?: 0})",
                         fontSize = 20.sp,
@@ -456,9 +477,7 @@ fun ParadaCard(
                 }
             }
             Text("Dirección: ${parada.direccion}")
-            if (parada.pedido != null) {
-                Text("Cliente: ${parada.pedido.cliente}")
-            }
+            Text("Pedido #${parada.pedido_id} — Cliente: ${parada.pedido?.cliente ?: "—"}")
             if (parada.fecha_hora_completada != null) {
                 Text("Completada: ${formatearFechaHoraEspanol(parada.fecha_hora_completada)}", fontSize = 12.sp, color = Color(0xFF6F7785))
             }

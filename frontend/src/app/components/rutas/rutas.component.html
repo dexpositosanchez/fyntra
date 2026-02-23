@@ -520,6 +520,12 @@
             <p *ngIf="ruta.paradas && ruta.paradas.length > 0">
               <strong>Paradas:</strong> {{ ruta.paradas.length }} ({{ contarParadasCarga(ruta.paradas) }} carga, {{ contarParadasDescarga(ruta.paradas) }} descarga)
             </p>
+            <p *ngIf="getPedidosYClientes(ruta).length > 0">
+              <strong>Pedidos:</strong>
+              <span *ngFor="let item of getPedidosYClientes(ruta); let last = last">
+                Pedido #{{ item.id }} ({{ item.cliente }})<span *ngIf="!last">, </span>
+              </span>
+            </p>
             <p *ngIf="ruta.observaciones">
               <strong>Observaciones:</strong> {{ ruta.observaciones }}
             </p>

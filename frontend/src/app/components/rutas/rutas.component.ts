@@ -1297,6 +1297,24 @@ export class RutasComponent implements OnInit, OnDestroy {
     return ` (${completadas}/${total} paradas)`;
   }
 
+  /** Lista de pedidos únicos de la ruta con cliente, para mostrar en la ficha (listado). */
+  getPedidosYClientes(ruta: any): { id: number; cliente: string }[] {
+    if (!ruta?.paradas?.length) return [];
+    const vistos = new Set<number>();
+    const resultado: { id: number; cliente: string }[] = [];
+    for (const p of ruta.paradas) {
+      const id = p.pedido_id ?? p.pedido?.id;
+      if (id != null && !vistos.has(id)) {
+        vistos.add(id);
+        resultado.push({
+          id: Number(id),
+          cliente: p.pedido?.cliente ?? '—'
+        });
+      }
+    }
+    return resultado;
+  }
+
   parsearFechaParaInput(fechaStr: string): string {
     // Convierte fecha en formato "dd/mm/YYYY HH:MM" o "dd/mm/YYYY" a formato YYYY-MM-DD para input type="date"
     if (!fechaStr) return '';

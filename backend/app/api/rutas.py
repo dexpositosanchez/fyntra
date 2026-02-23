@@ -1714,12 +1714,19 @@ async def completar_parada(
         parada.ruta_foto = ruta_foto
     if ruta_firma:
         parada.ruta_firma = ruta_firma
+
+    # Si es una parada de DESCARGA, marcar el pedido asociado como ENTREGADO
+    if parada.tipo_operacion == TipoOperacion.DESCARGA and parada.pedido_id:
+        pedido_asociado = db.query(Pedido).filter(Pedido.id == parada.pedido_id).first()
+        if pedido_asociado and pedido_asociado.estado == EstadoPedido.EN_RUTA:
+            pedido_asociado.estado = EstadoPedido.ENTREGADO
     
     db.commit()
     db.refresh(parada)
     
-    # Invalidar caché
+    # Invalidar caché de rutas y de pedidos
     invalidate_rutas_cache()
+    invalidate_cache_pattern("pedidos:*")
     
     # Obtener pedido para la respuesta
     pedido = db.query(Pedido).filter(Pedido.id == parada.pedido_id).first()

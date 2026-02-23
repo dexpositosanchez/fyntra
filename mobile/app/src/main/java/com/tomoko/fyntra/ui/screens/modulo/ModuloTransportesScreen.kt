@@ -343,7 +343,15 @@ fun RutaCard(
                 Text("Fecha: ${ruta.fecha}")
             }
             Text("Paradas: ${ruta.paradas?.size ?: 0}")
-            
+            // Pedidos y cliente (únicos por pedido_id)
+            val pedidosUnicos = ruta.paradas?.mapNotNull { it.pedido }?.distinctBy { it.id } ?: emptyList()
+            if (pedidosUnicos.isNotEmpty()) {
+                Text(
+                    text = "Pedidos: " + pedidosUnicos.joinToString { "Pedido #${it.id} (${it.cliente})" },
+                    fontSize = 14.sp,
+                    color = Color(0xFF2F343D)
+                )
+            }
             // Mostrar paradas completadas vs totales
             val paradasCompletadas = ruta.paradas?.count { it.estado == "entregado" } ?: 0
             val totalParadas = ruta.paradas?.size ?: 0
