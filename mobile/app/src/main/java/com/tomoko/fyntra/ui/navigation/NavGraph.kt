@@ -27,6 +27,7 @@ import com.tomoko.fyntra.ui.screens.proveedor.ProveedorHomeScreen
 import com.tomoko.fyntra.ui.screens.incidencias.IncidenciasScreen
 import com.tomoko.fyntra.ui.screens.settings.SettingsScreen
 import com.tomoko.fyntra.data.repository.IncidenciaRepository
+import com.tomoko.fyntra.data.repository.RutaRepository
 
 sealed class Screen(val route: String) {
     object Login : Screen("login")
@@ -46,6 +47,7 @@ fun NavGraph(
     authDataStore: AuthDataStore,
     authRepository: AuthRepository,
     incidenciaRepository: IncidenciaRepository,
+    rutaRepository: RutaRepository,
     settingsDataStore: SettingsDataStore
 ) {
     val userRol by authDataStore.userRol.collectAsState(initial = null)
@@ -127,7 +129,11 @@ fun NavGraph(
         }
 
         composable(Screen.ConductorHome.route) {
-            ConductorHomeScreen(navController, authRepository)
+            ConductorHomeScreen(
+                navController = navController,
+                authRepository = authRepository,
+                rutaRepository = rutaRepository
+            )
         }
         
         composable(
@@ -138,7 +144,8 @@ fun NavGraph(
             RutaDetailScreen(
                 rutaId = rutaId,
                 navController = navController,
-                authRepository = authRepository
+                authRepository = authRepository,
+                rutaRepository = rutaRepository
             )
         }
 

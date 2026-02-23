@@ -20,6 +20,7 @@ import com.tomoko.fyntra.R
 import com.tomoko.fyntra.data.local.AuthDataStore
 import com.tomoko.fyntra.data.models.Ruta
 import com.tomoko.fyntra.data.repository.AuthRepository
+import com.tomoko.fyntra.data.repository.RutaRepository
 import com.tomoko.fyntra.ui.components.AppHeader
 import kotlinx.coroutines.launch
 
@@ -27,14 +28,43 @@ import kotlinx.coroutines.launch
 fun ModuloTransportesScreen(
     navController: NavController? = null,
     authDataStore: AuthDataStore? = null,
-    authRepository: AuthRepository? = null
+    authRepository: AuthRepository? = null,
+    rutaRepository: RutaRepository? = null
 ) {
     var shouldLogout by remember { mutableStateOf(false) }
     var rutas by remember { mutableStateOf<List<Ruta>>(emptyList()) }
+    var fromCache by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     val userRol by authDataStore?.userRol?.collectAsState(initial = null) ?: remember { mutableStateOf(null) }
     val scope = rememberCoroutineScope()
+
+    fun loadRutas() {
+        scope.launch {
+            isLoading = true
+            error = null
+            try {
+                if (rutaRepository != null) {
+                    val result = rutaRepository.getMisRutas()
+                    rutas = result.rutas
+                    fromCache = result.fromCache
+                } else {
+                    val response = authRepository?.getApiServiceInstance()?.getMisRutas()
+                    if (response?.isSuccessful == true) {
+                        rutas = response.body() ?: emptyList()
+                        fromCache = false
+                    } else {
+                        val errorBody = response?.errorBody()?.string()
+                        error = "Error al cargar rutas: ${response?.code()} - ${response?.message()}\n$errorBody"
+                    }
+                }
+            } catch (e: Exception) {
+                error = "Error: ${e.message}\n${e.stackTraceToString()}"
+            } finally {
+                isLoading = false
+            }
+        }
+    }
     
     LaunchedEffect(shouldLogout) {
         if (shouldLogout && authRepository != null) {
@@ -47,22 +77,8 @@ fun ModuloTransportesScreen(
     
     // Cargar rutas solo si es conductor
     LaunchedEffect(userRol) {
-        if (userRol == "conductor" && authRepository != null) {
-            isLoading = true
-            try {
-                val response = authRepository.getApiServiceInstance().getMisRutas()
-                if (response.isSuccessful) {
-                    rutas = response.body() ?: emptyList()
-                    error = null
-                } else {
-                    val errorBody = response.errorBody()?.string()
-                    error = "Error al cargar rutas: ${response.code()} - ${response.message()}\n$errorBody"
-                }
-            } catch (e: Exception) {
-                error = "Error: ${e.message}\n${e.stackTraceToString()}"
-            } finally {
-                isLoading = false
-            }
+        if (userRol == "conductor" && (authRepository != null || rutaRepository != null)) {
+            loadRutas()
         }
     }
     
@@ -134,22 +150,7 @@ fun ModuloTransportesScreen(
                                 textAlign = TextAlign.Center
                             )
                             Spacer(modifier = Modifier.height(16.dp))
-                            Button(onClick = {
-                                scope.launch {
-                                    isLoading = true
-                                    try {
-                                        val response = authRepository?.getApiServiceInstance()?.getMisRutas()
-                                        if (response?.isSuccessful == true) {
-                                            rutas = response.body() ?: emptyList()
-                                            error = null
-                                        }
-                                    } catch (e: Exception) {
-                                        error = e.message
-                                    } finally {
-                                        isLoading = false
-                                    }
-                                }
-                            }) {
+                            Button(onClick = { loadRutas() }) {
                                 Text("Reintentar")
                             }
                         }
@@ -171,6 +172,22 @@ fun ModuloTransportesScreen(
                         contentPadding = PaddingValues(16.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
+                        if (fromCache) {
+                            item {
+                                Surface(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    color = MaterialTheme.colorScheme.primaryContainer,
+                                    shape = MaterialTheme.shapes.medium
+                                ) {
+                                    Text(
+                                        text = "Sin conexión — datos en caché",
+                                        modifier = Modifier.padding(12.dp),
+                                        fontSize = 14.sp,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                                    )
+                                }
+                            }
+                        }
                         // Título de sección: En progreso
                         if (rutasEnProgreso.isNotEmpty()) {
                             item {

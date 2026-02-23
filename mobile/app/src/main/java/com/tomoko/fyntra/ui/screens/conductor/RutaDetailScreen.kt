@@ -42,6 +42,7 @@ import androidx.navigation.NavController
 import com.tomoko.fyntra.data.models.Parada
 import com.tomoko.fyntra.data.models.Ruta
 import com.tomoko.fyntra.data.repository.AuthRepository
+import com.tomoko.fyntra.data.repository.RutaRepository
 import com.tomoko.fyntra.util.ImageCompression
 import kotlinx.coroutines.launch
 import okhttp3.MediaType.Companion.toMediaType
@@ -85,9 +86,11 @@ private fun formatearFechaHoraEspanol(fechaHora: String?): String {
 fun RutaDetailScreen(
     rutaId: Int,
     navController: NavController,
-    authRepository: AuthRepository
+    authRepository: AuthRepository,
+    rutaRepository: RutaRepository? = null
 ) {
     var ruta by remember { mutableStateOf<Ruta?>(null) }
+    var fromCache by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var showCompletarParadaDialog by remember { mutableStateOf<Parada?>(null) }
@@ -99,12 +102,20 @@ fun RutaDetailScreen(
     fun cargarRuta() {
         scope.launch {
             isLoading = true
+            error = null
             try {
-                val response = authRepository.getApiServiceInstance().getRuta(rutaId)
-                if (response.isSuccessful) {
-                    ruta = response.body()
+                if (rutaRepository != null) {
+                    val result = rutaRepository.getRutaById(rutaId)
+                    ruta = result.ruta
+                    fromCache = result.fromCache
                 } else {
-                    error = "Error al cargar la ruta: ${response.message()}"
+                    val response = authRepository.getApiServiceInstance().getRuta(rutaId)
+                    if (response.isSuccessful) {
+                        ruta = response.body()
+                        fromCache = false
+                    } else {
+                        error = "Error al cargar la ruta: ${response.message()}"
+                    }
                 }
             } catch (e: Exception) {
                 error = e.message
@@ -120,20 +131,35 @@ fun RutaDetailScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Ruta #${rutaId}", fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Volver"
+            Column {
+                TopAppBar(
+                    title = { Text("Ruta #${rutaId}", fontWeight = FontWeight.Bold) },
+                    navigationIcon = {
+                        IconButton(onClick = { navController.popBackStack() }) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Volver"
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                    )
+                )
+                if (fromCache) {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.secondaryContainer
+                    ) {
+                        Text(
+                            text = "Sin conexión — datos en caché",
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
                         )
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
-                )
-            )
+                }
+            }
         },
         floatingActionButton = {
             when (ruta?.estado) {

@@ -17,34 +17,51 @@ import androidx.compose.material3.IconButton
 import androidx.navigation.NavController
 import com.tomoko.fyntra.data.models.Ruta
 import com.tomoko.fyntra.data.repository.AuthRepository
+import com.tomoko.fyntra.data.repository.RutaRepository
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ConductorHomeScreen(
     navController: NavController,
-    authRepository: AuthRepository
+    authRepository: AuthRepository,
+    rutaRepository: RutaRepository? = null
 ) {
     var rutas by remember { mutableStateOf<List<Ruta>>(emptyList()) }
+    var fromCache by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var showMenu by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
-    LaunchedEffect(Unit) {
-        isLoading = true
-        try {
-            val response = authRepository.getApiServiceInstance().getMisRutas()
-            if (response.isSuccessful) {
-                rutas = response.body() ?: emptyList()
-            } else {
-                error = "Error al cargar rutas"
+    fun loadRutas() {
+        scope.launch {
+            isLoading = true
+            error = null
+            try {
+                if (rutaRepository != null) {
+                    val result = rutaRepository.getMisRutas()
+                    rutas = result.rutas
+                    fromCache = result.fromCache
+                } else {
+                    val response = authRepository.getApiServiceInstance().getMisRutas()
+                    if (response.isSuccessful) {
+                        rutas = response.body() ?: emptyList()
+                        fromCache = false
+                    } else {
+                        error = "Error al cargar rutas"
+                    }
+                }
+            } catch (e: Exception) {
+                error = e.message
+            } finally {
+                isLoading = false
             }
-        } catch (e: Exception) {
-            error = e.message
-        } finally {
-            isLoading = false
         }
+    }
+
+    LaunchedEffect(Unit) {
+        loadRutas()
     }
 
     Scaffold(
@@ -98,7 +115,7 @@ fun ConductorHomeScreen(
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(error!!, color = MaterialTheme.colorScheme.error)
                         Spacer(modifier = Modifier.height(16.dp))
-                        Button(onClick = { /* Retry */ }) {
+                        Button(onClick = { loadRutas() }) {
                             Text("Reintentar")
                         }
                     }
@@ -116,11 +133,27 @@ fun ConductorHomeScreen(
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
+                    if (fromCache) {
+                        item {
+                            Surface(
+                                modifier = Modifier.fillMaxWidth(),
+                                color = MaterialTheme.colorScheme.primaryContainer,
+                                shape = MaterialTheme.shapes.medium
+                            ) {
+                                Text(
+                                    text = "Sin conexión — datos en caché",
+                                    modifier = Modifier.padding(12.dp),
+                                    fontSize = 14.sp,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
+                        }
+                    }
                     items(rutas) { ruta ->
                         RutaCard(
                             ruta = ruta,
                             onRutaClick = {
-                                // TODO: Navegar a detalle de ruta
+                                navController.navigate("ruta_detail/${ruta.id}")
                             }
                         )
                     }

@@ -6,20 +6,24 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import com.tomoko.fyntra.data.local.database.dao.IncidenciaDao
 import com.tomoko.fyntra.data.local.database.dao.PendingOperationDao
+import com.tomoko.fyntra.data.local.database.dao.RutaDao
 import com.tomoko.fyntra.data.local.database.entities.IncidenciaEntity
 import com.tomoko.fyntra.data.local.database.entities.PendingOperationEntity
+import com.tomoko.fyntra.data.local.database.entities.RutaCacheEntity
 
 @Database(
     entities = [
         IncidenciaEntity::class,
-        PendingOperationEntity::class
+        PendingOperationEntity::class,
+        RutaCacheEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun incidenciaDao(): IncidenciaDao
     abstract fun pendingOperationDao(): PendingOperationDao
+    abstract fun rutaDao(): RutaDao
 
     companion object {
         @Volatile

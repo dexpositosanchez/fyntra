@@ -15,6 +15,7 @@ import com.tomoko.fyntra.data.local.SettingsDataStore
 import com.tomoko.fyntra.data.local.database.AppDatabase
 import com.tomoko.fyntra.data.repository.AuthRepository
 import com.tomoko.fyntra.data.repository.IncidenciaRepository
+import com.tomoko.fyntra.data.repository.RutaRepository
 import com.tomoko.fyntra.data.sync.NetworkMonitor
 import com.tomoko.fyntra.data.sync.SyncManager
 import com.tomoko.fyntra.data.sync.SyncService
@@ -29,6 +30,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var networkMonitor: NetworkMonitor
     private lateinit var syncService: SyncService
     private lateinit var incidenciaRepository: IncidenciaRepository
+    private lateinit var rutaRepository: RutaRepository
     private lateinit var syncManager: SyncManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -48,6 +50,7 @@ class MainActivity : ComponentActivity() {
                         authDataStore = authDataStore,
                         authRepository = authRepository,
                         incidenciaRepository = incidenciaRepository,
+                        rutaRepository = rutaRepository,
                         settingsDataStore = settingsDataStore
                     )
                 }
@@ -90,6 +93,12 @@ class MainActivity : ComponentActivity() {
             database = database,
             networkMonitor = networkMonitor,
             syncService = syncService
+        )
+        rutaRepository = RutaRepository(
+            authRepository = authRepository,
+            rutaDao = database.rutaDao(),
+            networkMonitor = networkMonitor,
+            gson = gson
         )
         
         // Sync Manager (RNF18: respeta opción "solo WiFi")
