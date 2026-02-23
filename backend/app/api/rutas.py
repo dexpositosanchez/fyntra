@@ -76,6 +76,47 @@ def formatear_datetime(dt) -> Optional[str]:
     return None
 
 
+def datetime_to_iso_utc(dt) -> Optional[str]:
+    """Devuelve el datetime en ISO con Z (UTC) para que el frontend pueda mostrar hora local correctamente."""
+    if dt is None:
+        return None
+    try:
+        if isinstance(dt, datetime):
+            if getattr(dt, "tzinfo", None) is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            s = dt.isoformat()
+            if s.endswith("+00:00"):
+                s = s[:-6] + "Z"
+            return s
+    except Exception:
+        pass
+    return None
+
+
+def build_paradas_lista(ruta, db: Session) -> List[dict]:
+    """Construye la lista de paradas: una entrada por RutaParada (sin agrupar), con fechas en ISO UTC."""
+    paradas_lista = []
+    for p in ruta.paradas:
+        pedido = db.query(Pedido).filter(Pedido.id == p.pedido_id).first()
+        paradas_lista.append({
+            "id": p.id,
+            "ruta_id": p.ruta_id,
+            "pedido_id": p.pedido_id,
+            "orden": p.orden,
+            "direccion": p.direccion or "",
+            "tipo_operacion": p.tipo_operacion.value,
+            "ventana_horaria": p.ventana_horaria,
+            "fecha_hora_llegada": datetime_to_iso_utc(p.fecha_hora_llegada),
+            "fecha_hora_completada": datetime_to_iso_utc(getattr(p, "fecha_hora_completada", None)) if getattr(p, "fecha_hora_completada", None) else None,
+            "estado": p.estado.value,
+            "ruta_foto": getattr(p, "ruta_foto", None),
+            "ruta_firma": getattr(p, "ruta_firma", None),
+            "creado_en": formatear_datetime(p.creado_en) if p.creado_en else None,
+            "pedido": {"id": pedido.id, "cliente": pedido.cliente, "origen": pedido.origen, "destino": pedido.destino} if pedido else None,
+        })
+    return paradas_lista
+
+
 def _incidencias_ruta_basic(db: Session, ruta_id: int) -> dict:
     """Devuelve {'incidencias_count': int, 'tiene_incidencias': bool}."""
     count = db.query(IncidenciaRuta).filter(IncidenciaRuta.ruta_id == ruta_id).count()
@@ -537,57 +578,7 @@ async def listar_rutas(
     
     resultados = []
     for ruta in rutas:
-        # Agrupar paradas por dirección y tipo
-        paradas_agrupadas = {}
-        for p in ruta.paradas:
-            pedido = db.query(Pedido).filter(Pedido.id == p.pedido_id).first()
-            direccion_key = f"{p.direccion.strip().lower()}_{p.tipo_operacion.value}"
-            
-            if direccion_key not in paradas_agrupadas:
-                paradas_agrupadas[direccion_key] = {
-                    "id": p.id,
-                    "ruta_id": p.ruta_id,
-                    "orden": p.orden,
-                    "direccion": p.direccion,
-                    "tipo_operacion": p.tipo_operacion.value,
-                    "ventana_horaria": p.ventana_horaria,
-                    "fecha_hora_llegada": formatear_datetime(p.fecha_hora_llegada) if p.fecha_hora_llegada else None,
-                    "fecha_hora_completada": formatear_datetime(p.fecha_hora_completada) if hasattr(p, 'fecha_hora_completada') and p.fecha_hora_completada else None,
-                    "estado": p.estado.value,
-                    "ruta_foto": p.ruta_foto if hasattr(p, 'ruta_foto') else None,
-                    "ruta_firma": p.ruta_firma if hasattr(p, 'ruta_firma') else None,
-                    "creado_en": formatear_datetime(p.creado_en) if p.creado_en else None,
-                    "pedidos": []
-                }
-            
-            if pedido:
-                paradas_agrupadas[direccion_key]["pedidos"].append({
-                    "id": pedido.id,
-                    "cliente": pedido.cliente,
-                    "origen": pedido.origen,
-                    "destino": pedido.destino
-                })
-        
-        # Convertir a lista ordenada
-        paradas_lista = []
-        for key, parada_grupo in sorted(paradas_agrupadas.items(), key=lambda x: x[1]["orden"]):
-            paradas_lista.append({
-                "id": parada_grupo["id"],
-                "ruta_id": parada_grupo["ruta_id"],
-                "pedido_id": parada_grupo["pedidos"][0]["id"] if parada_grupo["pedidos"] else None,
-                "orden": parada_grupo["orden"],
-                "direccion": parada_grupo["direccion"],
-                "tipo_operacion": parada_grupo["tipo_operacion"],
-                "ventana_horaria": parada_grupo["ventana_horaria"],
-                "fecha_hora_llegada": parada_grupo["fecha_hora_llegada"],
-                "fecha_hora_completada": parada_grupo.get("fecha_hora_completada"),
-                "estado": parada_grupo["estado"],
-                "ruta_foto": parada_grupo.get("ruta_foto"),
-                "ruta_firma": parada_grupo.get("ruta_firma"),
-                "creado_en": parada_grupo["creado_en"],
-                "pedido": parada_grupo["pedidos"][0] if parada_grupo["pedidos"] else None
-            })
-        
+        paradas_lista = build_paradas_lista(ruta, db)
         incidencias_info = _incidencias_ruta_basic(db, ruta.id)
         incidencias_full = _incidencias_ruta_full(db, ruta.id)
         ruta_dict = {
@@ -662,59 +653,7 @@ async def obtener_mis_rutas(
     resultados = []
     for ruta in rutas:
         try:
-            # Agrupar paradas por dirección y tipo
-            paradas_agrupadas = {}
-            for p in ruta.paradas:
-                if not p.direccion or not p.tipo_operacion:
-                    continue  # Saltar paradas inválidas
-                pedido = db.query(Pedido).filter(Pedido.id == p.pedido_id).first()
-                direccion_key = f"{p.direccion.strip().lower()}_{p.tipo_operacion.value}"
-                
-                if direccion_key not in paradas_agrupadas:
-                    paradas_agrupadas[direccion_key] = {
-                        "id": p.id,
-                        "ruta_id": p.ruta_id,
-                        "orden": p.orden,
-                        "direccion": p.direccion,
-                        "tipo_operacion": p.tipo_operacion.value,
-                        "ventana_horaria": p.ventana_horaria,
-                        "fecha_hora_llegada": formatear_datetime(p.fecha_hora_llegada) if p.fecha_hora_llegada else None,
-                        "fecha_hora_completada": formatear_datetime(p.fecha_hora_completada) if p.fecha_hora_completada else None,
-                        "estado": p.estado.value,
-                        "ruta_foto": p.ruta_foto,
-                        "ruta_firma": p.ruta_firma,
-                        "creado_en": formatear_datetime(p.creado_en) if p.creado_en else None,
-                        "pedidos": []
-                    }
-                
-                if pedido:
-                    paradas_agrupadas[direccion_key]["pedidos"].append({
-                        "id": pedido.id,
-                        "cliente": pedido.cliente,
-                        "origen": pedido.origen,
-                        "destino": pedido.destino
-                    })
-            
-            # Convertir a lista ordenada
-            paradas_lista = []
-            for key, parada_grupo in sorted(paradas_agrupadas.items(), key=lambda x: x[1]["orden"]):
-                paradas_lista.append({
-                    "id": parada_grupo["id"],
-                    "ruta_id": parada_grupo["ruta_id"],
-                    "pedido_id": parada_grupo["pedidos"][0]["id"] if parada_grupo["pedidos"] else None,
-                    "orden": parada_grupo["orden"],
-                    "direccion": parada_grupo["direccion"],
-                    "tipo_operacion": parada_grupo["tipo_operacion"],
-                    "ventana_horaria": parada_grupo["ventana_horaria"],
-                    "fecha_hora_llegada": parada_grupo["fecha_hora_llegada"],
-                    "fecha_hora_completada": parada_grupo["fecha_hora_completada"],
-                    "estado": parada_grupo["estado"],
-                    "ruta_foto": parada_grupo["ruta_foto"],
-                    "ruta_firma": parada_grupo["ruta_firma"],
-                    "creado_en": parada_grupo["creado_en"],
-                    "pedido": parada_grupo["pedidos"][0] if parada_grupo["pedidos"] else None
-                })
-            
+            paradas_lista = build_paradas_lista(ruta, db)
             # Verificar que conductor_id y vehiculo_id existan
             if not ruta.conductor_id or not ruta.vehiculo_id:
                 logging.warning(f"Ruta {ruta.id} tiene conductor_id o vehiculo_id None, saltando")
@@ -799,59 +738,7 @@ async def obtener_ruta(
             detail="Ruta no encontrada"
         )
     
-    # Agrupar paradas por dirección y tipo
-    paradas_agrupadas = {}
-    for p in ruta.paradas:
-        if not p.direccion or not p.tipo_operacion:
-            continue  # Saltar paradas inválidas
-        pedido = db.query(Pedido).filter(Pedido.id == p.pedido_id).first()
-        direccion_key = f"{p.direccion.strip().lower()}_{p.tipo_operacion.value}"
-        
-        if direccion_key not in paradas_agrupadas:
-            paradas_agrupadas[direccion_key] = {
-                "id": p.id,
-                "ruta_id": p.ruta_id,
-                "orden": p.orden,
-                "direccion": p.direccion,
-                "tipo_operacion": p.tipo_operacion.value,
-                "ventana_horaria": p.ventana_horaria,
-                "fecha_hora_llegada": formatear_datetime(p.fecha_hora_llegada) if p.fecha_hora_llegada else None,
-                "fecha_hora_completada": formatear_datetime(p.fecha_hora_completada) if p.fecha_hora_completada else None,
-                "estado": p.estado.value,
-                "ruta_foto": p.ruta_foto,
-                "ruta_firma": p.ruta_firma,
-                "creado_en": formatear_datetime(p.creado_en) if p.creado_en else None,
-                "pedidos": []
-            }
-        
-        if pedido:
-            paradas_agrupadas[direccion_key]["pedidos"].append({
-                "id": pedido.id,
-                "cliente": pedido.cliente,
-                "origen": pedido.origen,
-                "destino": pedido.destino
-            })
-    
-    # Convertir a lista ordenada
-    paradas_lista = []
-    for key, parada_grupo in sorted(paradas_agrupadas.items(), key=lambda x: x[1]["orden"]):
-        paradas_lista.append({
-            "id": parada_grupo["id"],
-            "ruta_id": parada_grupo["ruta_id"],
-            "pedido_id": parada_grupo["pedidos"][0]["id"] if parada_grupo["pedidos"] else None,
-            "orden": parada_grupo["orden"],
-            "direccion": parada_grupo["direccion"],
-            "tipo_operacion": parada_grupo["tipo_operacion"],
-            "ventana_horaria": parada_grupo["ventana_horaria"],
-            "fecha_hora_llegada": parada_grupo["fecha_hora_llegada"],
-            "fecha_hora_completada": parada_grupo["fecha_hora_completada"],
-            "estado": parada_grupo["estado"],
-            "ruta_foto": parada_grupo["ruta_foto"],
-            "ruta_firma": parada_grupo["ruta_firma"],
-            "creado_en": parada_grupo["creado_en"],
-            "pedido": parada_grupo["pedidos"][0] if parada_grupo["pedidos"] else None
-        })
-    
+    paradas_lista = build_paradas_lista(ruta, db)
     incidencias_info = _incidencias_ruta_basic(db, ruta.id)
     incidencias_full = _incidencias_ruta_full(db, ruta.id)
     ruta_dict = {
@@ -1575,34 +1462,7 @@ async def iniciar_ruta(
     # Invalidar caché
     invalidate_rutas_cache()
     
-    # Construir respuesta
-    paradas_lista = []
-    for p in ruta.paradas:
-        if not p.direccion or not p.tipo_operacion:
-            continue  # Saltar paradas inválidas
-        pedido = db.query(Pedido).filter(Pedido.id == p.pedido_id).first()
-        paradas_lista.append({
-            "id": p.id,
-            "ruta_id": p.ruta_id,
-            "pedido_id": p.pedido_id,
-            "orden": p.orden,
-            "direccion": p.direccion,
-            "tipo_operacion": p.tipo_operacion.value,
-            "ventana_horaria": p.ventana_horaria,
-            "fecha_hora_llegada": formatear_datetime(p.fecha_hora_llegada) if p.fecha_hora_llegada else None,
-            "fecha_hora_completada": formatear_datetime(p.fecha_hora_completada) if p.fecha_hora_completada else None,
-            "estado": p.estado.value,
-            "ruta_foto": p.ruta_foto,
-            "ruta_firma": p.ruta_firma,
-            "creado_en": formatear_datetime(p.creado_en) if p.creado_en else None,
-            "pedido": {
-                "id": pedido.id,
-                "cliente": pedido.cliente,
-                "origen": pedido.origen,
-                "destino": pedido.destino
-            } if pedido else None
-        })
-    
+    paradas_lista = build_paradas_lista(ruta, db)
     ruta_dict = {
         "id": ruta.id,
         "fecha": formatear_fecha(ruta.fecha),
@@ -1688,34 +1548,7 @@ async def finalizar_ruta(
     # Invalidar caché
     invalidate_rutas_cache()
     
-    # Construir respuesta
-    paradas_lista = []
-    for p in ruta.paradas:
-        if not p.direccion or not p.tipo_operacion:
-            continue  # Saltar paradas inválidas
-        pedido = db.query(Pedido).filter(Pedido.id == p.pedido_id).first()
-        paradas_lista.append({
-            "id": p.id,
-            "ruta_id": p.ruta_id,
-            "pedido_id": p.pedido_id,
-            "orden": p.orden,
-            "direccion": p.direccion,
-            "tipo_operacion": p.tipo_operacion.value,
-            "ventana_horaria": p.ventana_horaria,
-            "fecha_hora_llegada": formatear_datetime(p.fecha_hora_llegada) if p.fecha_hora_llegada else None,
-            "fecha_hora_completada": formatear_datetime(p.fecha_hora_completada) if p.fecha_hora_completada else None,
-            "estado": p.estado.value,
-            "ruta_foto": p.ruta_foto,
-            "ruta_firma": p.ruta_firma,
-            "creado_en": formatear_datetime(p.creado_en) if p.creado_en else None,
-            "pedido": {
-                "id": pedido.id,
-                "cliente": pedido.cliente,
-                "origen": pedido.origen,
-                "destino": pedido.destino
-            } if pedido else None
-        })
-    
+    paradas_lista = build_paradas_lista(ruta, db)
     ruta_dict = {
         "id": ruta.id,
         "fecha": formatear_fecha(ruta.fecha),

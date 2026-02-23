@@ -177,7 +177,7 @@ Leyenda columnas:
 | ✓ | Descripción | Observaciones |
 |---|-------------|---------------|
 | ✓ | Listar rutas | |
-| | Crear ruta (conductor, vehículo, paradas, pedidos) | |
+| ✓ | Crear ruta (conductor, vehículo, paradas, pedidos) | |
 | ✓ | Editar ruta | |
 | ✓ | Ver paradas de cada ruta | |
 | ✓ | Validar capacidad y disponibilidad al asignar | |
@@ -234,7 +234,7 @@ Leyenda columnas:
 
 | ✓ | Descripción | Observaciones |
 |---|-------------|---------------|
-| | Crear 2+ pedidos en estado pendiente | |
+| ✓ | Crear 2+ pedidos en estado pendiente | |
 | | Crear ruta asignando conductor, vehículo y pedidos | |
 | | Verificar ruta aparece como "planificada" | |
 | | En app móvil como conductor: iniciar ruta | |
