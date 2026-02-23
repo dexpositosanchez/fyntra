@@ -171,7 +171,7 @@
                 </div>
                 <div class="parada-progreso-content">
                   <p><strong>Dirección:</strong> {{ parada.direccion }}</p>
-                  <p *ngIf="parada.fecha_hora_completada"><strong>Completada:</strong> {{ parada.fecha_hora_completada }}</p>
+                  <p *ngIf="parada.fecha_hora_completada"><strong>Completada:</strong> {{ formatearFechaHora(parada.fecha_hora_completada) }}</p>
                   <div class="parada-evidencias" *ngIf="parada.estado === 'entregado'">
                     <a *ngIf="parada.ruta_foto" [href]="getUrlFoto(parada.ruta_foto, parada.id)" target="_blank" class="evidencia-icon-link" title="Ver foto">
                       <span class="app-icon">photo_camera</span>
@@ -489,6 +489,7 @@
               </h3>
               <div class="ruta-actions">
                 <button 
+                  *ngIf="ruta.estado !== 'completada' && ruta.estado !== 'en_curso'"
                   type="button" 
                   class="delete-ruta-button" 
                   (click)="eliminarRuta(ruta.id, $event)"
@@ -499,10 +500,10 @@
               </div>
             </div>
             <p *ngIf="ruta.fecha_inicio">
-              <strong>Salida:</strong> {{ formatearFechaHora(ruta.fecha_inicio) }}
+              <strong>Salida:</strong> {{ formatearFecha(ruta.fecha_inicio) }}
             </p>
             <p *ngIf="ruta.fecha_fin">
-              <strong>Llegada:</strong> {{ formatearFechaHora(ruta.fecha_fin) }}
+              <strong>Llegada:</strong> {{ formatearFecha(ruta.fecha_fin) }}
             </p>
             <p *ngIf="ruta.conductor">
               <strong>Conductor:</strong> {{ ruta.conductor.nombre }} {{ ruta.conductor.apellidos }}

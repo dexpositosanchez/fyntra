@@ -235,13 +235,13 @@ Leyenda columnas:
 | ✓ | Descripción | Observaciones |
 |---|-------------|---------------|
 | ✓ | Crear 2+ pedidos en estado pendiente | |
-| | Crear ruta asignando conductor, vehículo y pedidos | |
-| | Verificar ruta aparece como "planificada" | |
-| | En app móvil como conductor: iniciar ruta | |
-| | Marcar parada como entregada sin firma ni fotos (opcional) | |
-| | Marcar paradas como entregadas (capturar firma del cliente) | |
-| | Marcar paradas como entregadas (capturar foto de la entrega) | |
-| | Finalizar ruta | |
+| ✓ | Crear ruta asignando conductor, vehículo y pedidos | |
+| ✓ | Verificar ruta aparece como "planificada" | |
+| ✓ | En app móvil como conductor: iniciar ruta | |
+| ✓ | Marcar parada como entregada sin firma ni fotos (opcional) | |
+| ✓ | Marcar paradas como entregadas (capturar firma del cliente) | |
+| ✓ | Marcar paradas como entregadas (capturar foto de la entrega) | |
+| ✓ | Finalizar ruta | |
 | | Verificar pedidos pasan a "entregado" y ruta a "completada" | |
 
 ---

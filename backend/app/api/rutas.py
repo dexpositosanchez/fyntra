@@ -1391,6 +1391,12 @@ async def eliminar_ruta(
             detail="Ruta no encontrada"
         )
     
+    if ruta.estado in (EstadoRuta.COMPLETADA, EstadoRuta.EN_CURSO):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No se puede eliminar una ruta completada o en curso. Solo se pueden eliminar rutas planificadas."
+        )
+    
     # Restaurar estado de los pedidos a "pendiente" al eliminar la ruta
     # Obtener IDs únicos de pedidos para evitar duplicados
     pedidos_ids = set(parada.pedido_id for parada in ruta.paradas)
@@ -1542,11 +1548,20 @@ async def finalizar_ruta(
     # Cambiar estado a COMPLETADA y registrar fecha de fin
     ruta.estado = EstadoRuta.COMPLETADA
     ruta.fecha_fin = datetime.now(timezone.utc)
+    
+    # Marcar todos los pedidos de la ruta como ENTREGADO (cada parada de descarga implica entrega del pedido)
+    pedido_ids_ruta = {p.pedido_id for p in ruta.paradas if p.pedido_id}
+    for pedido_id in pedido_ids_ruta:
+        pedido = db.query(Pedido).filter(Pedido.id == pedido_id).first()
+        if pedido and pedido.estado == EstadoPedido.EN_RUTA:
+            pedido.estado = EstadoPedido.ENTREGADO
+    
     db.commit()
     db.refresh(ruta)
     
-    # Invalidar caché
+    # Invalidar caché de rutas y de pedidos para que el listado refleje ENTREGADO
     invalidate_rutas_cache()
+    invalidate_cache_pattern("pedidos:*")
     
     paradas_lista = build_paradas_lista(ruta, db)
     ruta_dict = {

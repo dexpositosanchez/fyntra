@@ -980,21 +980,19 @@ export class RutasComponent implements OnInit, OnDestroy {
     this.loading = true;
     this.error = '';
     
-    // Convertir fechas a formato datetime (añadir hora 00:00:00 para inicio y 23:59:59 para fin)
-    // Usar hora local para evitar problemas de zona horaria
-    const fechaInicioStr = this.rutaForm.fecha_inicio + 'T00:00:00';
-    const fechaFinStr = this.rutaForm.fecha_fin + 'T23:59:59';
+    // Enviar fechas en UTC a mediodía/fin de día para que no cambie el día por zona horaria
+    // (ej: 27/02 00:00 local → UTC podría ser 26/02 23:00 y guardarse como 26/02)
+    const fechaInicioStr = this.rutaForm.fecha_inicio + 'T12:00:00.000Z';
+    const fechaFinStr = this.rutaForm.fecha_fin + 'T23:59:59.000Z';
     const fechaInicio = new Date(fechaInicioStr);
     const fechaFin = new Date(fechaFinStr);
     
-    // Verificar que las fechas sean válidas
     if (isNaN(fechaInicio.getTime()) || isNaN(fechaFin.getTime())) {
       this.error = 'Las fechas proporcionadas no son válidas';
       this.loading = false;
       return;
     }
     
-    // Validar que fecha_fin >= fecha_inicio
     if (fechaFin < fechaInicio) {
       this.error = `La fecha de fin (${this.formatearFecha(this.rutaForm.fecha_fin)}) no puede ser anterior a la fecha de inicio (${this.formatearFecha(this.rutaForm.fecha_inicio)})`;
       this.loading = false;
@@ -1122,8 +1120,8 @@ export class RutasComponent implements OnInit, OnDestroy {
     this.sincronizarFechasConPedidos();
     
     const rutaData: any = {
-      fecha_inicio: fechaInicio.toISOString(),
-      fecha_fin: fechaFin.toISOString(),
+      fecha_inicio: fechaInicioStr,
+      fecha_fin: fechaFinStr,
       conductor_id: this.rutaForm.conductor_id,
       vehiculo_id: this.rutaForm.vehiculo_id,
       observaciones: this.rutaForm.observaciones || '',
@@ -1329,12 +1327,19 @@ export class RutasComponent implements OnInit, OnDestroy {
 
   formatearFecha(fecha: any): string {
     if (!fecha) return 'N/A';
+    // Si viene del backend en formato "dd/mm/YYYY HH:MM", extraer solo la parte fecha (es la de la BD)
+    if (typeof fecha === 'string' && fecha.includes('/') && fecha.trim().length >= 10) {
+      const parteFecha = fecha.trim().split(/\s+/)[0];
+      if (parteFecha && /^\d{1,2}\/\d{1,2}\/\d{4}$/.test(parteFecha)) return parteFecha;
+    }
     const date = fecha instanceof Date ? fecha : new Date(fecha);
     if (isNaN(date.getTime())) return 'N/A';
-    const day = date.getDate().toString().padStart(2, '0');
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    const year = date.getFullYear().toString().padStart(4, '0');
-    return `${day}/${month}/${year}`;
+    // Si es ISO con Z (UTC), usar fecha UTC para no cambiar de día por zona horaria
+    const esIsoUtc = typeof fecha === 'string' && (fecha.includes('T') && (fecha.includes('Z') || fecha.includes('+00:00')));
+    const day = esIsoUtc ? date.getUTCDate() : date.getDate();
+    const month = (esIsoUtc ? date.getUTCMonth() : date.getMonth()) + 1;
+    const year = esIsoUtc ? date.getUTCFullYear() : date.getFullYear();
+    return `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}/${year}`;
   }
 
   toggleMenuUsuario(): void {

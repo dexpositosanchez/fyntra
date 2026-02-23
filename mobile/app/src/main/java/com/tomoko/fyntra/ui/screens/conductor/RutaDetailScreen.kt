@@ -54,6 +54,31 @@ import java.io.FileOutputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.TimeZone
+
+private fun formatearFechaHoraEspanol(fechaHora: String?): String {
+    if (fechaHora.isNullOrBlank()) return ""
+    return try {
+        val formatos = listOf(
+            "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'",
+            "yyyy-MM-dd'T'HH:mm:ss'Z'",
+            "yyyy-MM-dd'T'HH:mm:ss",
+            "yyyy-MM-dd HH:mm:ss"
+        )
+        var fecha: Date? = null
+        for (formato in formatos) {
+            try {
+                val sdf = SimpleDateFormat(formato, Locale.US)
+                sdf.timeZone = TimeZone.getTimeZone("UTC")
+                fecha = sdf.parse(fechaHora)
+                if (fecha != null) break
+            } catch (_: Exception) { continue }
+        }
+        if (fecha != null) {
+            SimpleDateFormat("dd/MM/yyyy HH:mm", Locale("es", "ES")).format(fecha)
+        } else fechaHora
+    } catch (_: Exception) { fechaHora }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -409,7 +434,7 @@ fun ParadaCard(
                 Text("Cliente: ${parada.pedido.cliente}")
             }
             if (parada.fecha_hora_completada != null) {
-                Text("Completada: ${parada.fecha_hora_completada}", fontSize = 12.sp, color = Color(0xFF6F7785))
+                Text("Completada: ${formatearFechaHoraEspanol(parada.fecha_hora_completada)}", fontSize = 12.sp, color = Color(0xFF6F7785))
             }
             
             if (rutaEstado == "en_curso" && parada.estado != "entregado") {
