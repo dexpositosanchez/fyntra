@@ -339,7 +339,8 @@ export class IncidenciasComponent implements OnInit, OnDestroy {
       estado: incidencia.estado,
       proveedor_id: incidencia.proveedor_id,
       comentario_cambio: '',
-      version: incidencia.version
+      version: incidencia.version,
+      fecha_cierre: incidencia.fecha_cierre || null
     };
   }
 
@@ -435,9 +436,12 @@ export class IncidenciasComponent implements OnInit, OnDestroy {
 
   cerrarHistorial(): void {
     this.mostrarHistorial = false;
-    this.incidenciaSeleccionada = null;
-    this.mostrarActuaciones = false;
-    this.mostrarActuacionesModal = false;
+  }
+
+  /** Suma del importe (coste) de todas las actuaciones cargadas. */
+  getTotalImporteActuaciones(): number {
+    if (!this.actuaciones?.length) return 0;
+    return this.actuaciones.reduce((sum: number, act: any) => sum + (Number(act.coste) || 0), 0);
   }
 
   getEstadoLabel(estado: string): string {

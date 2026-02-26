@@ -91,6 +91,10 @@
           <span class="app-icon">location_on</span>
           {{ incidenciaSeleccionada.inmueble?.referencia }} - {{ incidenciaSeleccionada.inmueble?.direccion }}
         </p>
+        <p class="fecha-cierre" *ngIf="(incidenciaSeleccionada.estado === 'resuelta' || incidenciaSeleccionada.estado === 'cerrada') && incidenciaSeleccionada.fecha_cierre">
+          <span class="app-icon">event_available</span>
+          Fecha de cierre: {{ formatearFecha(incidenciaSeleccionada.fecha_cierre) }}
+        </p>
       </div>
 
       <!-- Cambiar estado -->
@@ -163,6 +167,7 @@
           <p>No hay actuaciones registradas</p>
           <small>Añada una actuación para documentar el trabajo realizado</small>
         </div>
+        <p class="actuaciones-total"><strong>Total:</strong> {{ actuaciones.length }} actuaciones</p>
       </div>
 
       <div *ngIf="error" class="error-message">{{ error }}</div>
@@ -233,6 +238,11 @@
           <label for="comentario_cambio">Comentario del cambio</label>
           <input type="text" id="comentario_cambio" [(ngModel)]="incidenciaForm.comentario_cambio" name="comentario_cambio" class="form-input" placeholder="Motivo del cambio (opcional)" [disabled]="esPropietario">
         </div>
+        
+        <p class="fecha-cierre-form" *ngIf="editandoIncidencia && (incidenciaForm.estado === 'resuelta' || incidenciaForm.estado === 'cerrada')">
+          <span class="app-icon">calendar_today</span>
+          <strong>Fecha de cierre:</strong> {{ incidenciaForm.fecha_cierre ? formatearFecha(incidenciaForm.fecha_cierre) : 'No hay fecha de cierre' }}
+        </p>
         
         <div *ngIf="error" class="error-message">{{ error }}</div>
         
@@ -338,6 +348,10 @@
                 <span class="app-icon">calendar_today</span>
                 {{ formatearFecha(incidencia.fecha_alta) }}
               </p>
+              <p class="incidencia-fecha" *ngIf="incidencia.estado === 'resuelta' || incidencia.estado === 'cerrada'">
+                <span class="app-icon">calendar_today</span>
+                Fecha de cierre: {{ incidencia.fecha_cierre ? formatearFecha(incidencia.fecha_cierre) : 'No hay fecha de cierre' }}
+              </p>
               <div class="card-actions">
             <!-- Historial para todos -->
             <button class="action-btn history-btn" (click)="verHistorial(incidencia, $event)" title="Ver historial">
@@ -411,6 +425,7 @@
         <span class="app-icon">build</span>
         <p>No hay actuaciones registradas</p>
       </div>
+      <p class="actuaciones-total-modal"><strong>Total importe:</strong> {{ getTotalImporteActuaciones() | number:'1.2-2' }} €</p>
     </div>
   </div>
 </div>

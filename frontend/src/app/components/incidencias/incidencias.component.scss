@@ -705,7 +705,8 @@ textarea.form-input {
   
   .incidencia-inmueble,
   .incidencia-proveedor,
-  .incidencia-fecha {
+  .incidencia-fecha,
+  .incidencia-fecha-cierre {
     display: flex;
     align-items: center;
     gap: 6px;
@@ -1107,6 +1108,13 @@ textarea.form-input {
     }
   }
   
+  .actuaciones-total {
+    margin-top: 12px;
+    margin-bottom: 0;
+    font-size: 14px;
+    color: #333;
+  }
+
   .empty-actuaciones {
     text-align: center;
     padding: 40px 20px;
@@ -1210,6 +1218,13 @@ textarea.form-input {
     }
   }
   
+  .actuaciones-total-modal {
+    margin-top: 12px;
+    margin-bottom: 0;
+    font-size: 14px;
+    color: #333;
+  }
+
   .empty-actuaciones-modal {
     text-align: center;
     padding: 40px 20px;

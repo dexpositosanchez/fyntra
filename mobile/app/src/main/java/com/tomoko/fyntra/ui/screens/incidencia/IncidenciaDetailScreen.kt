@@ -349,6 +349,16 @@ fun DetallesTab(
                 
                 Text("Fecha de creación", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(formatearFechaSolo(incidencia.fecha_alta), fontSize = 14.sp)
+                
+                if (incidencia.estado == "resuelta" || incidencia.estado == "cerrada") {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Fecha de cierre", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        if (!incidencia.fecha_cierre.isNullOrBlank()) formatearFechaSolo(incidencia.fecha_cierre) else "No hay fecha de cierre",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
             }
         }
 
@@ -1483,7 +1493,8 @@ fun ActuacionesTab(
             }
         } else {
             LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.padding(bottom = 8.dp)
             ) {
                 items(actuaciones) { actuacion ->
                     Card(
@@ -1518,6 +1529,16 @@ fun ActuacionesTab(
                             }
                         }
                     }
+                }
+                item {
+                    val totalImporte = actuaciones.sumOf { it.coste ?: 0.0 }
+                    Text(
+                        text = "Total importe: ${String.format("%.2f", totalImporte)} €",
+                        modifier = Modifier.padding(top = 8.dp),
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
         }

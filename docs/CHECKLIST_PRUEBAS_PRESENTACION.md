@@ -242,7 +242,7 @@ Leyenda columnas:
 | ✓ | Marcar paradas como entregadas (capturar firma del cliente) | |
 | ✓ | Marcar paradas como entregadas (capturar foto de la entrega) | |
 | ✓ | Finalizar ruta | |
-| | Verificar pedidos pasan a "entregado" y ruta a "completada" | |
+| ✓ | Verificar pedidos pasan a "entregado" y ruta a "completada" | |
 
 ---
 

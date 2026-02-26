@@ -328,8 +328,8 @@ async def actualizar_incidencia(
             incidencia_data.comentario_cambio
         )
         
-        # Si se cierra, registrar fecha de cierre
-        if incidencia.estado == EstadoIncidencia.CERRADA:
+        # Si se resuelve o se cierra, registrar fecha de resolución/cierre
+        if incidencia.estado in (EstadoIncidencia.RESUELTA, EstadoIncidencia.CERRADA):
             incidencia.fecha_cierre = datetime.now(timezone.utc)
     
     incidencia.version += 1

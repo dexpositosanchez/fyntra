@@ -390,20 +390,32 @@ fun IncidenciaCard(
                 }
             }
             
-            // Fecha
+            // Fecha alta
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                Text(
-                    text = "📅",
-                    fontSize = 14.sp
-                )
+                Text(text = "📅", fontSize = 14.sp)
                 Text(
                     text = formatDate(incidencia.fecha_alta),
                     fontSize = 12.sp,
                     color = Color(0xFF6F7785)
                 )
+            }
+            
+            // Fecha de cierre solo en Resueltas y Cerradas
+            if (incidencia.estado == "resuelta" || incidencia.estado == "cerrada") {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(text = "📅", fontSize = 14.sp)
+                    Text(
+                        text = "Cierre: ${if (!incidencia.fecha_cierre.isNullOrBlank()) formatDate(incidencia.fecha_cierre) else "No hay fecha de cierre"}",
+                        fontSize = 12.sp,
+                        color = Color(0xFF6F7785)
+                    )
+                }
             }
             
             // Contadores (actuaciones, documentos)
