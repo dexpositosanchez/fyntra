@@ -114,6 +114,7 @@ async def listar_incidencias_asignadas(
             "prioridad": inc.prioridad,
             "estado": inc.estado,
             "fecha_alta": inc.fecha_alta,
+            "fecha_cierre": inc.fecha_cierre,
             "inmueble": {
                 "id": inc.inmueble.id,
                 "referencia": inc.inmueble.referencia,
