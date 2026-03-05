@@ -1,5 +1,6 @@
 package com.tomoko.fyntra.ui.screens.incidencia
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -51,6 +52,7 @@ import androidx.navigation.NavController
 import com.tomoko.fyntra.data.models.Incidencia
 import com.tomoko.fyntra.data.models.IncidenciaUpdate
 import com.tomoko.fyntra.data.repository.AuthRepository
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -60,10 +62,10 @@ fun IncidenciaDetailScreen(
     userRol: String,
     navController: NavController,
     authRepository: AuthRepository,
+    incidenciaRepository: com.tomoko.fyntra.data.repository.IncidenciaRepository,
     userId: Int? = null,
     initialTab: Int = 0
 ) {
-    var incidencia by remember { mutableStateOf<Incidencia?>(null) }
     var isLoading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var selectedTab by remember { mutableStateOf(initialTab) }
@@ -71,6 +73,10 @@ fun IncidenciaDetailScreen(
     var isDeleting by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     
+    val incidencia by incidenciaRepository
+        .observeIncidenciaById(incidenciaId)
+        .collectAsState(initial = null)
+
     // Verificar si puede eliminar: admin o propietario que creó la incidencia
     val puedeEliminar = remember(incidencia, userRol, userId) {
         when {
@@ -98,16 +104,22 @@ fun IncidenciaDetailScreen(
     LaunchedEffect(incidenciaId) {
         isLoading = true
         try {
-            val response = authRepository.getApiServiceInstance().getIncidencia(incidenciaId)
-            if (response.isSuccessful) {
-                incidencia = response.body()
-            } else {
-                error = "Error al cargar la incidencia"
-            }
+            // Upsert de detalle: asegura que Room tenga el registro aunque el listado no se haya cargado aún
+            incidenciaRepository.getIncidenciaById(incidenciaId)
         } catch (e: Exception) {
             error = e.message
         } finally {
             isLoading = false
+        }
+    }
+
+    // Manejar botón físico de "atrás": si estamos en una pestaña distinta de Detalles,
+    // primero volvemos a Detalles; si ya estamos en Detalles, volvemos al listado.
+    BackHandler {
+        if (selectedTab != 0) {
+            selectedTab = 0
+        } else {
+            navController.popBackStack()
         }
     }
 
@@ -116,7 +128,15 @@ fun IncidenciaDetailScreen(
             TopAppBar(
                 title = { Text(incidencia?.titulo ?: "Incidencia", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(
+                        onClick = {
+                            if (selectedTab != 0) {
+                                selectedTab = 0
+                            } else {
+                                navController.popBackStack()
+                            }
+                        }
+                    ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Volver"
@@ -178,36 +198,34 @@ fun IncidenciaDetailScreen(
                         incidencia = incidencia!!,
                         userRol = userRol,
                         authRepository = authRepository,
+                        incidenciaRepository = incidenciaRepository,
                         selectedTab = { selectedTab = it },
                         onRefreshIncidencia = {
                             scope.launch {
+                                isLoading = true
                                 try {
-                                    val response = authRepository.getApiServiceInstance().getIncidencia(incidenciaId)
-                                    if (response.isSuccessful) {
-                                        incidencia = response.body()
-                                    }
-                                } catch (e: Exception) {
-                                    // Error al refrescar
+                                    incidenciaRepository.refreshIncidenciasFromServer(userRol = userRol)
+                                } catch (_: Exception) {
+                                    // Ignorar, seguimos con caché local
+                                } finally {
+                                    isLoading = false
                                 }
                             }
                         }
                     )
                     1 -> HistorialTab(incidencia!!)
-                    2 -> DocumentosTab(incidencia!!, userRol, authRepository, userId, context)
-                    3 -> ChatTab(incidencia!!, authRepository, userId)
+                    2 -> DocumentosTab(incidencia!!, userRol, authRepository, incidenciaRepository, userId, context)
+                    3 -> ChatTab(incidencia!!, incidenciaRepository, userId)
                     4 -> if (userRol == "proveedor") ActuacionesTab(
                         incidencia = incidencia!!,
-                        authRepository = authRepository,
+                        incidenciaRepository = incidenciaRepository,
                         onActuacionCreada = {
                             // Refrescar la incidencia después de crear una actuación
                             scope.launch {
                                 try {
-                                    val response = authRepository.getApiServiceInstance().getIncidencia(incidenciaId)
-                                    if (response.isSuccessful) {
-                                        incidencia = response.body()
-                                    }
-                                } catch (e: Exception) {
-                                    // Error al refrescar, continuar
+                                    incidenciaRepository.refreshIncidenciasFromServer(userRol = userRol)
+                                } catch (_: Exception) {
+                                    // Ignorar errores de red aquí
                                 }
                             }
                         }
@@ -228,16 +246,13 @@ fun IncidenciaDetailScreen(
                             scope.launch {
                                 isDeleting = true
                                 try {
-                                    val response = authRepository.getApiServiceInstance().eliminarIncidencia(incidenciaId)
-                                    if (response.isSuccessful) {
+                                    val result = incidenciaRepository.deleteIncidencia(incidenciaId)
+                                    result.onSuccess {
                                         navController.popBackStack()
-                                    } else {
-                                        error = "Error al eliminar la incidencia"
+                                    }.onFailure { e ->
+                                        error = e.message ?: "Error al eliminar la incidencia"
                                         showDeleteDialog = false
                                     }
-                                } catch (e: Exception) {
-                                    error = e.message ?: "Error al eliminar la incidencia"
-                                    showDeleteDialog = false
                                 } finally {
                                     isDeleting = false
                                 }
@@ -268,6 +283,7 @@ fun IncidenciaDetailScreen(
             EditarIncidenciaDialog(
                 incidencia = incidencia!!,
                 userRol = userRol,
+                incidenciaRepository = incidenciaRepository,
                 authRepository = authRepository,
                 onDismiss = { mostrarEditarDialog = false },
                 onSuccess = {
@@ -276,10 +292,8 @@ fun IncidenciaDetailScreen(
                     scope.launch {
                         isLoading = true
                         try {
-                            val response = authRepository.getApiServiceInstance().getIncidencia(incidenciaId)
-                            if (response.isSuccessful) {
-                                incidencia = response.body()
-                            }
+                            // Refrescar en Room (sin reasignar el estado local aquí)
+                            incidenciaRepository.getIncidenciaById(incidenciaId)
                         } catch (e: Exception) {
                             error = e.message
                         } finally {
@@ -297,6 +311,7 @@ fun DetallesTab(
     incidencia: Incidencia,
     userRol: String,
     authRepository: AuthRepository,
+    incidenciaRepository: com.tomoko.fyntra.data.repository.IncidenciaRepository,
     selectedTab: (Int) -> Unit = {},
     onRefreshIncidencia: () -> Unit = {}
 ) {
@@ -419,7 +434,7 @@ fun DetallesTab(
         if (userRol == "proveedor") {
             CambiarEstadoCard(
                 incidencia = incidencia,
-                authRepository = authRepository,
+                incidenciaRepository = incidenciaRepository,
                 onEstadoCambiado = onRefreshIncidencia
             )
         }
@@ -431,10 +446,13 @@ fun DocumentosTab(
     incidencia: Incidencia,
     userRol: String,
     authRepository: AuthRepository,
+    incidenciaRepository: com.tomoko.fyntra.data.repository.IncidenciaRepository,
     userId: Int?,
     context: android.content.Context
 ) {
-    var documentos by remember { mutableStateOf<List<com.tomoko.fyntra.data.models.Documento>>(emptyList()) }
+    val documentos by incidenciaRepository
+        .getDocumentos(incidencia.id)
+        .collectAsState(initial = emptyList())
     var isLoading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var showUploadDialog by remember { mutableStateOf(false) }
@@ -538,12 +556,7 @@ fun DocumentosTab(
         scope.launch {
             isLoading = true
             try {
-                val response = authRepository.getApiServiceInstance().getDocumentosIncidencia(incidencia.id)
-                if (response.isSuccessful) {
-                    documentos = response.body() ?: emptyList()
-                } else {
-                    error = "Error al cargar documentos"
-                }
+                incidenciaRepository.refreshDocumentosFromServer(incidencia.id)
             } catch (e: Exception) {
                 error = e.message
             } finally {
@@ -579,11 +592,10 @@ fun DocumentosTab(
 
         scope.launch {
             isUploading = true
+            var tempFile: File? = null
+            var fileName: String = ""
+            var mimeType: String = "application/octet-stream"
             try {
-                val tempFile: File
-                val fileName: String
-                val mimeType: String
-
                 if (archivoFoto != null) {
                     // Usar la foto capturada
                     tempFile = archivoFoto!!
@@ -601,7 +613,7 @@ fun DocumentosTab(
 
                     // Crear archivo temporal
                     tempFile = File.createTempFile("upload_", null, context?.cacheDir)
-                    tempFile.outputStream().use { output ->
+                    tempFile!!.outputStream().use { output ->
                         inputStream.copyTo(output)
                     }
 
@@ -612,11 +624,11 @@ fun DocumentosTab(
                             if (cursor.moveToFirst() && nameIndex >= 0) {
                                 cursor.getString(nameIndex)
                             } else {
-                                tempFile.name
+                                tempFile!!.name
                             }
-                        } ?: tempFile.name
+                        } ?: tempFile!!.name
                     } catch (e: Exception) {
-                        tempFile.name
+                        tempFile!!.name
                     }
 
                     // Obtener el tipo MIME del archivo
@@ -628,20 +640,23 @@ fun DocumentosTab(
                 }
 
                 // Crear RequestBody para el archivo (el backend espera "archivo")
-                val requestFile = tempFile.asRequestBody(mimeType.toMediaTypeOrNull())
+                val fileForUpload = tempFile ?: throw IllegalStateException("Archivo no disponible")
+                val requestFile = fileForUpload.asRequestBody(mimeType.toMediaTypeOrNull())
                 val filePart = MultipartBody.Part.createFormData("archivo", fileName, requestFile)
 
                 // Crear RequestBody para el nombre y incidencia_id (usando Form para multipart)
                 val nombrePart = nombreDocumento.toRequestBody("text/plain".toMediaTypeOrNull())
                 val incidenciaIdPart = incidencia.id.toString().toRequestBody("text/plain".toMediaTypeOrNull())
 
-                val response = authRepository.getApiServiceInstance().uploadDocumento(
-                    incidenciaIdPart,
-                    nombrePart,
-                    filePart
+                val result = incidenciaRepository.uploadDocumentoOfflineFirst(
+                    incidenciaId = incidencia.id,
+                    nombre = nombreDocumento,
+                    filePath = fileForUpload.absolutePath,
+                    mimeType = mimeType,
+                    fileName = fileName
                 )
 
-                if (response.isSuccessful) {
+                if (result.isSuccess) {
                     nombreDocumento = ""
                     archivoSeleccionado = null
                     fotoCapturada = null
@@ -650,22 +665,40 @@ fun DocumentosTab(
                     showUploadDialog = false
                     cargarDocumentos()
                 } else {
-                    error = "Error al subir documento: ${response.message()}"
+                    error = result.exceptionOrNull()?.message ?: "Error al subir documento"
                 }
 
                 // Eliminar archivo temporal solo si no es la foto (la foto se eliminará después si es necesario)
-                if (archivoFoto == null || tempFile != archivoFoto) {
-                    tempFile.delete()
+                if (archivoFoto == null || fileForUpload != archivoFoto) {
+                    fileForUpload.delete()
                 } else {
                     // Si es la foto, eliminarla después de subirla
                     try {
-                        tempFile.delete()
+                        fileForUpload.delete()
                     } catch (e: Exception) {
                         // Ignorar error al eliminar
                     }
                 }
             } catch (e: Exception) {
-                error = "Error al subir documento: ${e.message}"
+                // Sin conexión o Solo WiFi sin WiFi: guardar local y encolar
+                val fileForQueue = tempFile ?: archivoFoto
+                if (fileForQueue != null) {
+                    incidenciaRepository.uploadDocumentoOfflineFirst(
+                        incidenciaId = incidencia.id,
+                        nombre = nombreDocumento,
+                        filePath = fileForQueue.absolutePath,
+                        mimeType = mimeType.ifBlank { "application/octet-stream" },
+                        fileName = if (fileName.isNotBlank()) fileName else fileForQueue.name
+                    )
+                } else {
+                    error = "Error al subir documento: ${e.message}"
+                }
+                nombreDocumento = ""
+                archivoSeleccionado = null
+                fotoCapturada = null
+                archivoFoto = null
+                archivoFotoActual = null
+                showUploadDialog = false
             } finally {
                 isUploading = false
             }
@@ -1012,7 +1045,12 @@ fun HistorialTab(
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Text(
-                                text = "Estado: ${if (item.estado_anterior != null) getEstadoLabel(item.estado_anterior) else "N/A"} → ${getEstadoLabel(item.estado_nuevo)}",
+                                text = if (item.estado_anterior != null) {
+                                    "Estado: ${getEstadoLabel(item.estado_anterior)} → ${getEstadoLabel(item.estado_nuevo)}"
+                                } else {
+                                    // Primer estado registrado: solo mostrar el estado nuevo (ej. "Abierta")
+                                    "Estado: ${getEstadoLabel(item.estado_nuevo)}"
+                                },
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 16.sp
                             )
@@ -1043,35 +1081,26 @@ fun HistorialTab(
 @Composable
 fun ChatTab(
     incidencia: Incidencia,
-    authRepository: AuthRepository,
+    incidenciaRepository: com.tomoko.fyntra.data.repository.IncidenciaRepository,
     userId: Int?
 ) {
-    var mensajes by remember { mutableStateOf<List<com.tomoko.fyntra.data.models.Mensaje>>(emptyList()) }
+    val mensajes by incidenciaRepository
+        .getMensajes(incidencia.id)
+        .collectAsState(initial = emptyList())
     var nuevoMensaje by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
-    fun cargarMensajes() {
-        scope.launch {
-            isLoading = true
-            try {
-                val response = authRepository.getApiServiceInstance().getMensajesIncidencia(incidencia.id)
-                if (response.isSuccessful) {
-                    mensajes = response.body() ?: emptyList()
-                } else {
-                    error = "Error al cargar mensajes"
-                }
-            } catch (e: Exception) {
-                error = e.message
-            } finally {
-                isLoading = false
-            }
-        }
-    }
-
     LaunchedEffect(incidencia.id) {
-        cargarMensajes()
+        isLoading = true
+        try {
+            incidenciaRepository.refreshMensajesFromServer(incidencia.id)
+        } catch (_: Exception) {
+            // Sin conexión o solo WiFi sin WiFi: usar local
+        } finally {
+            isLoading = false
+        }
     }
 
     fun enviarMensaje() {
@@ -1079,37 +1108,11 @@ fun ChatTab(
         
         scope.launch {
             try {
-                val response = authRepository.getApiServiceInstance().enviarMensaje(
-                    incidencia.id,
-                    com.tomoko.fyntra.data.models.MensajeCreate(nuevoMensaje)
-                )
-                if (response.isSuccessful) {
-                    nuevoMensaje = ""
-                    cargarMensajes()
-                } else {
-                    error = "Error al enviar mensaje"
-                }
+                val result = incidenciaRepository.enviarMensajeOfflineFirst(incidencia.id, nuevoMensaje)
+                result.onSuccess { nuevoMensaje = "" }
+                    .onFailure { e -> error = e.message ?: "Error al enviar mensaje" }
             } catch (e: Exception) {
                 error = e.message
-            }
-        }
-    }
-
-    fun eliminarMensaje(mensajeId: Int) {
-        scope.launch {
-            try {
-                isLoading = true
-                error = null
-                val response = authRepository.getApiServiceInstance().eliminarMensaje(mensajeId)
-                if (response.isSuccessful) {
-                    cargarMensajes() // Recargar mensajes después de eliminar
-                } else {
-                    error = "Error al eliminar mensaje: ${response.message()}"
-                }
-            } catch (e: Exception) {
-                error = e.message ?: "Error al eliminar mensaje"
-            } finally {
-                isLoading = false
             }
         }
     }
@@ -1169,7 +1172,7 @@ fun ChatTab(
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
                                 Text(
-                                    text = mensaje.usuario_nombre,
+                                    text = mensaje.usuario_nombre + if (mensaje.id < 0) " (pendiente)" else "",
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 14.sp
                                 )
@@ -1183,15 +1186,6 @@ fun ChatTab(
                                 text = mensaje.contenido,
                                 fontSize = 14.sp
                             )
-                            // Solo el autor puede eliminar su mensaje si es el último
-                            if (userId != null && mensaje.usuario_id == userId && mensajes.lastOrNull()?.id == mensaje.id) {
-                                TextButton(
-                                    onClick = { eliminarMensaje(mensaje.id) },
-                                    modifier = Modifier.align(Alignment.End)
-                                ) {
-                                    Text("Eliminar", fontSize = 10.sp, color = MaterialTheme.colorScheme.error)
-                                }
-                            }
                         }
                     }
                 }
@@ -1223,10 +1217,12 @@ fun ChatTab(
 @Composable
 fun ActuacionesTab(
     incidencia: Incidencia,
-    authRepository: AuthRepository,
+    incidenciaRepository: com.tomoko.fyntra.data.repository.IncidenciaRepository,
     onActuacionCreada: () -> Unit = {}
 ) {
-    var actuaciones by remember { mutableStateOf<List<com.tomoko.fyntra.data.models.Actuacion>>(emptyList()) }
+    val actuaciones by incidenciaRepository
+        .getActuaciones(incidencia.id)
+        .collectAsState(initial = emptyList())
     var isLoading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var mostrarFormulario by remember { mutableStateOf(false) }
@@ -1235,24 +1231,6 @@ fun ActuacionesTab(
     var coste by remember { mutableStateOf("") }
     var isSubmitting by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
-    
-    fun cargarActuaciones() {
-        scope.launch {
-            isLoading = true
-            try {
-                val response = authRepository.getApiServiceInstance().getActuacionesIncidencia(incidencia.id)
-                if (response.isSuccessful) {
-                    actuaciones = response.body() ?: emptyList()
-                } else {
-                    error = "Error al cargar actuaciones"
-                }
-            } catch (e: Exception) {
-                error = e.message
-            } finally {
-                isLoading = false
-            }
-        }
-    }
     
     fun crearActuacion() {
         if (descripcion.isBlank() || fecha.isBlank()) {
@@ -1290,19 +1268,17 @@ fun ActuacionesTab(
                     fecha = fechaISO,
                     coste = costeValue
                 )
-                
-                val response = authRepository.getApiServiceInstance().crearActuacion(actuacionData)
-                
-                if (response.isSuccessful) {
+
+                val result = incidenciaRepository.crearActuacionOfflineFirst(actuacionData)
+                if (result.isSuccess) {
                     descripcion = ""
                     fecha = ""
                     coste = ""
                     mostrarFormulario = false
                     error = null
-                    cargarActuaciones()
                     onActuacionCreada() // Notificar que se creó una actuación
                 } else {
-                    error = "Error al crear actuación: ${response.message()}"
+                    error = result.exceptionOrNull()?.message ?: "Error al crear actuación"
                 }
             } catch (e: Exception) {
                 error = e.message ?: "Error al crear actuación"
@@ -1313,7 +1289,14 @@ fun ActuacionesTab(
     }
     
     LaunchedEffect(incidencia.id) {
-        cargarActuaciones()
+        isLoading = true
+        try {
+            incidenciaRepository.refreshActuacionesFromServer(incidencia.id)
+        } catch (_: Exception) {
+            // usar local
+        } finally {
+            isLoading = false
+        }
     }
     
     Column(
@@ -1551,6 +1534,7 @@ fun ActuacionesTab(
 fun EditarIncidenciaDialog(
     incidencia: Incidencia,
     userRol: String,
+    incidenciaRepository: com.tomoko.fyntra.data.repository.IncidenciaRepository,
     authRepository: AuthRepository,
     onDismiss: () -> Unit,
     onSuccess: () -> Unit
@@ -1762,16 +1746,11 @@ fun EditarIncidenciaDialog(
                                 comentario_cambio = if (esAdmin && comentarioCambio.isNotBlank()) comentarioCambio else null,
                                 version = incidencia.version
                             )
-                            
-                            val response = authRepository.getApiServiceInstance().actualizarIncidencia(
-                                incidencia.id,
-                                updateData
-                            )
-                            
-                            if (response.isSuccessful) {
+                            val result = incidenciaRepository.updateIncidencia(incidencia.id, updateData)
+                            result.onSuccess {
                                 onSuccess()
-                            } else {
-                                error = response.message() ?: "Error al actualizar incidencia"
+                            }.onFailure { e ->
+                                error = e.message ?: "Error al actualizar incidencia"
                             }
                         } catch (e: Exception) {
                             error = e.message ?: "Error al actualizar incidencia"
@@ -1878,7 +1857,7 @@ suspend fun descargarYabrirDocumento(
 @Composable
 fun CambiarEstadoCard(
     incidencia: Incidencia,
-    authRepository: AuthRepository,
+    incidenciaRepository: com.tomoko.fyntra.data.repository.IncidenciaRepository,
     onEstadoCambiado: () -> Unit
 ) {
     var estadoSeleccionado by remember { mutableStateOf(incidencia.estado) }
@@ -1952,16 +1931,11 @@ fun CambiarEstadoCard(
                                     comentario_cambio = null,
                                     version = incidencia.version
                                 )
-                                
-                                val response = authRepository.getApiServiceInstance().actualizarIncidencia(
-                                    incidencia.id,
-                                    updateData
-                                )
-                                
-                                if (response.isSuccessful) {
+                                val result = incidenciaRepository.updateIncidencia(incidencia.id, updateData)
+                                result.onSuccess {
                                     onEstadoCambiado()
-                                } else {
-                                    error = response.message() ?: "Error al cambiar estado"
+                                }.onFailure { e ->
+                                    error = e.message ?: "Error al cambiar estado"
                                 }
                             } catch (e: Exception) {
                                 error = e.message ?: "Error al cambiar estado"

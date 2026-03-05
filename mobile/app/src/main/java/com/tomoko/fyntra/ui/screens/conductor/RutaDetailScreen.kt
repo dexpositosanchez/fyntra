@@ -343,12 +343,17 @@ fun RutaDetailScreen(
                     Button(onClick = {
                         scope.launch {
                             try {
-                                val response = authRepository.getApiServiceInstance().iniciarRuta(rutaId)
-                                if (response.isSuccessful) {
-                                    ruta = response.body()
-                                    showIniciarDialog = false
+                                val repo = rutaRepository
+                                if (repo != null) {
+                                    val result = repo.iniciarRutaOfflineFirst(rutaId)
+                                    result.onSuccess {
+                                        ruta = it
+                                        showIniciarDialog = false
+                                    }.onFailure { e ->
+                                        error = e.message ?: "Error al iniciar la ruta"
+                                    }
                                 } else {
-                                    error = "Error al iniciar la ruta: ${response.message()}"
+                                    error = "Repositorio de rutas no disponible"
                                 }
                             } catch (e: Exception) {
                                 error = e.message
@@ -376,12 +381,17 @@ fun RutaDetailScreen(
                     Button(onClick = {
                         scope.launch {
                             try {
-                                val response = authRepository.getApiServiceInstance().finalizarRuta(rutaId)
-                                if (response.isSuccessful) {
-                                    ruta = response.body()
-                                    showFinalizarDialog = false
+                                val repo = rutaRepository
+                                if (repo != null) {
+                                    val result = repo.finalizarRutaOfflineFirst(rutaId)
+                                    result.onSuccess {
+                                        ruta = it
+                                        showFinalizarDialog = false
+                                    }.onFailure { e ->
+                                        error = e.message ?: "Error al finalizar la ruta"
+                                    }
                                 } else {
-                                    error = "Error al finalizar la ruta: ${response.message()}"
+                                    error = "Repositorio de rutas no disponible"
                                 }
                             } catch (e: Exception) {
                                 error = e.message
@@ -409,7 +419,7 @@ fun RutaDetailScreen(
                     showCompletarParadaDialog = null
                     cargarRuta()
                 },
-                authRepository = authRepository
+                rutaRepository = rutaRepository
             )
         }
 
@@ -502,7 +512,7 @@ fun CompletarParadaDialog(
     rutaId: Int,
     onDismiss: () -> Unit,
     onSuccess: () -> Unit,
-    authRepository: AuthRepository
+    rutaRepository: RutaRepository?
 ) {
     val context = LocalContext.current
     var fotoBitmap by remember { mutableStateOf<Bitmap?>(null) }
@@ -645,17 +655,12 @@ fun CompletarParadaDialog(
                                 isLoading = true
                                 try {
                                     // RNF18: compresión de imágenes antes de subir
-                                    val fotoPart = archivoFotoActual?.takeIf { it.exists() }?.let { file ->
+                                    val fotoFileToUpload = archivoFotoActual?.takeIf { it.exists() }?.let { file ->
                                         val compressed = ImageCompression.compressPhotoForUpload(context, file)
-                                        val fileToUpload = compressed ?: file
-                                        MultipartBody.Part.createFormData(
-                                            "foto",
-                                            fileToUpload.name,
-                                            fileToUpload.asRequestBody("image/jpeg".toMediaType())
-                                        )
+                                        compressed ?: file
                                     }
 
-                                    val firmaPart = firmaBitmap?.let { bitmap ->
+                                    val firmaFileToUpload = firmaBitmap?.let { bitmap ->
                                         val firmaFile = ImageCompression.compressSignatureForUpload(context, bitmap)
                                             ?: run {
                                                 val fallback = File(context.cacheDir, "firma_${parada.id}_${System.currentTimeMillis()}.png")
@@ -664,25 +669,27 @@ fun CompletarParadaDialog(
                                                 }
                                                 fallback
                                             }
-                                        MultipartBody.Part.createFormData(
-                                            "firma",
-                                            firmaFile.name,
-                                            firmaFile.asRequestBody("image/png".toMediaType())
-                                        )
+                                        firmaFile
                                     }
 
-                                    val response = authRepository.getApiServiceInstance().completarParada(
+                                    val repo = rutaRepository
+                                    if (repo == null) {
+                                        isLoading = false
+                                        return@launch
+                                    }
+
+                                    val result = repo.completarParadaOfflineFirst(
                                         rutaId = rutaId,
                                         paradaId = parada.id,
-                                        accion = "completar".toRequestBody("text/plain".toMediaType()),
-                                        foto = fotoPart,
-                                        firma = firmaPart
+                                        accion = "completar",
+                                        fotoPath = fotoFileToUpload?.absolutePath,
+                                        firmaPath = firmaFileToUpload?.absolutePath
                                     )
 
-                                    if (response.isSuccessful) {
+                                    if (result.isSuccess) {
                                         onSuccess()
                                     } else {
-                                        // Error
+                                        // Error (se mantiene el diálogo abierto)
                                     }
                                 } catch (e: Exception) {
                                     // Error

@@ -250,14 +250,14 @@ Leyenda columnas:
 
 | ✓ | Descripción | Observaciones |
 |---|-------------|---------------|
-| | Crear incidencia (propietario o admin) | |
-| | Asignar proveedor a la incidencia | |
-| | Proveedor añade actuación | |
-| | Subir documento/foto a la incidencia | |
-| | **Chat**: Verificar que admin, propietario y proveedor participan en el chat de la incidencia | |
-| | Cambiar estado (abierta → en_proceso → cerrada) | |
-| | Verificar historial de cambios correcto | |
-| | Verificar incidencia queda cerrada con fecha de cierre | |
+| ✓ | Crear incidencia (propietario o admin) | |
+| ✓ | Asignar proveedor a la incidencia | |
+| ✓ | Proveedor añade actuación | |
+| ✓ | Subir documento/foto a la incidencia | |
+| ✓ | **Chat**: Verificar que admin, propietario y proveedor participan en el chat de la incidencia | |
+| ✓ | Cambiar estado (abierta → en_proceso → cerrada) | |
+| ✓ | Verificar historial de cambios correcto | |
+| ✓ | Verificar incidencia queda cerrada con fecha de cierre | |
 
 ---
 

@@ -19,6 +19,7 @@ import com.tomoko.fyntra.data.models.IncidenciaCreate
 import com.tomoko.fyntra.data.models.InmuebleSimple
 import com.tomoko.fyntra.data.api.InmuebleResponse
 import com.tomoko.fyntra.data.repository.AuthRepository
+import com.tomoko.fyntra.data.repository.IncidenciaRepository
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.first
 
@@ -26,7 +27,8 @@ import kotlinx.coroutines.flow.first
 @Composable
 fun CrearIncidenciaScreen(
     navController: NavController,
-    authRepository: AuthRepository
+    authRepository: AuthRepository,
+    incidenciaRepository: IncidenciaRepository
 ) {
     var titulo by remember { mutableStateOf("") }
     var descripcion by remember { mutableStateOf("") }
@@ -228,23 +230,11 @@ fun CrearIncidenciaScreen(
                                     prioridad = prioridad,
                                     inmueble_id = inmuebleId!!
                                 )
-                                val response = authRepository.getApiServiceInstance().crearIncidencia(nuevaIncidencia)
-                                if (response.isSuccessful) {
+                                val result = incidenciaRepository.createIncidencia(nuevaIncidencia)
+                                result.onSuccess {
                                     navController.popBackStack()
-                                } else {
-                                    val errorBody = response.errorBody()?.string()
-                                    val errorMessage = if (errorBody != null && errorBody.isNotBlank()) {
-                                        try {
-                                            // Intentar parsear el JSON del error (FastAPI devuelve {"detail": "mensaje"})
-                                            val errorJson = com.google.gson.Gson().fromJson(errorBody, Map::class.java)
-                                            errorJson["detail"]?.toString() ?: errorBody
-                                        } catch (e: Exception) {
-                                            errorBody
-                                        }
-                                    } else {
-                                        response.message() ?: "Error al crear incidencia"
-                                    }
-                                    error = "Error ${response.code()}: $errorMessage"
+                                }.onFailure { e ->
+                                    error = e.message ?: "Error al crear incidencia"
                                 }
                             } catch (e: Exception) {
                                 error = e.message ?: "Error al crear incidencia"

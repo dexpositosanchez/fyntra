@@ -92,13 +92,16 @@ class MainActivity : ComponentActivity() {
             apiService = apiService,
             database = database,
             networkMonitor = networkMonitor,
-            syncService = syncService
+            syncService = syncService,
+            settingsDataStore = settingsDataStore
         )
         rutaRepository = RutaRepository(
-            authRepository = authRepository,
+            apiService = apiService,
             rutaDao = database.rutaDao(),
             networkMonitor = networkMonitor,
-            gson = gson
+            gson = gson,
+            syncService = syncService,
+            settingsDataStore = settingsDataStore
         )
         
         // Sync Manager (RNF18: respeta opción "solo WiFi")

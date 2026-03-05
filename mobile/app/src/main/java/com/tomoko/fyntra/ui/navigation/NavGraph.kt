@@ -150,15 +150,29 @@ fun NavGraph(
         }
 
         composable(Screen.PropietarioHome.route) {
-            PropietarioHomeScreen(navController, authRepository)
+            IncidenciasScreen(
+                navController = navController,
+                authDataStore = authDataStore,
+                authRepository = authRepository,
+                incidenciaRepository = incidenciaRepository
+            )
         }
 
         composable(Screen.ProveedorHome.route) {
-            ProveedorHomeScreen(navController, authRepository)
+            IncidenciasScreen(
+                navController = navController,
+                authDataStore = authDataStore,
+                authRepository = authRepository,
+                incidenciaRepository = incidenciaRepository
+            )
         }
 
         composable("crear_incidencia") {
-            CrearIncidenciaScreen(navController, authRepository)
+            CrearIncidenciaScreen(
+                navController = navController,
+                authRepository = authRepository,
+                incidenciaRepository = incidenciaRepository
+            )
         }
 
         composable(
@@ -173,6 +187,7 @@ fun NavGraph(
                 userRol = userRolValue,
                 navController = navController,
                 authRepository = authRepository,
+                incidenciaRepository = incidenciaRepository,
                 userId = userIdValue
             )
         }
@@ -190,6 +205,7 @@ fun NavGraph(
                 userRol = userRolValue,
                 navController = navController,
                 authRepository = authRepository,
+                incidenciaRepository = incidenciaRepository,
                 userId = userIdValue,
                 initialTab = 1
             )
@@ -207,6 +223,7 @@ fun NavGraph(
                 userRol = userRolValue,
                 navController = navController,
                 authRepository = authRepository,
+                incidenciaRepository = incidenciaRepository,
                 userId = userIdValue,
                 initialTab = 2
             )
@@ -224,6 +241,7 @@ fun NavGraph(
                 userRol = userRolValue,
                 navController = navController,
                 authRepository = authRepository,
+                incidenciaRepository = incidenciaRepository,
                 userId = userIdValue,
                 initialTab = 3
             )
@@ -241,6 +259,7 @@ fun NavGraph(
                 userRol = userRolValue,
                 navController = navController,
                 authRepository = authRepository,
+                incidenciaRepository = incidenciaRepository,
                 userId = userIdValue,
                 initialTab = 4
             )
