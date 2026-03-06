@@ -9,6 +9,7 @@ data class Documento(
     val tipo_archivo: String? = null,
     val tamano: Int? = null,
     val creado_en: String,
-    val subido_por: String? = null
+    val subido_por: String? = null,
+    val local_path: String? = null
 )
 

@@ -23,5 +23,11 @@ interface MensajeDao {
 
     @Query("DELETE FROM mensajes WHERE id = :id")
     suspend fun deleteById(id: Int)
+
+    @Query("DELETE FROM mensajes")
+    suspend fun deleteAllMensajes()
+
+    @Query("UPDATE mensajes SET incidencia_id = :newIncidenciaId WHERE incidencia_id = :oldIncidenciaId")
+    suspend fun remapIncidenciaId(oldIncidenciaId: Int, newIncidenciaId: Int)
 }
 

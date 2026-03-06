@@ -59,6 +59,8 @@ class SyncManager(
             
             // Refrescar datos desde el servidor
             incidenciaRepository.refreshIncidenciasFromServer()
+            // Sincronizar documentos pendientes de incidencias (fotos, etc.)
+            incidenciaRepository.syncPendingDocumentos()
         } catch (e: Exception) {
             Log.e("SyncManager", "Error en sincronización", e)
         }

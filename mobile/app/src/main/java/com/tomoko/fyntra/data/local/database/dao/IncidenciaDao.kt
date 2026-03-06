@@ -9,6 +9,9 @@ interface IncidenciaDao {
     @Query("SELECT * FROM incidencias ORDER BY fecha_alta DESC")
     fun getAllIncidencias(): Flow<List<IncidenciaEntity>>
 
+    @Query("SELECT * FROM incidencias WHERE owner_user_id = :ownerId ORDER BY fecha_alta DESC")
+    fun getIncidenciasByOwner(ownerId: Int): Flow<List<IncidenciaEntity>>
+
     @Query("SELECT * FROM incidencias WHERE id = :id")
     fun observeIncidenciaById(id: Int): Flow<IncidenciaEntity?>
 

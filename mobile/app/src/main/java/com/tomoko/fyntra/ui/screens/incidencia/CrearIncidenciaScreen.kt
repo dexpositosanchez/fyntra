@@ -230,7 +230,8 @@ fun CrearIncidenciaScreen(
                                     prioridad = prioridad,
                                     inmueble_id = inmuebleId!!
                                 )
-                                val result = incidenciaRepository.createIncidencia(nuevaIncidencia)
+                                val inmuebleSeleccionado = inmuebles.find { it.id == inmuebleId }
+                                val result = incidenciaRepository.createIncidencia(nuevaIncidencia, inmuebleSeleccionado)
                                 result.onSuccess {
                                     navController.popBackStack()
                                 }.onFailure { e ->

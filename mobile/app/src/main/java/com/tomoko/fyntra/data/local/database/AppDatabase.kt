@@ -26,7 +26,7 @@ import com.tomoko.fyntra.data.local.database.entities.RutaCacheEntity
         PendingOperationEntity::class,
         RutaCacheEntity::class
     ],
-    version = 4,
+    version = 5,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

@@ -21,7 +21,19 @@ interface DocumentoDao {
     @Query("DELETE FROM documentos WHERE incidencia_id = :incidenciaId")
     suspend fun deleteDocumentosIncidencia(incidenciaId: Int)
 
+    @Query("DELETE FROM documentos WHERE incidencia_id = :incidenciaId AND syncStatus = 'synced'")
+    suspend fun deleteSyncedDocumentosIncidencia(incidenciaId: Int)
+
     @Query("DELETE FROM documentos WHERE id = :id")
     suspend fun deleteById(id: Int)
+
+    @Query("SELECT * FROM documentos WHERE syncStatus IN ('pending', 'error')")
+    suspend fun getPendingDocumentos(): List<DocumentoEntity>
+
+    @Query("DELETE FROM documentos")
+    suspend fun deleteAllDocumentos()
+
+    @Query("UPDATE documentos SET incidencia_id = :newIncidenciaId WHERE incidencia_id = :oldIncidenciaId")
+    suspend fun remapIncidenciaId(oldIncidenciaId: Int, newIncidenciaId: Int)
 }
 

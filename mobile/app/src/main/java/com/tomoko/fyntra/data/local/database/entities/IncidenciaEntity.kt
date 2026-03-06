@@ -23,5 +23,7 @@ data class IncidenciaEntity(
     val proveedor_nombre: String? = null,
     val proveedor_email: String? = null,
     val proveedor_telefono: String? = null,
-    val proveedor_especialidad: String? = null
+    val proveedor_especialidad: String? = null,
+    val historial_json: String? = null,
+    val owner_user_id: Int = 0 // Usuario dueño de esta caché (quien debe ver la incidencia)
 )

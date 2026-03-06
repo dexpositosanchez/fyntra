@@ -23,5 +23,11 @@ interface ActuacionDao {
 
     @Query("DELETE FROM actuaciones WHERE id = :id")
     suspend fun deleteById(id: Int)
+
+    @Query("DELETE FROM actuaciones")
+    suspend fun deleteAllActuaciones()
+
+    @Query("UPDATE actuaciones SET incidencia_id = :newIncidenciaId WHERE incidencia_id = :oldIncidenciaId")
+    suspend fun remapIncidenciaId(oldIncidenciaId: Int, newIncidenciaId: Int)
 }
 

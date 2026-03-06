@@ -308,7 +308,7 @@ Leyenda columnas:
 
 | ✓ | Descripción | Observaciones |
 |---|-------------|---------------|
-| | Con opción **\"Sincronizar solo por WiFi\" activada** y solo datos móviles: crear/editar incidencia → NO se refleja en el backend hasta que haya WiFi | |
+| ✓ | Con opción **\"Sincronizar solo por WiFi\" activada** y solo datos móviles: crear/editar incidencia → NO se refleja en el backend hasta que haya WiFi | |
 | | Con opción **\"Sincronizar solo por WiFi\" activada** y solo datos móviles: marcar paradas/actualizar rutas → NO se refleja en el backend hasta que haya WiFi | |
 | | Con opción **\"Sincronizar solo por WiFi\" activada**: al conectarse a una red WiFi se sincronizan todas las operaciones pendientes (incidencias, etc.) y se reflejan en el backend | |
 | | Con opción **desactivada**: crear/editar incidencia usando solo datos móviles → se envía directamente al backend (si hay conexión) | |

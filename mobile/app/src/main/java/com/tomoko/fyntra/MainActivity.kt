@@ -93,7 +93,9 @@ class MainActivity : ComponentActivity() {
             database = database,
             networkMonitor = networkMonitor,
             syncService = syncService,
-            settingsDataStore = settingsDataStore
+            settingsDataStore = settingsDataStore,
+            authDataStore = authDataStore,
+            gson = gson
         )
         rutaRepository = RutaRepository(
             apiService = apiService,

@@ -4,12 +4,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tomoko.fyntra.data.models.LoginResponse
 import com.tomoko.fyntra.data.repository.AuthRepository
+import com.tomoko.fyntra.data.repository.IncidenciaRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
 class LoginViewModel(
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val incidenciaRepository: IncidenciaRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<LoginUiState>(LoginUiState())
@@ -21,6 +23,8 @@ class LoginViewModel(
             
             authRepository.login(email, password)
                 .onSuccess { response ->
+                    // Limpiar caché local del usuario anterior para que la BD sea solo del usuario actual
+                    incidenciaRepository.clearAllLocalData()
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
                         loginSuccess = true,

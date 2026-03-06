@@ -22,13 +22,15 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tomoko.fyntra.R
 import com.tomoko.fyntra.data.repository.AuthRepository
+import com.tomoko.fyntra.data.repository.IncidenciaRepository
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(
     onLoginSuccess: (String) -> Unit, // String es el rol del usuario
     authRepository: AuthRepository,
-    viewModel: LoginViewModel = viewModel(factory = LoginViewModelFactory(authRepository))
+    incidenciaRepository: IncidenciaRepository,
+    viewModel: LoginViewModel = viewModel(factory = LoginViewModelFactory(authRepository, incidenciaRepository))
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }

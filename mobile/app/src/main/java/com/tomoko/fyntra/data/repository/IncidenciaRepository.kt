@@ -1,6 +1,9 @@
 package com.tomoko.fyntra.data.repository
 
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import com.tomoko.fyntra.data.api.ApiService
+import com.tomoko.fyntra.data.local.AuthDataStore
 import com.tomoko.fyntra.data.local.SettingsDataStore
 import com.tomoko.fyntra.data.local.database.AppDatabase
 import com.tomoko.fyntra.data.local.database.dao.ActuacionDao
@@ -14,6 +17,8 @@ import com.tomoko.fyntra.data.local.database.entities.MensajeEntity
 import com.tomoko.fyntra.data.models.Actuacion
 import com.tomoko.fyntra.data.models.ActuacionCreate
 import com.tomoko.fyntra.data.models.Documento
+import com.tomoko.fyntra.data.models.HistorialIncidencia
+import com.tomoko.fyntra.data.models.InmuebleSimple
 import com.tomoko.fyntra.data.models.Mensaje
 import com.tomoko.fyntra.data.models.MensajeCreate
 import com.tomoko.fyntra.data.models.Incidencia
@@ -23,6 +28,7 @@ import com.tomoko.fyntra.data.sync.NetworkMonitor
 import com.tomoko.fyntra.data.sync.SyncService
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import java.time.LocalDateTime
 import okhttp3.MediaType.Companion.toMediaType
@@ -36,7 +42,9 @@ class IncidenciaRepository(
     private val database: AppDatabase,
     private val networkMonitor: NetworkMonitor,
     private val syncService: SyncService,
-    private val settingsDataStore: SettingsDataStore
+    private val settingsDataStore: SettingsDataStore,
+    private val authDataStore: AuthDataStore,
+    private val gson: Gson
 ) {
     private val incidenciaDao: IncidenciaDao = database.incidenciaDao()
     private val mensajeDao: MensajeDao = database.mensajeDao()
@@ -46,6 +54,8 @@ class IncidenciaRepository(
     private data class PendingMensajePayload(val localId: Int, val contenido: String)
     private data class PendingActuacionPayload(val localId: Int, val incidencia_id: Int, val descripcion: String, val fecha: String, val coste: Double?)
     private data class PendingDocumentoPayload(val localId: Int, val incidencia_id: Int, val nombre: String, val filePath: String)
+
+    private suspend fun currentOwnerId(): Int = authDataStore.userId.first()?.toIntOrNull() ?: 0
 
     private fun applyLocalUpdate(entity: IncidenciaEntity, update: IncidenciaUpdate): IncidenciaEntity {
         return entity.copy(
@@ -59,17 +69,18 @@ class IncidenciaRepository(
         )
     }
 
-    // Obtener todas las incidencias (desde caché local, actualizando si hay internet)
+    // Obtener todas las incidencias del usuario actual (desde caché local)
     fun getIncidencias(estado: String? = null): Flow<List<Incidencia>> {
-        // Retornar datos desde caché local
-        // La actualización se hará automáticamente cuando haya conexión
-        return incidenciaDao.getAllIncidencias().map { entities ->
-            entities.map { it.toIncidencia() }
+        return authDataStore.userId.flatMapLatest { idStr ->
+            val ownerId = idStr?.toIntOrNull() ?: 0
+            incidenciaDao.getIncidenciasByOwner(ownerId).map { entities ->
+                entities.map { it.toIncidencia(gson) }
+            }
         }
     }
 
     fun observeIncidenciaById(id: Int): Flow<Incidencia?> {
-        return incidenciaDao.observeIncidenciaById(id).map { it?.toIncidencia() }
+        return incidenciaDao.observeIncidenciaById(id).map { it?.toIncidencia(gson) }
     }
 
     private fun nowString(): String = LocalDateTime.now().toString()
@@ -201,8 +212,11 @@ class IncidenciaRepository(
         val response = apiService.getDocumentosIncidencia(incidenciaId)
         if (response.isSuccessful) {
             val documentos = response.body() ?: emptyList()
-            documentoDao.deleteDocumentosIncidencia(incidenciaId)
-            documentoDao.insertDocumentos(documentos.map { it.toEntity(syncStatus = "synced", localPath = null) })
+            // Solo borramos los documentos ya sincronizados; los pendientes/error se mantienen.
+            documentoDao.deleteSyncedDocumentosIncidencia(incidenciaId)
+            if (documentos.isNotEmpty()) {
+                documentoDao.insertDocumentos(documentos.map { it.toEntity(syncStatus = "synced", localPath = null) })
+            }
         } else {
             throw Exception("Error al obtener documentos: ${response.code()} ${response.message()}")
         }
@@ -225,10 +239,29 @@ class IncidenciaRepository(
                 val requestFile = file.asRequestBody(mimeType.toMediaType())
                 val filePart = MultipartBody.Part.createFormData("archivo", fileName, requestFile)
                 val response = apiService.uploadDocumento(incidenciaIdPart, nombrePart, filePart)
-                if (response.isSuccessful && response.body() != null) {
-                    val created = response.body()!!
-                    documentoDao.insertDocumento(created.toEntity(syncStatus = "synced", localPath = null))
-                    Result.success(created)
+                if (response.isSuccessful) {
+                    val created = response.body()
+                    if (created != null) {
+                        documentoDao.insertDocumento(created.toEntity(syncStatus = "synced", localPath = null))
+                        Result.success(created)
+                    } else {
+                        // Si el backend no devuelve cuerpo, refrescar documentos desde servidor
+                        refreshDocumentosFromServer(incidenciaId)
+                        Result.success(
+                            Documento(
+                                id = 0,
+                                incidencia_id = incidenciaId,
+                                usuario_id = 0,
+                                nombre = safeNombre,
+                                nombre_archivo = fileName,
+                                tipo_archivo = mimeType,
+                                tamano = null,
+                                creado_en = nowString(),
+                                subido_por = null,
+                                local_path = null
+                            )
+                        )
+                    }
                 } else {
                     Result.failure(Exception(response.message() ?: "Error al subir documento"))
                 }
@@ -237,24 +270,53 @@ class IncidenciaRepository(
             }
         } else {
             val localId = -kotlin.math.abs(System.currentTimeMillis().toInt())
+            val file = File(filePath)
+            val size = if (file.exists()) file.length().toInt().coerceAtLeast(0) else 0
             val local = Documento(
                 id = localId,
                 incidencia_id = incidenciaId,
                 usuario_id = 0,
                 nombre = safeNombre,
                 nombre_archivo = fileName,
-                tipo_archivo = null,
-                tamano = null,
+                tipo_archivo = mimeType,
+                tamano = if (size > 0) size else null,
                 creado_en = nowString(),
-                subido_por = "Pendiente de sincronizar"
+                subido_por = null,
+                local_path = filePath
             )
             documentoDao.insertDocumento(local.toEntity(syncStatus = "pending", localPath = filePath))
-            syncService.addPendingOperation(
-                type = "UPLOAD",
-                endpoint = "documentos",
-                data = PendingDocumentoPayload(localId = localId, incidencia_id = incidenciaId, nombre = safeNombre, filePath = filePath)
-            )
             Result.success(local)
+        }
+    }
+
+    suspend fun syncPendingDocumentos() {
+        val pendientes = documentoDao.getPendingDocumentos()
+        if (pendientes.isEmpty()) return
+
+        for (doc in pendientes) {
+            val path = doc.local_path ?: continue
+            val file = File(path)
+            if (!file.exists()) continue
+
+            try {
+                val incidenciaIdPart = doc.incidencia_id.toString().toRequestBody("text/plain".toMediaType())
+                val nombrePart = doc.nombre.toRequestBody("text/plain".toMediaType())
+                val mime = doc.tipo_archivo ?: "application/octet-stream"
+                val requestFile = file.asRequestBody(mime.toMediaType())
+                val filePart = MultipartBody.Part.createFormData("archivo", doc.nombre_archivo, requestFile)
+                val response = apiService.uploadDocumento(incidenciaIdPart, nombrePart, filePart)
+                if (response.isSuccessful) {
+                    // Subida correcta: eliminamos el documento pendiente y refrescamos documentos desde servidor
+                    documentoDao.deleteById(doc.id)
+                    refreshDocumentosFromServer(doc.incidencia_id)
+                } else {
+                    // dejar como pendiente para reintentar
+                    continue
+                }
+            } catch (_: Exception) {
+                // dejar como pendiente para reintentar
+                continue
+            }
         }
     }
     
@@ -270,9 +332,10 @@ class IncidenciaRepository(
         // Si hay cambios locales pendientes/error, esa es la fuente de verdad para la UI.
         // No debemos sobreescribirla con la versión del servidor.
         if (local != null && local.syncStatus != "synced") {
-            return local.toIncidencia()
+            return local.toIncidencia(gson)
         }
 
+        val ownerId = currentOwnerId()
         // Primero intentar actualizar desde el servidor si hay internet
         if (networkMonitor.isCurrentlyOnline()) {
             try {
@@ -282,7 +345,7 @@ class IncidenciaRepository(
                     // Solo upsert si no hay una versión local pendiente/error
                     val currentLocal = incidenciaDao.getIncidenciaById(id)
                     if (currentLocal == null || currentLocal.syncStatus == "synced") {
-                        incidenciaDao.insertIncidencia(incidencia.toEntity().copy(syncStatus = "synced"))
+                        incidenciaDao.insertIncidencia(incidencia.toEntity(gson, ownerId).copy(syncStatus = "synced"))
                     }
                     return incidencia
                 }
@@ -292,7 +355,7 @@ class IncidenciaRepository(
         }
         
         // Usar caché local
-        return (local ?: incidenciaDao.getIncidenciaById(id))?.toIncidencia()
+        return (local ?: incidenciaDao.getIncidenciaById(id))?.toIncidencia(gson)
     }
 
     /**
@@ -314,14 +377,36 @@ class IncidenciaRepository(
     }
 
     // Crear incidencia
-    suspend fun createIncidencia(incidencia: IncidenciaCreate): Result<Incidencia> {
+    suspend fun createIncidencia(incidencia: IncidenciaCreate, inmueble: InmuebleSimple? = null): Result<Incidencia> {
+        val ownerId = currentOwnerId()
         return if (canSendNow()) {
             // Si se puede enviar ahora (respeta "solo WiFi"), enviar directamente
             try {
                 val response = apiService.crearIncidencia(incidencia)
                 if (response.isSuccessful && response.body() != null) {
                     val created = response.body()!!
-                    incidenciaDao.insertIncidencia(created.toEntity())
+                    val baseEntity = created.toEntity(gson, ownerId)
+                    // Si el backend no devuelve el objeto "inmueble", conservamos la selección del formulario
+                    // para que el listado/detalle offline muestre referencia y dirección.
+                    val patchedEntity = if (
+                        inmueble != null &&
+                        (baseEntity.inmueble_referencia.isNullOrBlank() || baseEntity.inmueble_direccion.isNullOrBlank())
+                    ) {
+                        baseEntity.copy(
+                            inmueble_referencia = inmueble.referencia,
+                            inmueble_direccion = inmueble.direccion
+                        )
+                    } else {
+                        baseEntity
+                    }
+                    incidenciaDao.insertIncidencia(patchedEntity)
+                    // Muchos endpoints de "create" devuelven una incidencia incompleta (sin inmueble/creador/historial).
+                    // Forzamos refresco del detalle para rellenar campos usados por la UI (p.ej. permisos de propietario).
+                    try {
+                        getIncidenciaById(created.id)
+                    } catch (_: Exception) {
+                        // Si falla, dejamos la versión devuelta por create.
+                    }
                     Result.success(created)
                 } else {
                     Result.failure(Exception(response.message() ?: "Error al crear incidencia"))
@@ -331,7 +416,7 @@ class IncidenciaRepository(
             }
         } else {
             // Si no hay internet, guardar localmente y agregar a cola de sincronización
-            val tempId = System.currentTimeMillis().toInt() // ID temporal
+            val tempId = -kotlin.math.abs(System.currentTimeMillis().toInt()) // ID temporal (negativo)
             val localIncidencia = Incidencia(
                 id = tempId,
                 titulo = incidencia.titulo,
@@ -339,13 +424,22 @@ class IncidenciaRepository(
                 prioridad = incidencia.prioridad,
                 estado = "abierta",
                 inmueble_id = incidencia.inmueble_id,
-                creador_usuario_id = 0, // Se actualizará cuando se sincronice
+                creador_usuario_id = ownerId,
                 fecha_alta = java.time.LocalDateTime.now().toString(),
-                version = 1
+                version = 1,
+                inmueble = inmueble
             )
             
-            incidenciaDao.insertIncidencia(localIncidencia.toEntity().copy(syncStatus = "pending"))
-            syncService.addPendingOperation("CREATE", "incidencias", incidencia)
+            incidenciaDao.insertIncidencia(localIncidencia.toEntity(gson, ownerId).copy(syncStatus = "pending"))
+            // Guardamos también el ID local temporal para poder remapearlo al ID real al sincronizar
+            syncService.addPendingOperation(
+                "CREATE",
+                "incidencias",
+                com.tomoko.fyntra.data.sync.PendingCreateIncidenciaPayload(
+                    localId = tempId,
+                    incidencia = incidencia
+                )
+            )
             
             Result.success(localIncidencia)
         }
@@ -354,6 +448,7 @@ class IncidenciaRepository(
     // Actualizar incidencia
     suspend fun updateIncidencia(id: Int, update: IncidenciaUpdate): Result<Incidencia> {
         val existing = incidenciaDao.getIncidenciaById(id)
+        val ownerId = currentOwnerId()
         
         return if (canSendNow()) {
             // Si se puede enviar ahora (respeta "solo WiFi"), enviar directamente
@@ -361,7 +456,7 @@ class IncidenciaRepository(
                 val response = apiService.actualizarIncidencia(id, update)
                 if (response.isSuccessful && response.body() != null) {
                     val updated = response.body()!!
-                    incidenciaDao.insertIncidencia(updated.toEntity())
+                    incidenciaDao.insertIncidencia(updated.toEntity(gson, ownerId))
                     Result.success(updated)
                 } else {
                     Result.failure(Exception(response.message() ?: "Error al actualizar incidencia"))
@@ -380,7 +475,7 @@ class IncidenciaRepository(
                 syncService.addPendingOperation("UPDATE", "incidencias/$id", update)
                 
                 // Retornar la versión local actualizada
-                Result.success(updatedEntity.toIncidencia())
+                Result.success(updatedEntity.toIncidencia(gson))
             } ?: Result.failure(Exception("Incidencia no encontrada"))
         }
     }
@@ -425,6 +520,7 @@ class IncidenciaRepository(
         // En ese caso hacemos "merge/upsert" de lo que venga del backend y mantenemos los pending locales.
         val syncOnlyWifi = settingsDataStore.syncOnlyWifi.first()
         val shouldMergeOnly = syncOnlyWifi && !networkMonitor.isWifiConnected()
+        val ownerId = currentOwnerId()
         
         try {
             val response = if (userRol == "proveedor") {
@@ -447,7 +543,7 @@ class IncidenciaRepository(
                     // - Con mergeOnly: no borra pendientes locales (IDs temporales/negativos), pero inserta las del servidor.
                     // - Con wipe: deja una foto limpia del servidor.
                     if (!shouldMergeOnly) {
-                        incidenciaDao.insertIncidencias(incidencias.map { it.toEntity().copy(syncStatus = "synced") })
+                        incidenciaDao.insertIncidencias(incidencias.map { it.toEntity(gson, ownerId).copy(syncStatus = "synced") })
                     } else {
                         // Merge seguro: si existe local pending/error con el mismo ID, NO la sobreescribimos.
                         val safeToInsert = incidencias.filter { inc ->
@@ -455,7 +551,7 @@ class IncidenciaRepository(
                             localExisting == null || localExisting.syncStatus == "synced"
                         }
                         if (safeToInsert.isNotEmpty()) {
-                            incidenciaDao.insertIncidencias(safeToInsert.map { it.toEntity().copy(syncStatus = "synced") })
+                            incidenciaDao.insertIncidencias(safeToInsert.map { it.toEntity(gson, ownerId).copy(syncStatus = "synced") })
                         }
                     }
                 }
@@ -474,10 +570,29 @@ class IncidenciaRepository(
     suspend fun syncPendingOperations() {
         syncService.syncPendingOperations()
     }
+
+    /**
+     * Borra todos los datos locales (incidencias, mensajes, documentos, actuaciones, operaciones pendientes).
+     * Debe llamarse al hacer login con otro usuario para que la caché sea solo del usuario actual.
+     */
+    suspend fun clearAllLocalData() {
+        incidenciaDao.deleteAllIncidencias()
+        mensajeDao.deleteAllMensajes()
+        documentoDao.deleteAllDocumentos()
+        actuacionDao.deleteAllActuaciones()
+        database.pendingOperationDao().deleteAllOperations()
+    }
 }
 
 // Extensiones para convertir entre Entity y Model
-private fun IncidenciaEntity.toIncidencia(): Incidencia {
+private fun IncidenciaEntity.toIncidencia(gson: Gson): Incidencia {
+    val historialList = historial_json?.let { json ->
+        try {
+            gson.fromJson<List<HistorialIncidencia>>(json, object : TypeToken<List<HistorialIncidencia>>() {}.type)
+        } catch (_: Exception) {
+            null
+        }
+    } ?: null
     return Incidencia(
         id = id,
         titulo = titulo,
@@ -490,7 +605,7 @@ private fun IncidenciaEntity.toIncidencia(): Incidencia {
         fecha_alta = fecha_alta,
         fecha_cierre = fecha_cierre,
         version = version,
-        creado_en = null, // No se almacena en la entidad local
+        creado_en = null,
         inmueble = if (inmueble_referencia != null && inmueble_direccion != null) {
             com.tomoko.fyntra.data.models.InmuebleSimple(
                 id = inmueble_id,
@@ -507,14 +622,15 @@ private fun IncidenciaEntity.toIncidencia(): Incidencia {
                 especialidad = proveedor_especialidad
             )
         } else null,
-        historial = null, // El historial se carga por separado si es necesario
-        actuaciones_count = 0, // Se puede calcular desde la base de datos si es necesario
+        historial = historialList,
+        actuaciones_count = 0,
         documentos_count = 0,
         mensajes_count = 0
     )
 }
 
-private fun Incidencia.toEntity(): IncidenciaEntity {
+private fun Incidencia.toEntity(gson: Gson, ownerUserId: Int = 0): IncidenciaEntity {
+    val historialJson = historial?.let { gson.toJson(it) }
     return IncidenciaEntity(
         id = id,
         titulo = titulo,
@@ -534,7 +650,9 @@ private fun Incidencia.toEntity(): IncidenciaEntity {
         proveedor_nombre = proveedor?.nombre,
         proveedor_email = proveedor?.email,
         proveedor_telefono = proveedor?.telefono,
-        proveedor_especialidad = proveedor?.especialidad
+        proveedor_especialidad = proveedor?.especialidad,
+        historial_json = historialJson,
+        owner_user_id = ownerUserId
     )
 }
 
@@ -600,7 +718,8 @@ private fun DocumentoEntity.toDocumento(): Documento {
         tipo_archivo = tipo_archivo,
         tamano = tamano,
         creado_en = creado_en,
-        subido_por = subido_por
+        subido_por = subido_por,
+        local_path = local_path
     )
 }
 

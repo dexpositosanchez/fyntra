@@ -29,4 +29,7 @@ interface PendingOperationDao {
 
     @Query("DELETE FROM pending_operations WHERE id = :id")
     suspend fun deleteOperationById(id: Long)
+
+    @Query("DELETE FROM pending_operations")
+    suspend fun deleteAllOperations()
 }

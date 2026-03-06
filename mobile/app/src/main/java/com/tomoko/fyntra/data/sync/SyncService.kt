@@ -6,6 +6,7 @@ import com.tomoko.fyntra.data.api.ApiService
 import com.tomoko.fyntra.data.local.database.AppDatabase
 import com.tomoko.fyntra.data.local.database.dao.ActuacionDao
 import com.tomoko.fyntra.data.local.database.dao.DocumentoDao
+import com.tomoko.fyntra.data.local.database.dao.IncidenciaDao
 import com.tomoko.fyntra.data.local.database.dao.MensajeDao
 import com.tomoko.fyntra.data.local.database.dao.PendingOperationDao
 import com.tomoko.fyntra.data.local.database.entities.PendingOperationEntity
@@ -26,6 +27,7 @@ class SyncService(
     private val gson: Gson
 ) {
     private val pendingOperationDao: PendingOperationDao = database.pendingOperationDao()
+    private val incidenciaDao: IncidenciaDao = database.incidenciaDao()
     private val mensajeDao: MensajeDao = database.mensajeDao()
     private val actuacionDao: ActuacionDao = database.actuacionDao()
     private val documentoDao: DocumentoDao = database.documentoDao()
@@ -53,6 +55,7 @@ class SyncService(
 
         var successCount = 0
         var errorCount = 0
+        val incidenciaIdRemap = mutableMapOf<Int, Int>() // localTempId -> serverId
 
         for (operation in pendingOps) {
             try {
@@ -64,18 +67,40 @@ class SyncService(
                     "CREATE" -> {
                         when {
                             operation.endpoint.startsWith("incidencias") -> {
-                                val incidencia = gson.fromJson(operation.data, com.tomoko.fyntra.data.models.IncidenciaCreate::class.java)
-                                val response = apiService.crearIncidencia(incidencia)
-                                if (response.isSuccessful) {
-                                    markAsSynced(operation.id)
-                                    successCount++
-                                } else {
-                                    handleError(operation, response.message())
+                                // Compatibilidad: formato nuevo incluye localId para poder migrar documentos/fotos.
+                                val payload = runCatching {
+                                    gson.fromJson(operation.data, PendingCreateIncidenciaPayload::class.java)
+                                }.getOrNull()
+
+                                val incidenciaCreate = payload?.incidencia ?: runCatching {
+                                    gson.fromJson(operation.data, com.tomoko.fyntra.data.models.IncidenciaCreate::class.java)
+                                }.getOrNull()
+
+                                if (incidenciaCreate == null) {
+                                    handleError(operation, "Payload de incidencia inválido")
                                     errorCount++
+                                } else {
+                                    val response = apiService.crearIncidencia(incidenciaCreate)
+                                    if (response.isSuccessful && response.body() != null) {
+                                        val created = response.body()!!
+                                        payload?.let {
+                                            val localId = it.localId
+                                            val serverId = created.id
+                                            incidenciaIdRemap[localId] = serverId
+                                            migrateIncidenciaId(localId, serverId)
+                                            remapPendingOperations(localId, serverId)
+                                        }
+                                        markAsSynced(operation.id)
+                                        successCount++
+                                    } else {
+                                        handleError(operation, response.message())
+                                        errorCount++
+                                    }
                                 }
                             }
                             operation.endpoint.startsWith("mensajes/incidencia/") -> {
-                                val incidenciaId = operation.endpoint.split("/").lastOrNull()?.toIntOrNull() ?: 0
+                                val rawId = operation.endpoint.split("/").lastOrNull()?.toIntOrNull() ?: 0
+                                val incidenciaId = incidenciaIdRemap[rawId] ?: rawId
                                 val payload = gson.fromJson(operation.data, PendingMensajePayload::class.java)
                                 val response = apiService.enviarMensaje(
                                     incidenciaId,
@@ -105,8 +130,9 @@ class SyncService(
                             }
                             operation.endpoint == "actuaciones" -> {
                                 val payload = gson.fromJson(operation.data, PendingActuacionPayload::class.java)
+                                val incidenciaId = incidenciaIdRemap[payload.incidencia_id] ?: payload.incidencia_id
                                 val create = com.tomoko.fyntra.data.models.ActuacionCreate(
-                                    incidencia_id = payload.incidencia_id,
+                                    incidencia_id = incidenciaId,
                                     descripcion = payload.descripcion,
                                     fecha = payload.fecha,
                                     coste = payload.coste
@@ -145,7 +171,8 @@ class SyncService(
                     "UPDATE" -> {
                         when {
                             operation.endpoint.startsWith("incidencias/") -> {
-                                val incidenciaId = extractIdFromEndpoint(operation.endpoint)
+                                val rawId = extractIdFromEndpoint(operation.endpoint)
+                                val incidenciaId = incidenciaIdRemap[rawId] ?: rawId
                                 val update = gson.fromJson(operation.data, com.tomoko.fyntra.data.models.IncidenciaUpdate::class.java)
                                 val response = apiService.actualizarIncidencia(incidenciaId, update)
                                 if (response.isSuccessful) {
@@ -240,7 +267,8 @@ class SyncService(
                     "DELETE" -> {
                         when {
                             operation.endpoint.startsWith("incidencias/") -> {
-                                val incidenciaId = extractIdFromEndpoint(operation.endpoint)
+                                val rawId = extractIdFromEndpoint(operation.endpoint)
+                                val incidenciaId = incidenciaIdRemap[rawId] ?: rawId
                                 val response = apiService.eliminarIncidencia(incidenciaId)
                                 if (response.isSuccessful) {
                                     markAsSynced(operation.id)
@@ -257,52 +285,9 @@ class SyncService(
                         }
                     }
                     "UPLOAD" -> {
-                        when {
-                            operation.endpoint == "documentos" -> {
-                                val payload = gson.fromJson(operation.data, PendingDocumentoPayload::class.java)
-                                val file = File(payload.filePath)
-                                if (!file.exists()) {
-                                    handleError(operation, "Archivo no encontrado para subir")
-                                    errorCount++
-                                } else {
-                                    val incidenciaIdPart = payload.incidencia_id
-                                        .toString()
-                                        .toRequestBody("text/plain".toMediaType())
-                                    val nombrePart = payload.nombre.toRequestBody("text/plain".toMediaType())
-                                    val requestFile = file.asRequestBody("application/octet-stream".toMediaType())
-                                    val filePart = MultipartBody.Part.createFormData("archivo", file.name, requestFile)
-                                    val response = apiService.uploadDocumento(incidenciaIdPart, nombrePart, filePart)
-                                    if (response.isSuccessful && response.body() != null) {
-                                        val created = response.body()!!
-                                        documentoDao.deleteById(payload.localId)
-                                        documentoDao.insertDocumento(
-                                            com.tomoko.fyntra.data.local.database.entities.DocumentoEntity(
-                                                id = created.id,
-                                                incidencia_id = created.incidencia_id,
-                                                usuario_id = created.usuario_id,
-                                                nombre = created.nombre,
-                                                nombre_archivo = created.nombre_archivo,
-                                                tipo_archivo = created.tipo_archivo,
-                                                tamano = created.tamano,
-                                                creado_en = created.creado_en,
-                                                subido_por = created.subido_por,
-                                                local_path = null,
-                                                syncStatus = "synced"
-                                            )
-                                        )
-                                        markAsSynced(operation.id)
-                                        successCount++
-                                    } else {
-                                        handleError(operation, response.message())
-                                        errorCount++
-                                    }
-                                }
-                            }
-                            else -> {
-                                Log.w("SyncService", "Unknown UPLOAD endpoint: ${operation.endpoint}")
-                                markAsSynced(operation.id)
-                            }
-                        }
+                        // Ya no se usa para documentos; mantenemos el tipo por compatibilidad
+                        Log.w("SyncService", "Ignoring UPLOAD operation: ${operation.endpoint}")
+                        markAsSynced(operation.id)
                     }
                 }
             } catch (e: Exception) {
@@ -316,6 +301,61 @@ class SyncService(
         pendingOperationDao.deleteSyncedOperations()
 
         SyncResult.Success(successCount, errorCount)
+    }
+
+    private suspend fun migrateIncidenciaId(oldLocalId: Int, newServerId: Int) {
+        if (oldLocalId == newServerId) return
+
+        val local = incidenciaDao.getIncidenciaById(oldLocalId)
+        if (local != null) {
+            // Insertar con el ID real preservando owner_user_id, inmueble_referencia/direccion, historial_json, etc.
+            incidenciaDao.insertIncidencia(
+                local.copy(
+                    id = newServerId,
+                    syncStatus = "synced",
+                    lastSyncTimestamp = System.currentTimeMillis()
+                )
+            )
+            // Borrar la fila temporal
+            incidenciaDao.deleteIncidencia(local)
+        }
+
+        // Reasignar dependencias (documentos/fotos, chat, actuaciones) al nuevo ID
+        documentoDao.remapIncidenciaId(oldLocalId, newServerId)
+        mensajeDao.remapIncidenciaId(oldLocalId, newServerId)
+        actuacionDao.remapIncidenciaId(oldLocalId, newServerId)
+    }
+
+    private suspend fun remapPendingOperations(oldLocalId: Int, newServerId: Int) {
+        val ops = pendingOperationDao.getPendingOperationsSync()
+        if (ops.isEmpty()) return
+
+        for (op in ops) {
+            when {
+                op.endpoint == "actuaciones" -> {
+                    val parsed = runCatching { gson.fromJson(op.data, PendingActuacionPayload::class.java) }.getOrNull()
+                    if (parsed != null && parsed.incidencia_id == oldLocalId) {
+                        val updatedPayload = parsed.copy(incidencia_id = newServerId)
+                        pendingOperationDao.updateOperation(op.copy(data = gson.toJson(updatedPayload)))
+                    }
+                }
+                op.endpoint.startsWith("mensajes/incidencia/") -> {
+                    val rawId = op.endpoint.split("/").lastOrNull()?.toIntOrNull()
+                    if (rawId != null && rawId == oldLocalId) {
+                        val newEndpoint = "mensajes/incidencia/$newServerId"
+                        pendingOperationDao.updateOperation(op.copy(endpoint = newEndpoint))
+                    }
+                }
+                op.endpoint.startsWith("incidencias/") -> {
+                    val rawId = extractIdFromEndpoint(op.endpoint)
+                    if (rawId == oldLocalId) {
+                        val suffix = op.endpoint.removePrefix("incidencias/$oldLocalId")
+                        val newEndpoint = "incidencias/$newServerId$suffix"
+                        pendingOperationDao.updateOperation(op.copy(endpoint = newEndpoint))
+                    }
+                }
+            }
+        }
     }
 
     private suspend fun markAsSynced(operationId: Long) {

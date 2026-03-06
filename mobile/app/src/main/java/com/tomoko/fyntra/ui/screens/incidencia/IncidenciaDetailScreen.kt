@@ -667,18 +667,6 @@ fun DocumentosTab(
                 } else {
                     error = result.exceptionOrNull()?.message ?: "Error al subir documento"
                 }
-
-                // Eliminar archivo temporal solo si no es la foto (la foto se eliminará después si es necesario)
-                if (archivoFoto == null || fileForUpload != archivoFoto) {
-                    fileForUpload.delete()
-                } else {
-                    // Si es la foto, eliminarla después de subirla
-                    try {
-                        fileForUpload.delete()
-                    } catch (e: Exception) {
-                        // Ignorar error al eliminar
-                    }
-                }
             } catch (e: Exception) {
                 // Sin conexión o Solo WiFi sin WiFi: guardar local y encolar
                 val fileForQueue = tempFile ?: archivoFoto
@@ -760,7 +748,11 @@ fun DocumentosTab(
                                 fontSize = 16.sp
                             )
                             Text(
-                                text = "Subido por: ${doc.subido_por ?: "N/A"}",
+                                text = "Subido por: " + when {
+                                    doc.id < 0 -> "Pendiente de sincronizar"
+                                    !doc.subido_por.isNullOrBlank() -> doc.subido_por!!
+                                    else -> "N/A"
+                                },
                                 fontSize = 12.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -769,6 +761,14 @@ fun DocumentosTab(
                                 fontSize = 12.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
+                            // Estado de sincronización
+                            if (doc.id < 0) {
+                                Text(
+                                    text = "Pendiente de sincronizar",
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.tertiary
+                                )
+                            }
                             if (doc.tamano != null) {
                                 Text(
                                     text = "Tamaño: ${doc.tamano / 1024} KB",
@@ -783,31 +783,60 @@ fun DocumentosTab(
                                 Button(
                                     onClick = {
                                         scope.launch {
-                                            try {
-                                                val authDataStore = com.tomoko.fyntra.data.local.AuthDataStore(context)
-                                                val token = authDataStore.getToken()
-                                                if (token != null) {
-                                                    val response = authRepository.getApiServiceInstance().downloadDocumento(doc.id, token)
-                                                    if (response.isSuccessful) {
-                                                        val responseBody = response.body()
-                                                        if (responseBody != null) {
-                                                            descargarYabrirDocumento(
-                                                                context = context,
-                                                                responseBody = responseBody,
-                                                                nombreArchivo = doc.nombre_archivo ?: doc.nombre,
-                                                                tipoArchivo = doc.tipo_archivo ?: "application/octet-stream"
-                                                            )
+                                            // Si es un documento pendiente con ruta local, abrir directamente sin ir a la API
+                                            if (doc.local_path != null) {
+                                                val file = File(doc.local_path)
+                                                if (!file.exists()) {
+                                                    error = "El archivo local ya no existe"
+                                                } else {
+                                                    val uri = FileProvider.getUriForFile(
+                                                        context,
+                                                        "${context.packageName}.fileprovider",
+                                                        file
+                                                    )
+                                                    val tipo = doc.tipo_archivo
+                                                        ?: inferMimeTypeFromName(doc.nombre_archivo)
+                                                    val intent = Intent(Intent.ACTION_VIEW).apply {
+                                                        setDataAndType(uri, tipo)
+                                                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                                    }
+                                                    try {
+                                                        context.startActivity(intent)
+                                                    } catch (e: Exception) {
+                                                        error = "No hay app para abrir este tipo de archivo"
+                                                    }
+                                                }
+                                            } else {
+                                                // Sin ruta local: intentar vía API (requiere conexión)
+                                                try {
+                                                    val authDataStore = com.tomoko.fyntra.data.local.AuthDataStore(context)
+                                                    val token = authDataStore.getToken()
+                                                    if (token != null) {
+                                                        val response = authRepository.getApiServiceInstance().downloadDocumento(doc.id, token)
+                                                        if (response.isSuccessful) {
+                                                            val responseBody = response.body()
+                                                            if (responseBody != null) {
+                                                                val tipo = doc.tipo_archivo
+                                                                    ?: inferMimeTypeFromName(doc.nombre_archivo)
+                                                                descargarYabrirDocumento(
+                                                                    context = context,
+                                                                    responseBody = responseBody,
+                                                                    nombreArchivo = doc.nombre_archivo ?: doc.nombre,
+                                                                    tipoArchivo = tipo
+                                                                )
+                                                            } else {
+                                                                error = "Error: respuesta vacía"
+                                                            }
                                                         } else {
-                                                            error = "Error: respuesta vacía"
+                                                            error = "Error al descargar documento: ${response.message()}"
                                                         }
                                                     } else {
-                                                        error = "Error al descargar documento: ${response.message()}"
+                                                        error = "No se pudo obtener el token de autenticación"
                                                     }
-                                                } else {
-                                                    error = "No se pudo obtener el token de autenticación"
+                                                } catch (eApi: Exception) {
+                                                    error = eApi.message ?: "Error al descargar documento"
                                                 }
-                                            } catch (e: Exception) {
-                                                error = e.message ?: "Error al descargar documento"
                                             }
                                         }
                                     }
@@ -1797,6 +1826,18 @@ fun getPrioridadLabel(prioridad: String): String {
         "alta" -> "Alta"
         "urgente" -> "Urgente"
         else -> prioridad.capitalize()
+    }
+}
+
+private fun inferMimeTypeFromName(fileName: String, default: String = "application/octet-stream"): String {
+    val lower = fileName.lowercase()
+    return when {
+        lower.endsWith(".jpg") || lower.endsWith(".jpeg") -> "image/jpeg"
+        lower.endsWith(".png") -> "image/png"
+        lower.endsWith(".gif") -> "image/gif"
+        lower.endsWith(".webp") -> "image/webp"
+        lower.endsWith(".pdf") -> "application/pdf"
+        else -> default
     }
 }
 

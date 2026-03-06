@@ -83,7 +83,8 @@ fun NavGraph(
                         popUpTo(Screen.Login.route) { inclusive = true }
                     }
                 },
-                authRepository = authRepository
+                authRepository = authRepository,
+                incidenciaRepository = incidenciaRepository
             )
         }
 
