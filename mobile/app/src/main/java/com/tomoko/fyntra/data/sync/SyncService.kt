@@ -42,6 +42,12 @@ class SyncService(
         val fotoPath: String? = null,
         val firmaPath: String? = null
     )
+    private data class PendingIncidenciaRutaPayload(
+        val rutaId: Int,
+        val create: com.tomoko.fyntra.data.models.IncidenciaRutaCreate,
+        val cancelarRuta: Boolean,
+        val fotoPath: String? = null
+    )
 
     suspend fun syncPendingOperations(): SyncResult = withContext(Dispatchers.IO) {
         if (!networkMonitor.isCurrentlyOnline()) {
@@ -211,14 +217,14 @@ class SyncService(
                                 val fotoPart = payload.fotoPath?.let { path ->
                                     val file = File(path)
                                     if (file.exists()) {
-                                        val body = file.asRequestBody("application/octet-stream".toMediaType())
+                                        val body = file.asRequestBody("image/jpeg".toMediaType())
                                         MultipartBody.Part.createFormData("foto", file.name, body)
                                     } else null
                                 }
                                 val firmaPart = payload.firmaPath?.let { path ->
                                     val file = File(path)
                                     if (file.exists()) {
-                                        val body = file.asRequestBody("application/octet-stream".toMediaType())
+                                        val body = file.asRequestBody("image/jpeg".toMediaType())
                                         MultipartBody.Part.createFormData("firma", file.name, body)
                                     } else null
                                 }
@@ -229,6 +235,7 @@ class SyncService(
                                     foto = fotoPart,
                                     firma = firmaPart
                                 )
+
                                 if (response.isSuccessful) {
                                     markAsSynced(operation.id)
                                     successCount++
@@ -250,6 +257,39 @@ class SyncService(
                                 val rutaId = parts.getOrNull(1)?.toIntOrNull() ?: 0
                                 val confirmacion = gson.fromJson(operation.data, com.tomoko.fyntra.data.models.EntregaConfirmacion::class.java)
                                 val response = apiService.confirmarEntrega(rutaId, confirmacion)
+                                if (response.isSuccessful) {
+                                    markAsSynced(operation.id)
+                                    successCount++
+                                } else {
+                                    handleError(operation, response.message())
+                                    errorCount++
+                                }
+                            }
+                            operation.endpoint.startsWith("rutas/") && operation.endpoint.endsWith("/incidencia") -> {
+                                val payload = gson.fromJson(operation.data, PendingIncidenciaRutaPayload::class.java)
+                                val mediaTypeText = "text/plain".toMediaType()
+                                val tipoPart = payload.create.tipo.toRequestBody(mediaTypeText)
+                                val descripcionPart = payload.create.descripcion.toRequestBody(mediaTypeText)
+                                val cancelarRutaPart = payload.cancelarRuta.toString().toRequestBody(mediaTypeText)
+                                val rutaParadaIdPart = payload.create.ruta_parada_id?.toString()?.toRequestBody(mediaTypeText)
+
+                                val fotoParts = payload.fotoPath?.let { path ->
+                                    val file = File(path)
+                                    if (file.exists()) {
+                                        val requestFile = file.asRequestBody("image/jpeg".toMediaType())
+                                        listOf(MultipartBody.Part.createFormData("fotos", file.name, requestFile))
+                                    } else emptyList()
+                                } ?: emptyList()
+
+                                val response = apiService.reportarIncidenciaRuta(
+                                    rutaId = payload.rutaId,
+                                    tipo = tipoPart,
+                                    descripcion = descripcionPart,
+                                    rutaParadaId = rutaParadaIdPart,
+                                    cancelarRuta = cancelarRutaPart,
+                                    fotos = fotoParts
+                                )
+
                                 if (response.isSuccessful) {
                                     markAsSynced(operation.id)
                                     successCount++

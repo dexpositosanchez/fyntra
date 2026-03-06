@@ -433,7 +433,8 @@ fun RutaDetailScreen(
                     showCrearIncidenciaDialog = false
                     cargarRuta()
                 },
-                authRepository = authRepository
+                authRepository = authRepository,
+                rutaRepository = rutaRepository
             )
         }
     }
@@ -891,7 +892,8 @@ fun CrearIncidenciaRutaDialog(
     paradas: List<Parada>,
     onDismiss: () -> Unit,
     onSuccess: () -> Unit,
-    authRepository: AuthRepository
+    authRepository: AuthRepository,
+    rutaRepository: RutaRepository?
 ) {
     var tipoIncidencia by remember { mutableStateOf("averia") }
     var descripcion by remember { mutableStateOf("") }
@@ -1152,60 +1154,72 @@ fun CrearIncidenciaRutaDialog(
                                     try {
                                         val apiService = authRepository.getApiServiceInstance()
 
-                                        // Preparar partes multipart
-                                        val mediaTypeText = "text/plain".toMediaType()
-                                        val tipoPart: RequestBody = tipoIncidencia.toRequestBody(mediaTypeText)
-                                        val descripcionPart: RequestBody = descripcion.toRequestBody(mediaTypeText)
-                                        val cancelarRutaPart: RequestBody = cancelarRuta.toString().toRequestBody(mediaTypeText)
-
-                                        val rutaParadaIdPart: RequestBody? = paradaSeleccionada?.let {
-                                            it.toString().toRequestBody(mediaTypeText)
+                                        // RNF18: compresión de imágenes antes de subir (y persistencia de path para cola)
+                                        val fotoPath = archivoFotoActual?.takeIf { it.exists() }?.let { file ->
+                                            val compressed = ImageCompression.compressPhotoForUpload(context, file)
+                                            (compressed ?: file).absolutePath
                                         }
 
-                                        // RNF18: compresión de imágenes antes de subir
-                                        val fotoParts = archivoFotoActual?.takeIf { it.exists() }?.let { file ->
-                                            val compressed = ImageCompression.compressPhotoForUpload(context, file)
-                                            val fileToUpload = compressed ?: file
-                                            val requestFile = fileToUpload.asRequestBody("image/jpeg".toMediaType())
-                                            listOf(
-                                                MultipartBody.Part.createFormData(
-                                                    "fotos",
-                                                    fileToUpload.name,
-                                                    requestFile
-                                                )
+                                        if (rutaRepository != null) {
+                                            val result = rutaRepository.reportarIncidenciaRutaOfflineFirst(
+                                                rutaId = rutaId,
+                                                tipo = tipoIncidencia,
+                                                descripcion = descripcion,
+                                                rutaParadaId = paradaSeleccionada,
+                                                cancelarRuta = cancelarRuta,
+                                                fotoPath = fotoPath
                                             )
-                                        } ?: emptyList()
-
-                                        val response = apiService.reportarIncidenciaRuta(
-                                            rutaId = rutaId,
-                                            tipo = tipoPart,
-                                            descripcion = descripcionPart,
-                                            rutaParadaId = rutaParadaIdPart,
-                                            cancelarRuta = cancelarRutaPart,
-                                            fotos = fotoParts
-                                        )
-
-                                        if (response.isSuccessful) {
-                                            mensajeExito = "Incidencia enviada correctamente"
-                                            error = null
-                                            // Esperar un momento para que el usuario vea el mensaje
-                                            kotlinx.coroutines.delay(1500)
-                                            onSuccess()
-                                        } else {
-                                            mensajeExito = null
-                                            val errorBody = response.errorBody()?.string()
-                                            val errorMessage = if (errorBody != null && errorBody.isNotBlank()) {
-                                                try {
-                                                    // Intentar parsear el JSON del error (FastAPI devuelve {"detail": "mensaje"})
-                                                    val errorJson = com.google.gson.Gson().fromJson(errorBody, Map::class.java)
-                                                    errorJson["detail"]?.toString() ?: errorBody
-                                                } catch (e: Exception) {
-                                                    errorBody
-                                                }
-                                            } else {
-                                                response.message() ?: "Error al crear incidencia"
+                                            result.onSuccess {
+                                                mensajeExito = "Incidencia guardada (se enviará al conectar WiFi)"
+                                                error = null
+                                                kotlinx.coroutines.delay(1500)
+                                                onSuccess()
+                                            }.onFailure { e ->
+                                                mensajeExito = null
+                                                error = e.message ?: "Error al crear incidencia"
                                             }
-                                            error = "Error ${response.code()}: $errorMessage"
+                                        } else {
+                                            // Fallback antiguo si no se inyecta repo
+                                            val mediaTypeText = "text/plain".toMediaType()
+                                            val tipoPart: RequestBody = tipoIncidencia.toRequestBody(mediaTypeText)
+                                            val descripcionPart: RequestBody = descripcion.toRequestBody(mediaTypeText)
+                                            val cancelarRutaPart: RequestBody = cancelarRuta.toString().toRequestBody(mediaTypeText)
+                                            val rutaParadaIdPart: RequestBody? = paradaSeleccionada?.toString()?.toRequestBody(mediaTypeText)
+                                            val fotoParts = fotoPath?.let { path ->
+                                                val file = File(path)
+                                                if (file.exists()) {
+                                                    val requestFile = file.asRequestBody("image/jpeg".toMediaType())
+                                                    listOf(MultipartBody.Part.createFormData("fotos", file.name, requestFile))
+                                                } else emptyList()
+                                            } ?: emptyList()
+                                            val response = apiService.reportarIncidenciaRuta(
+                                                rutaId = rutaId,
+                                                tipo = tipoPart,
+                                                descripcion = descripcionPart,
+                                                rutaParadaId = rutaParadaIdPart,
+                                                cancelarRuta = cancelarRutaPart,
+                                                fotos = fotoParts
+                                            )
+                                            if (response.isSuccessful) {
+                                                mensajeExito = "Incidencia enviada correctamente"
+                                                error = null
+                                                kotlinx.coroutines.delay(1500)
+                                                onSuccess()
+                                            } else {
+                                                mensajeExito = null
+                                                val errorBody = response.errorBody()?.string()
+                                                val errorMessage = if (errorBody != null && errorBody.isNotBlank()) {
+                                                    try {
+                                                        val errorJson = com.google.gson.Gson().fromJson(errorBody, Map::class.java)
+                                                        errorJson["detail"]?.toString() ?: errorBody
+                                                    } catch (_: Exception) {
+                                                        errorBody
+                                                    }
+                                                } else {
+                                                    response.message() ?: "Error al crear incidencia"
+                                                }
+                                                error = "Error ${response.code()}: $errorMessage"
+                                            }
                                         }
                                     } catch (e: Exception) {
                                         mensajeExito = null

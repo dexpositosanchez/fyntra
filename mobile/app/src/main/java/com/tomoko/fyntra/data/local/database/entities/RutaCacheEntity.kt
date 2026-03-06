@@ -11,5 +11,6 @@ import androidx.room.PrimaryKey
 data class RutaCacheEntity(
     @PrimaryKey val id: Int,
     val rutaJson: String,
-    val updatedAt: Long = System.currentTimeMillis()
+    val updatedAt: Long = System.currentTimeMillis(),
+    val owner_user_id: Int = 0
 )

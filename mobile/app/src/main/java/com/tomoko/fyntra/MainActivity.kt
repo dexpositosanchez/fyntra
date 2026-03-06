@@ -103,7 +103,8 @@ class MainActivity : ComponentActivity() {
             networkMonitor = networkMonitor,
             gson = gson,
             syncService = syncService,
-            settingsDataStore = settingsDataStore
+            settingsDataStore = settingsDataStore,
+            authDataStore = authDataStore
         )
         
         // Sync Manager (RNF18: respeta opción "solo WiFi")
@@ -112,6 +113,7 @@ class MainActivity : ComponentActivity() {
             networkMonitor = networkMonitor,
             syncService = syncService,
             incidenciaRepository = incidenciaRepository,
+            rutaRepository = rutaRepository,
             settingsDataStore = settingsDataStore
         )
         

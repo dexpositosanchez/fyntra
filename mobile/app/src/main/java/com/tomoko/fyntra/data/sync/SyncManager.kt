@@ -4,6 +4,7 @@ import android.util.Log
 import com.tomoko.fyntra.data.local.SettingsDataStore
 import com.tomoko.fyntra.data.local.database.AppDatabase
 import com.tomoko.fyntra.data.repository.IncidenciaRepository
+import com.tomoko.fyntra.data.repository.RutaRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -20,6 +21,7 @@ class SyncManager(
     private val networkMonitor: NetworkMonitor,
     private val syncService: SyncService,
     private val incidenciaRepository: IncidenciaRepository,
+    private val rutaRepository: RutaRepository,
     private val settingsDataStore: SettingsDataStore
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -59,6 +61,7 @@ class SyncManager(
             
             // Refrescar datos desde el servidor
             incidenciaRepository.refreshIncidenciasFromServer()
+            rutaRepository.refreshMisRutasFromServer()
             // Sincronizar documentos pendientes de incidencias (fotos, etc.)
             incidenciaRepository.syncPendingDocumentos()
         } catch (e: Exception) {
